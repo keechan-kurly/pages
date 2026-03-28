@@ -158,17 +158,17 @@
       <div class="ba-inner">
         <div class="ba-box before-box">
           <div class="ba-box-label">Before</div>
-          <strong>MainActivity</strong>에 팝업 표시 로직 직접 배치<br>
-          <strong>MainViewModel</strong>에 노출 조건 분기 산재<br>
-          팝업 간 <strong>순서 보장 없음</strong> — 동시 노출 가능<br>
-          각 팝업이 독자적으로 dismiss 처리
+          MainActivity/MainViewModel에 팝업 로직 산재<br>
+          팝업 간 순서 보장 없음 — 동시 노출 가능<br>
+          각 팝업이 독자적으로 dismiss 처리<br>
+          노출 조건 분기가 ViewModel에 하드코딩
         </div>
         <span class="ba-arrow">→</span>
         <div class="ba-box after-box">
           <div class="ba-box-label">After</div>
-          <strong>MainPopupFlow</strong>가 팝업 순서를 중앙 관리<br>
-          <strong>PopupHandler</strong> 인터페이스로 각 팝업 캡슐화<br>
-          <strong>순차 실행</strong> — 하나 끝나면 다음 시작<br>
+          MainPopupFlow가 팝업 순서 중앙 관리<br>
+          PopupHandler 인터페이스로 각 팝업 캡슐화<br>
+          순차 실행 — 하나 끝나면 다음 시작<br>
           PopupStatus로 상태 추적
         </div>
       </div>
@@ -198,16 +198,16 @@
       <div class="ba-inner">
         <div class="ba-box before-box">
           <div class="ba-box-label">Phase 1 한계</div>
-          Lifecycle 상태 <strong>무시</strong> — 백그라운드에서도 팝업 시도<br>
-          예외 발생 시 <strong>전체 플로우 중단</strong><br>
-          딥링크 처리와 <strong>타이밍 충돌</strong>
+          Lifecycle 상태 무시 — 백그라운드에서도 팝업 시도<br>
+          예외 발생 시 전체 플로우 중단<br>
+          딥링크 처리와 타이밍 충돌
         </div>
         <span class="ba-arrow">→</span>
         <div class="ba-box after-box">
           <div class="ba-box-label">Phase 2 개선</div>
-          <strong>Lifecycle.State.RESUMED</strong> 일 때만 실행<br>
-          <strong>CoroutineExceptionHandler</strong>로 개별 팝업 실패 격리<br>
-          <strong>PopupHandlerContext</strong>로 딥링크 타이밍 조율
+          Lifecycle.State.RESUMED 일 때만 실행<br>
+          CoroutineExceptionHandler로 개별 실패 격리<br>
+          PopupHandlerContext로 딥링크 타이밍 조율
         </div>
       </div>
 
@@ -253,16 +253,16 @@
       <div class="ba-inner">
         <div class="ba-box before-box">
           <div class="ba-box-label">Phase 2 한계</div>
-          <strong>PopupHandler</strong>가 조건 판단 + 팝업 표시를 모두 담당<br>
-          팝업 표시 로직이 <strong>Activity/Context에 의존</strong><br>
-          Handler 단위 테스트 작성 <strong>어려움</strong>
+          PopupHandler가 조건 판단 + 팝업 표시 모두 담당<br>
+          팝업 표시가 Activity/Context에 직접 의존<br>
+          Handler 단위 테스트 작성 어려움
         </div>
         <span class="ba-arrow">→</span>
         <div class="ba-box after-box">
           <div class="ba-box-label">Phase 3 개선</div>
-          <strong>Popup</strong> 모델 — 표시 여부 + 데이터를 순수 값으로 반환<br>
-          <strong>PopupDispatcher</strong> — 팝업 표시 로직만 담당<br>
-          Handler는 <strong>조건 판단만</strong> → 테스트 용이
+          Popup 모델 — 표시 여부를 순수 값으로 반환<br>
+          PopupDispatcher — 팝업 표시 로직만 담당<br>
+          Handler는 조건 판단만 → 테스트 용이
         </div>
       </div>
 

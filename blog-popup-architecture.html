@@ -539,7 +539,7 @@ a:hover { text-decoration: underline; }
         <time>2025. 01 ~ 03</time>
     </div>
     <h1 class="hero-title">메인화면 팝업 노출 구조 개선</h1>
-    <p class="hero-subtitle">Chain of Responsibility 패턴 도입으로 God Object를 해소하고, Lifecycle 기반 구조 설계로 크래시를 제거한 과정을 기록합니다.</p>
+    <p class="hero-subtitle">Chain of Responsibility 패턴 도입 → Lifecycle 기반 안정화 → 테스트 커버리지 100% 달성까지의 3단계 개선 과정</p>
     <div class="hero-tags">
         <span class="hero-tag">Android</span>
         <span class="hero-tag">Popup</span>
@@ -547,6 +547,7 @@ a:hover { text-decoration: underline; }
         <span class="hero-tag">Lifecycle</span>
         <span class="hero-tag">KMA-4789</span>
         <span class="hero-tag">KMA-4978</span>
+        <span class="hero-tag">KMA-4991</span>
     </div>
 </header>
 
@@ -1046,20 +1047,22 @@ a:hover { text-decoration: underline; }
 <hr>
 
 <!-- ===================================================
-     Section 6: 한계
+     Section 8: 한계
      =================================================== -->
 <h2 id="section-8">한계</h2>
 
 <ul>
     <li><strong>PopupTaskExecutor의 Channel 무한 대기</strong> -- <code>Channel()</code>은 버퍼 없는 rendezvous channel입니다. 태스크를 send한 뒤 Activity가 RESUMED로 돌아오지 않으면(예: 프로세스 종료) 코루틴이 무한 대기합니다. timeout 메커니즘이 없습니다.</li>
     <li><strong>PopupHandlerInterceptor의 테스트 복잡도</strong> -- <code>CoroutineContext.Element</code>로 핸들러를 컨텍스트에 주입하는 구조는, 테스트 시 커스텀 <code>CoroutineContext</code>를 구성해야 하므로 단위 테스트 설정이 다소 복잡해집니다.</li>
+    <li><strong>PopupDispatcher와 Handler의 1:1 관계</strong> -- 각 핸들러마다 전용 Dispatcher를 만들어야 하므로 클래스 수가 늘어납니다. 팝업 유형이 추가될 때마다 Handler + Dispatcher + Popup 모델 3개 파일이 필요합니다.</li>
 </ul>
 
 <div class="summary-box">
     <div class="summary-box-title">핵심 요약</div>
     <ul>
-        <li><strong>1차 (#5669)</strong>: Chain of Responsibility 패턴으로 God Object(MainActivity 174줄 + MainViewModel 191줄)를 7개 독립 핸들러 + 1개 Flow 클래스로 분리. 팝업 순서 테스트 가능.</li>
-        <li><strong>2차 (#5778)</strong>: PopupTask + PopupTaskExecutor로 RESUMED 상태에서만 FragmentTransaction 실행. CoroutineExceptionHandler + PopupHandlerInterceptor로 예외 시 체인 자동 복구.</li>
+        <li><strong>1차 (#5669)</strong>: Chain of Responsibility 패턴으로 God Object를 7개 독립 핸들러 + MainPopupFlow로 분리. 팝업 순서 테스트 가능.</li>
+        <li><strong>2차 (#5778)</strong>: PopupTask + PopupTaskExecutor로 RESUMED 상태에서만 FragmentTransaction 실행. CoroutineExceptionHandler로 예외 시 체인 자동 복구.</li>
+        <li><strong>3차 (#5853)</strong>: Handler에서 UI 로직을 PopupDispatcher로 분리하여 테스트 가능성 확보. 전 핸들러 커버리지 100% 달성.</li>
     </ul>
 </div>
 
@@ -1070,10 +1073,13 @@ a:hover { text-decoration: underline; }
     <div class="content-box-title">PR</div>
     <ul style="list-style: none; padding: 0; margin: 0;">
         <li style="margin-bottom: 8px;">
-            <a href="https://github.com/nicein-kurly/kurly-android/pull/5669">#5669</a> -- KMA-4789 메인화면 팝업 노출 로직 개선 <span style="color: var(--text-tertiary); font-size: 0.85rem;">(+890 / -536, 56 files)</span>
+            <a href="https://github.com/thefarmersfront/kurly-android/pull/5669">#5669</a> -- KMA-4789 메인화면 팝업 노출 로직 개선 <span style="color: var(--text-tertiary); font-size: 0.85rem;">(+890 / -536, 56 files)</span>
+        </li>
+        <li style="margin-bottom: 8px;">
+            <a href="https://github.com/thefarmersfront/kurly-android/pull/5778">#5778</a> -- KMA-4978 MainPopupFlow 안정성 개선을 위한 Lifecycle 기반 구조 설계 <span style="color: var(--text-tertiary); font-size: 0.85rem;">(+381 / -156, 26 files)</span>
         </li>
         <li>
-            <a href="https://github.com/nicein-kurly/kurly-android/pull/5778">#5778</a> -- KMA-4978 MainPopupFlow 안정성 개선을 위한 Lifecycle 기반 구조 설계 <span style="color: var(--text-tertiary); font-size: 0.85rem;">(+381 / -156, 26 files)</span>
+            <a href="https://github.com/thefarmersfront/kurly-android/pull/5853">#5853</a> -- KMA-4991 PopupHandler 테스트 코드 커버리지 개선 <span style="color: var(--text-tertiary); font-size: 0.85rem;">(+680 / -225, 29 files)</span>
         </li>
     </ul>
 </div>
