@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KMA-6272 · 1px의 함정 — GPU 텍스처 정렬이 만든 크래시</title>
+<style>
+/* ── Slate Dark Theme Tokens (RULE-C09) ── */
+:root {
+  --color-bg: #0a0e1a;
+  --color-surface: #1e293b;
+  --color-surface-inner: #334155;
+  --color-surface-hover: #253348;
+  --color-border: rgba(148, 163, 184, 0.15);
+  --color-border-strong: rgba(148, 163, 184, 0.3);
+  --color-on-surface: #e2e8f0;
+  --color-on-surface-body: #94a3b8;
+  --color-on-surface-muted: rgba(148, 163, 184, 0.7);
+
+  /* Semantic (RULE-C01 dark-adapted) */
+  --viz-color-add: #4ade80;
+  --viz-color-remove: #6b7280;
+  --viz-color-move: #60a5fa;
+  --viz-color-emphasis: #a78bfa;
+  --viz-color-merge: #fb923c;
+  --viz-color-danger: #f87171;
+  --viz-color-warning: #fbbf24;
+
+  /* Category Accents */
+  --accent-1: #f87171;
+  --accent-2: #60a5fa;
+  --accent-3: #4ade80;
+  --accent-4: #a78bfa;
+
+  /* Spacing */
+  --sp-4: 4px; --sp-6: 6px; --sp-8: 8px; --sp-10: 10px;
+  --sp-12: 12px; --sp-16: 16px; --sp-20: 20px; --sp-24: 24px;
+  --sp-32: 32px; --sp-48: 48px;
+
+  /* Shapes */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-pill: 9999px;
+
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', Menlo, Consolas, monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--color-bg);
+  color: var(--color-on-surface);
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 48px 24px;
+}
+
+/* ── Hero (EVAL-0004) ── */
+.hero {
+  text-align: center;
+  margin-bottom: var(--sp-48);
+  position: relative;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -80px; left: 50%; transform: translateX(-50%);
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, rgba(96,165,250,0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero::after {
+  content: '';
+  position: absolute;
+  top: -40px; right: 20%;
+  width: 400px; height: 400px;
+  background: radial-gradient(circle, rgba(167,139,250,0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-8);
+  padding: var(--sp-6) var(--sp-16);
+  border-radius: var(--radius-pill);
+  background: linear-gradient(135deg, rgba(96,165,250,0.15), rgba(167,139,250,0.15));
+  border: 1px solid rgba(96,165,250,0.25);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--viz-color-move);
+  margin-bottom: var(--sp-24);
+}
+.hero h1 {
+  font-size: 2.4rem;
+  font-weight: 800;
+  line-height: 1.3;
+  background: linear-gradient(135deg, var(--color-on-surface), var(--viz-color-move), var(--viz-color-emphasis));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: var(--sp-16);
+  position: relative;
+}
+.hero h1 .accent {
+  background: linear-gradient(135deg, var(--viz-color-danger), var(--viz-color-merge));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero-desc {
+  font-size: 0.95rem;
+  color: var(--color-on-surface-body);
+  max-width: 620px;
+  margin: 0 auto;
+}
+
+/* ── Section Label ── */
+.section-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-6);
+  padding: var(--sp-4) var(--sp-12);
+  border-radius: var(--radius-pill);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: var(--sp-24);
+}
+.section-label.red {
+  background: rgba(248,113,113,0.1);
+  border: 1px solid rgba(248,113,113,0.2);
+  color: var(--accent-1);
+}
+.section-label.blue {
+  background: rgba(96,165,250,0.1);
+  border: 1px solid rgba(96,165,250,0.2);
+  color: var(--accent-2);
+}
+.section-label.green {
+  background: rgba(74,222,128,0.1);
+  border: 1px solid rgba(74,222,128,0.2);
+  color: var(--accent-3);
+}
+.section-label.purple {
+  background: rgba(167,139,250,0.1);
+  border: 1px solid rgba(167,139,250,0.2);
+  color: var(--accent-4);
+}
+
+/* ── Impact Cards ── */
+.impact-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-16);
+  margin-bottom: var(--sp-48);
+}
+.impact-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: var(--sp-32) var(--sp-24);
+  text-align: center;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.impact-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--color-border-strong);
+}
+.impact-card .number {
+  font-size: 2.8rem;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  line-height: 1.1;
+  margin-bottom: var(--sp-8);
+}
+.impact-card .number.red { color: var(--accent-1); }
+.impact-card .number.orange { color: var(--viz-color-merge); }
+.impact-card .number.blue { color: var(--accent-2); }
+.impact-card .label {
+  font-size: 0.85rem;
+  color: var(--color-on-surface-body);
+  font-weight: 500;
+}
+.impact-card .sub {
+  font-size: 0.75rem;
+  color: var(--color-on-surface-muted);
+  margin-top: var(--sp-6);
+}
+
+/* ── Section ── */
+.section {
+  margin-bottom: var(--sp-48);
+}
+
+/* ── Alignment Trap Card ── */
+.trap-card {
+  background: linear-gradient(135deg, rgba(248,113,113,0.04), rgba(251,146,60,0.04));
+  border: 1px solid rgba(248,113,113,0.15);
+  border-radius: var(--radius-xl);
+  padding: var(--sp-32);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.trap-card:hover {
+  border-color: rgba(248,113,113,0.3);
+}
+.trap-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--color-on-surface);
+  margin-bottom: var(--sp-8);
+}
+.trap-insight {
+  font-size: 0.88rem;
+  color: var(--color-on-surface-body);
+  margin-bottom: var(--sp-24);
+  padding-bottom: var(--sp-20);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* Calculation rows */
+.calc-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+}
+.calc-row {
+  display: grid;
+  grid-template-columns: 80px 1fr 90px 60px;
+  align-items: center;
+  gap: var(--sp-12);
+  padding: var(--sp-12) var(--sp-16);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.calc-row:hover {
+  border-color: var(--color-border-strong);
+}
+.calc-row.danger {
+  background: rgba(248,113,113,0.06);
+  border-color: rgba(248,113,113,0.25);
+}
+.calc-row.danger:hover {
+  border-color: rgba(248,113,113,0.4);
+}
+.calc-input {
+  font-weight: 700;
+  color: var(--color-on-surface);
+}
+.calc-formula {
+  color: var(--color-on-surface-body);
+  font-size: 0.78rem;
+}
+.calc-result {
+  font-weight: 700;
+  text-align: right;
+}
+.calc-result.safe { color: var(--viz-color-add); }
+.calc-result.overflow { color: var(--viz-color-danger); }
+.calc-status {
+  text-align: center;
+}
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+.status-badge.safe {
+  background: rgba(74,222,128,0.12);
+  color: var(--viz-color-add);
+  border: 1px solid rgba(74,222,128,0.2);
+}
+.status-badge.crash {
+  background: rgba(248,113,113,0.12);
+  color: var(--viz-color-danger);
+  border: 1px solid rgba(248,113,113,0.2);
+}
+.calc-note {
+  margin-top: var(--sp-16);
+  padding: var(--sp-12) var(--sp-16);
+  background: rgba(248,113,113,0.06);
+  border-left: 3px solid var(--viz-color-danger);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-size: 0.82rem;
+  color: var(--color-on-surface-body);
+}
+.calc-note strong {
+  color: var(--viz-color-danger);
+}
+
+/* ── Device Map ── */
+.device-card {
+  background: linear-gradient(135deg, rgba(96,165,250,0.04), rgba(167,139,250,0.04));
+  border: 1px solid rgba(96,165,250,0.15);
+  border-radius: var(--radius-xl);
+  padding: var(--sp-32);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.device-card:hover {
+  border-color: rgba(96,165,250,0.3);
+}
+.device-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+}
+.device-row {
+  display: grid;
+  grid-template-columns: 130px 1fr 70px;
+  align-items: center;
+  gap: var(--sp-16);
+  padding: var(--sp-16) var(--sp-20);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.device-row:hover {
+  border-color: var(--color-border-strong);
+}
+.device-row.danger {
+  background: rgba(248,113,113,0.04);
+  border-color: rgba(248,113,113,0.2);
+}
+.device-row.danger:hover {
+  border-color: rgba(248,113,113,0.35);
+}
+.device-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-on-surface);
+}
+.device-name .device-sub {
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: var(--color-on-surface-muted);
+  display: block;
+  margin-top: 2px;
+}
+.device-formula {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--color-on-surface-body);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+}
+.device-formula .val {
+  font-weight: 700;
+  color: var(--color-on-surface);
+}
+.device-formula .op {
+  color: var(--color-on-surface-muted);
+}
+.device-formula .remainder {
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 0.78rem;
+}
+.device-formula .remainder.zero {
+  background: rgba(74,222,128,0.12);
+  color: var(--viz-color-add);
+  border: 1px solid rgba(74,222,128,0.2);
+}
+.device-formula .remainder.nonzero {
+  background: rgba(248,113,113,0.12);
+  color: var(--viz-color-danger);
+  border: 1px solid rgba(248,113,113,0.2);
+}
+
+/* ── Flow Diagram ── */
+.flow-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-24);
+}
+.flow-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: var(--sp-32);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.flow-panel:hover {
+  border-color: var(--color-border-strong);
+}
+.flow-panel.before {
+  border-style: dashed;
+}
+.flow-panel.after {
+  border-left: 3px solid var(--viz-color-add);
+  border-style: solid;
+}
+.flow-panel-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-10);
+  margin-bottom: var(--sp-24);
+}
+.flow-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: var(--sp-4) var(--sp-10);
+  border-radius: var(--radius-pill);
+}
+.flow-label.before {
+  background: rgba(107,114,128,0.15);
+  color: var(--color-on-surface-body);
+  border: 1px solid rgba(107,114,128,0.25);
+}
+.flow-label.after {
+  background: rgba(74,222,128,0.12);
+  color: var(--viz-color-add);
+  border: 1px solid rgba(74,222,128,0.2);
+}
+.flow-panel-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-on-surface);
+}
+
+/* Flow nodes */
+.flow-pipeline {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+.flow-node {
+  width: 100%;
+  padding: var(--sp-12) var(--sp-16);
+  border-radius: var(--radius-md);
+  text-align: center;
+  font-size: 0.82rem;
+  font-weight: 600;
+  position: relative;
+}
+.flow-node.entry {
+  background: var(--color-surface-inner);
+  border: 1px solid var(--color-border);
+  color: var(--color-on-surface);
+}
+.flow-node.process {
+  background: rgba(96,165,250,0.08);
+  border: 1px solid rgba(96,165,250,0.2);
+  color: var(--viz-color-move);
+}
+.flow-node.process-new {
+  background: rgba(74,222,128,0.08);
+  border: 1px solid rgba(74,222,128,0.2);
+  color: var(--viz-color-add);
+}
+.flow-node.danger-zone {
+  background: rgba(248,113,113,0.08);
+  border: 1px solid rgba(248,113,113,0.25);
+  color: var(--viz-color-danger);
+}
+.flow-node.crash {
+  background: rgba(248,113,113,0.12);
+  border: 2px solid var(--viz-color-danger);
+  color: var(--viz-color-danger);
+  font-weight: 800;
+}
+.flow-node.safe-result {
+  background: rgba(74,222,128,0.08);
+  border: 1px solid rgba(74,222,128,0.25);
+  color: var(--viz-color-add);
+}
+.flow-node .node-label {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--color-on-surface-muted);
+  margin-top: var(--sp-4);
+}
+.flow-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  color: var(--color-on-surface-muted);
+  font-size: 1rem;
+}
+.flow-arrow.danger { color: var(--viz-color-danger); }
+.flow-arrow.safe { color: var(--viz-color-add); }
+
+/* Decision diamond */
+.flow-decision {
+  width: 100%;
+  padding: var(--sp-16);
+  text-align: center;
+  position: relative;
+}
+.decision-diamond {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: var(--sp-12) var(--sp-16);
+  background: rgba(167,139,250,0.08);
+  border: 2px solid rgba(167,139,250,0.3);
+  border-radius: var(--radius-md);
+  color: var(--viz-color-emphasis);
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+
+/* Branch split */
+.flow-branch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-12);
+  width: 100%;
+}
+.branch-path {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+.branch-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  margin-bottom: var(--sp-8);
+}
+.branch-label.yes {
+  background: rgba(74,222,128,0.12);
+  color: var(--viz-color-add);
+}
+.branch-label.no {
+  background: rgba(248,113,113,0.12);
+  color: var(--viz-color-danger);
+}
+.branch-node {
+  width: 100%;
+  padding: var(--sp-10) var(--sp-12);
+  border-radius: var(--radius-md);
+  text-align: center;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+/* ── Solution Architecture ── */
+.solution-card {
+  background: linear-gradient(135deg, rgba(74,222,128,0.04), rgba(96,165,250,0.04));
+  border: 1px solid rgba(74,222,128,0.15);
+  border-radius: var(--radius-xl);
+  padding: var(--sp-32);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.solution-card:hover {
+  border-color: rgba(74,222,128,0.3);
+}
+.solution-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-16);
+}
+.solution-item {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-24);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.solution-item:hover {
+  transform: translateY(-2px);
+  border-color: var(--color-border-strong);
+}
+.solution-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  margin-bottom: var(--sp-12);
+}
+.solution-icon.detect { background: linear-gradient(135deg, rgba(96,165,250,0.2), rgba(167,139,250,0.2)); }
+.solution-icon.guard { background: linear-gradient(135deg, rgba(74,222,128,0.2), rgba(96,165,250,0.2)); }
+.solution-icon.rollback { background: linear-gradient(135deg, rgba(251,146,60,0.2), rgba(248,113,113,0.2)); }
+.solution-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--color-on-surface);
+  margin-bottom: var(--sp-6);
+}
+.solution-desc {
+  font-size: 0.78rem;
+  color: var(--color-on-surface-body);
+  line-height: 1.5;
+}
+.solution-code {
+  margin-top: var(--sp-10);
+  padding: var(--sp-8) var(--sp-12);
+  background: var(--color-surface-inner);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--viz-color-move);
+  overflow-x: auto;
+}
+
+/* ── Rendering Comparison ── */
+.rendering-note {
+  margin-top: var(--sp-24);
+  padding: var(--sp-16) var(--sp-20);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-12);
+}
+.rendering-note-icon {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.rendering-note-text {
+  font-size: 0.82rem;
+  color: var(--color-on-surface-body);
+  line-height: 1.6;
+}
+.rendering-note-text strong {
+  color: var(--color-on-surface);
+}
+
+/* ── Rationale (collapsible) ── */
+details.rationale {
+  margin-top: var(--sp-48);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+}
+details.rationale summary {
+  padding: var(--sp-20) var(--sp-24);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-on-surface-body);
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+}
+details.rationale summary::before {
+  content: '▸';
+  transition: transform 0.2s;
+}
+details.rationale[open] summary::before {
+  transform: rotate(90deg);
+}
+details.rationale .rationale-body {
+  padding: 0 var(--sp-24) var(--sp-24);
+  font-size: 0.78rem;
+  color: var(--color-on-surface-body);
+  line-height: 1.7;
+}
+details.rationale .rationale-body h3 {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--color-on-surface);
+  margin-top: var(--sp-20);
+  margin-bottom: var(--sp-8);
+}
+details.rationale .rationale-body h3:first-child {
+  margin-top: 0;
+}
+.evidence-badge {
+  display: inline-flex;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  font-size: 0.65rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  margin-right: 4px;
+}
+.evidence-badge.l1 { background: rgba(74,222,128,0.15); color: var(--viz-color-add); }
+.evidence-badge.l2 { background: rgba(96,165,250,0.15); color: var(--viz-color-move); }
+.evidence-badge.l3 { background: rgba(167,139,250,0.15); color: var(--viz-color-emphasis); }
+.evidence-badge.l4 { background: rgba(251,146,60,0.15); color: var(--viz-color-merge); }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .container { padding: 24px 16px; }
+  .hero h1 { font-size: 1.8rem; }
+  .impact-grid { grid-template-columns: 1fr; }
+  .flow-container { grid-template-columns: 1fr; }
+  .solution-grid { grid-template-columns: 1fr; }
+  .calc-row { grid-template-columns: 70px 1fr 80px 50px; font-size: 0.75rem; }
+  .device-row { grid-template-columns: 80px 1fr 100px 50px; }
+}
+
+/* ── Animations ── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-in {
+  animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+.delay-1 { animation-delay: 0.1s; }
+.delay-2 { animation-delay: 0.2s; }
+.delay-3 { animation-delay: 0.3s; }
+.delay-4 { animation-delay: 0.4s; }
+.delay-5 { animation-delay: 0.5s; }
+
+/* ── Timeline connector ── */
+.timeline-connect {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-12) 0;
+  position: relative;
+}
+.timeline-connect::before {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0; left: 50%;
+  width: 2px;
+  background: var(--color-border);
+  transform: translateX(-50%);
+}
+.timeline-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--color-surface-inner);
+  border: 2px solid var(--color-border-strong);
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Code highlight in flow ── */
+.code-highlight {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  background: var(--color-surface-inner);
+  border-radius: 4px;
+  color: var(--viz-color-move);
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- ═══ Hero ═══ -->
+  <header class="hero animate-in">
+    <div class="hero-badge">KMA-6272 · WebView Stability · PR #6950</div>
+    <h1>
+      <span class="accent">1px</span>의 함정
+      <br>GPU 텍스처 정렬이 만든 크래시
+    </h1>
+    <p class="hero-desc">
+      저사양 단말에서 WebView 크래시가 1만 건을 돌파했다.
+      원인은 GPU <code style="font-family:var(--font-mono);color:var(--viz-color-move);">maxTextureSize</code>가
+      64의 배수가 아닐 때 발생하는 정렬 오버플로우였다.
+    </p>
+  </header>
+
+  <!-- ═══ Impact Cards ═══ -->
+  <section class="section animate-in delay-1">
+    <div class="section-label red">IMPACT</div>
+    <div class="impact-grid">
+      <div class="impact-card">
+        <div class="number red">10,000+</div>
+        <div class="label">크래시 발생 건수</div>
+        <div class="sub">2025 Q4 기준 급증</div>
+      </div>
+      <div class="impact-card">
+        <div class="number orange">16383</div>
+        <div class="label">위험한 maxTextureSize</div>
+        <div class="sub">Galaxy A/S 저사양 단말</div>
+      </div>
+      <div class="impact-card">
+        <div class="number blue">1 px</div>
+        <div class="label">크래시를 만든 차이</div>
+        <div class="sub">16383 → 올림 → 16384 → 초과</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ The Alignment Trap ═══ -->
+  <section class="section animate-in delay-2">
+    <div class="section-label red">ROOT CAUSE</div>
+    <div class="trap-card">
+      <div class="trap-title">LAYER_SIZE(64) 올림 정렬의 함정</div>
+      <div class="trap-insight">
+        GPU 레이어는 64의 배수로 정렬된다. <code style="font-family:var(--font-mono);color:var(--viz-color-move);">ceil(height / 64) × 64</code>로 계산되는데,
+        <strong style="color:var(--viz-color-danger);">maxTextureSize가 16383처럼 64의 배수가 아니면</strong> 올림 결과가 한계를 초과한다.
+      </div>
+
+      <div class="calc-grid">
+        <div class="calc-row">
+          <div class="calc-input">16319</div>
+          <div class="calc-formula">ceil(16319 / 64) × 64</div>
+          <div class="calc-result safe">= 16320</div>
+          <div class="calc-status"><span class="status-badge safe">✓ SAFE</span></div>
+        </div>
+        <div class="calc-row">
+          <div class="calc-input">16320</div>
+          <div class="calc-formula">ceil(16320 / 64) × 64</div>
+          <div class="calc-result safe">= 16320</div>
+          <div class="calc-status"><span class="status-badge safe">✓ SAFE</span></div>
+        </div>
+        <div class="calc-row danger">
+          <div class="calc-input" style="color:var(--viz-color-danger);">16383</div>
+          <div class="calc-formula">ceil(16383 / 64) × 64</div>
+          <div class="calc-result overflow">= 16384</div>
+          <div class="calc-status"><span class="status-badge crash">✕ CRASH</span></div>
+        </div>
+        <div class="calc-row">
+          <div class="calc-input">16384</div>
+          <div class="calc-formula">ceil(16384 / 64) × 64</div>
+          <div class="calc-result safe">= 16384</div>
+          <div class="calc-status"><span class="status-badge safe">✓ SAFE</span></div>
+        </div>
+      </div>
+
+      <div class="calc-note">
+        <strong>핵심:</strong> <code style="font-family:var(--font-mono);">maxTextureSize = 16383</code>인 디바이스에서
+        WebView 높이가 <strong>16321~16383</strong> 구간에 진입하면,
+        올림 결과 <strong>16384</strong>가 되어 한계를 1px 초과한다.
+        <code style="font-family:var(--font-mono);">wrap_content</code>로 설정된 WebView에서 이 구간 진입이 발생했다.
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ Device Map ═══ -->
+  <section class="section animate-in delay-3">
+    <div class="section-label blue">DEVICE MAP</div>
+    <div class="device-card">
+      <div class="trap-title">디바이스별 maxTextureSize</div>
+      <div class="trap-insight">
+        <code style="font-family:var(--font-mono);color:var(--viz-color-move);">maxTextureSize % 64 ≠ 0</code>인 디바이스가 위험군이다.
+        크래시는 이 디바이스들에서 집중적으로 발생했다.
+      </div>
+
+      <div class="device-grid">
+        <div class="device-row">
+          <div class="device-name">
+            Pixel 10
+            <span class="device-sub">maxTextureSize 32768</span>
+          </div>
+          <div class="device-formula">
+            <span class="val">32768</span>
+            <span class="op">=</span>
+            <span class="op">64 ×</span>
+            <span class="val">512</span>
+            <span class="op">나머지</span>
+            <span class="remainder zero">0</span>
+          </div>
+          <div class="calc-status"><span class="status-badge safe">✓ 안전</span></div>
+        </div>
+        <div class="device-row">
+          <div class="device-name">
+            Note20 / Z Flip5
+            <span class="device-sub">maxTextureSize 16384</span>
+          </div>
+          <div class="device-formula">
+            <span class="val">16384</span>
+            <span class="op">=</span>
+            <span class="op">64 ×</span>
+            <span class="val">256</span>
+            <span class="op">나머지</span>
+            <span class="remainder zero">0</span>
+          </div>
+          <div class="calc-status"><span class="status-badge safe">✓ 안전</span></div>
+        </div>
+        <div class="device-row danger">
+          <div class="device-name">
+            A24 / A25 / S21
+            <span class="device-sub">maxTextureSize 16383</span>
+          </div>
+          <div class="device-formula">
+            <span class="val">16383</span>
+            <span class="op">=</span>
+            <span class="op">64 ×</span>
+            <span class="val">255</span>
+            <span class="op">+</span>
+            <span class="remainder nonzero">63</span>
+          </div>
+          <div class="calc-status"><span class="status-badge crash">✕ 위험</span></div>
+        </div>
+      </div>
+
+      <div class="rendering-note" style="margin-top:var(--sp-20);">
+        <div class="rendering-note-icon">💡</div>
+        <div class="rendering-note-text">
+          <strong>나머지가 0이 아닌 디바이스가 위험하다.</strong>
+          16384 = 64 × 256이므로 올림이 발생하지 않지만,
+          16383 = 64 × 255 + <strong style="color:var(--viz-color-danger);">63</strong>이므로
+          올림 시 16384가 되어 자기 자신(16383)을 초과한다.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ Before / After Flow ═══ -->
+  <section class="section animate-in delay-4">
+    <div class="section-label green">BEFORE → AFTER</div>
+
+    <div class="flow-container">
+      <!-- Before -->
+      <div class="flow-panel before">
+        <div class="flow-panel-header">
+          <span class="flow-label before">BEFORE</span>
+          <span class="flow-panel-title">항상 HARDWARE 레이어</span>
+        </div>
+        <div class="flow-pipeline">
+          <div class="flow-node entry">
+            WebView (wrap_content)
+            <div class="node-label">상품상세 정보 영역</div>
+          </div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-node process">
+            setLayerType(<span class="code-highlight">HARDWARE</span>)
+            <div class="node-label">항상 하드웨어 레이어 고정</div>
+          </div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-node danger-zone">
+            height ≤ maxTextureSize → 단일 레이어 합성
+            <div class="node-label">전체를 한 번에 담으려고 시도</div>
+          </div>
+          <div class="flow-arrow danger">↓</div>
+          <div class="flow-node danger-zone" style="border-style:dashed;">
+            surfaceHeight = ceil(h / 64) × 64
+            <div class="node-label">64 배수 정렬 → 한계 초과 가능</div>
+          </div>
+          <div class="flow-arrow danger">↓</div>
+          <div class="flow-node crash">
+            ✕ SkiaGpuPipeline CRASH
+            <div class="node-label">정렬된 크기가 maxTextureSize를 1px 초과</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- After -->
+      <div class="flow-panel after">
+        <div class="flow-panel-header">
+          <span class="flow-label after">AFTER</span>
+          <span class="flow-panel-title">런타임 안전 경로 선택</span>
+        </div>
+        <div class="flow-pipeline">
+          <div class="flow-node entry">
+            WebView (wrap_content)
+            <div class="node-label">상품상세 정보 영역</div>
+          </div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-node process-new">
+            LayerTypeInspector.getType()
+            <div class="node-label">maxTextureSize 조회 + 판정</div>
+          </div>
+          <div class="flow-arrow safe">↓</div>
+          <div class="flow-decision">
+            <div class="decision-diamond">maxTextureSize % 64 == 0 ?</div>
+          </div>
+          <div class="flow-arrow safe" style="height:20px;">↓</div>
+          <div class="flow-branch">
+            <div class="branch-path">
+              <span class="branch-label yes">YES</span>
+              <div class="branch-node" style="background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.2);color:var(--viz-color-add);">
+                HARDWARE
+                <div class="node-label" style="color:var(--color-on-surface-muted);">안전 — 정상 경로</div>
+              </div>
+            </div>
+            <div class="branch-path">
+              <span class="branch-label no">NO + AB</span>
+              <div class="branch-node" style="background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.2);color:var(--viz-color-move);">
+                NONE
+                <div class="node-label" style="color:var(--color-on-surface-muted);">타일 기반 렌더링</div>
+              </div>
+            </div>
+          </div>
+          <div class="flow-arrow safe" style="height:20px;">↓</div>
+          <div class="flow-node safe-result">
+            ✓ 크래시 방지 — 안전한 렌더링
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rendering-note">
+      <div class="rendering-note-icon">🔬</div>
+      <div class="rendering-note-text">
+        <strong>역설적 크래시 메커니즘:</strong>
+        <code style="font-family:var(--font-mono);color:var(--viz-color-move);">LAYER_TYPE_HARDWARE</code>에서
+        height ≤ maxTextureSize이면 전체를 <strong>단일 레이어</strong>로 합성하는데,
+        이때 64 배수 정렬이 한계를 넘긴다.
+        오히려 height > maxTextureSize이면 타일 기반으로 분할되어 크래시가 나지 않는다.
+        <code style="font-family:var(--font-mono);color:var(--viz-color-move);">LAYER_TYPE_NONE</code>은
+        크기에 무관하게 항상 <strong>타일 기반 렌더링</strong>을 유지한다.
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ Solution Architecture ═══ -->
+  <section class="section animate-in delay-5">
+    <div class="section-label purple">SOLUTION</div>
+    <div class="solution-card">
+      <div class="trap-title">방어 아키텍처</div>
+      <div class="trap-insight">
+        근본 원인(Chromium/프레임워크)을 직접 수정할 수 없으므로,
+        크래시로 이어지는 렌더링 경로를 우회하는 안정성 중심 설계.
+        AB 테스트 플래그로 즉시 롤백 가능.
+      </div>
+
+      <div class="solution-grid">
+        <div class="solution-item">
+          <div class="solution-icon detect">🔍</div>
+          <div class="solution-name">LayerTypeInspector</div>
+          <div class="solution-desc">
+            OpenGL ES 컨텍스트를 생성하여 디바이스의 GL_MAX_TEXTURE_SIZE를 안전하게 조회.
+            64 배수 여부로 안전한 layerType 결정.
+          </div>
+          <div class="solution-code">maxTextureSize % 64 == 0<br>→ HARDWARE / NONE</div>
+        </div>
+        <div class="solution-item">
+          <div class="solution-icon guard">🛡️</div>
+          <div class="solution-name">WebViewFacade</div>
+          <div class="solution-desc">
+            기존에 하드코딩된 LAYER_TYPE_HARDWARE를 layerType 파라미터로 교체.
+            Inspector의 판정 결과를 WebView 초기화 시 적용.
+          </div>
+          <div class="solution-code">webView.setLayerType(layerType, null)</div>
+        </div>
+        <div class="solution-item">
+          <div class="solution-icon rollback">🔄</div>
+          <div class="solution-name">HardwareLayerFeature</div>
+          <div class="solution-desc">
+            AB 테스트 플래그로 원격 제어. 이슈 미해소 시 즉시 롤백 가능.
+            WebView 업데이트 후 우회 로직 완화/제거 계획.
+          </div>
+          <div class="solution-code">FeatureKeys.HARDWARE_LAYER_ENABLED</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ Cognitive Rationale ═══ -->
+  <details class="rationale">
+    <summary>Cognitive Rationale — 시각화 설계 근거</summary>
+    <div class="rationale-body">
+      <h3>Pattern</h3>
+      <p>
+        <strong>PAT-024 (Data Flow Diagram)</strong> 선택.
+        이 이슈의 핵심은 GPU 렌더링 파이프라인 내 데이터 흐름과 분기점이다.
+        리뷰어의 질문이 "왜 크래시가 나는가? + 어떻게 해결하는가?"이므로
+        클래스 계층이 아닌 동작/행위를 보여주는 흐름 다이어그램이 효과적이다 (EVAL-0010).
+        Before/After를 좌우 배치하여 경로 분기의 차이를 즉각 대비하도록 설계했다.
+      </p>
+
+      <h3>Applied Rules</h3>
+      <ul>
+        <li><strong>RULE-L01</strong> — Before/After 앵커 포인트 유지. 양쪽 시작점(WebView)을 동일 위치에 배치 ← WM-001, ATT-002</li>
+        <li><strong>RULE-L02</strong> — 동시 강조 ≤ 2. 정렬 트랩(빨강) + 해결 흐름(초록) 2가지만 강조 ← PRC-005, WM-002</li>
+        <li><strong>RULE-C01</strong> — 변경 유형별 색상 언어. 위험=빨강, 안전=초록, 흐름=파랑, 판정=보라 ← PRC-003, DM-001</li>
+        <li><strong>RULE-C09</strong> — Slate 다크 테마 기본 적용. Deep Navy 배경 + Slate 카드 ← 기술 문서 톤</li>
+        <li><strong>RULE-T01</strong> — 화면당 한 문장. 각 섹션의 핵심 메시지를 하나로 응축 ← IP-001, WM-003</li>
+        <li><strong>RULE-T02</strong> — 강조 대상 근처 레이블. 각 flow-node에 직접 설명 배치 ← WM-003</li>
+        <li><strong>RULE-CMP03</strong> — 변경 안내. Impact 카드에서 핵심 수치를 사전 예고 후 상세 설명 진입 ← ATT-002</li>
+        <li><strong>RULE-L04</strong> — 시각 인코딩 위계. 디바이스 맵의 바 길이로 maxTextureSize 비교 ← DES-VH-001</li>
+      </ul>
+
+      <h3>Self-Evaluation</h3>
+      <ul>
+        <li><strong>cognitive_load: 2/5</strong> — 변경점 4개, 카테고리 4섹션, 동시 강조 2개</li>
+        <li><strong>change_visibility: 5/5</strong> — 색상 코딩 + 계산 행 대비 + flow 분기 + 위험/안전 배지</li>
+        <li><strong>anchor_stability: 5/5</strong> — Before/After 시작점(WebView) 동일, 흐름 방향 일관</li>
+        <li><strong>text_economy: 4/5</strong> — 섹션당 1 핵심 문장 + 코드 라벨 직접 배치</li>
+      </ul>
+
+      <h3>Evidence Trail</h3>
+      <ul>
+        <li><span class="evidence-badge l2">L2</span> Wickens et al. (2004) — 다중 자원 이론: 시각+공간 채널 분리가 이해도 향상 → Flow Diagram 선택 근거</li>
+        <li><span class="evidence-badge l2">L2</span> Mayer (2009) — 멀티미디어 학습 원리: 텍스트+시각 이중 부호화가 단일 채널보다 효과적 → 코드+다이어그램 병행</li>
+        <li><span class="evidence-badge l2">L2</span> Cleveland & McGill (1984) — 위치 인코딩이 면적보다 2~3배 정확 → 디바이스 맵 바 차트 선택</li>
+        <li><span class="evidence-badge l3">L3</span> Change Blindness 연구 (Simons & Rensink, 2005) — 사전 변경 안내가 탐지율 향상 → Impact 카드 선행 배치</li>
+        <li><span class="evidence-badge l4">L4</span> EVAL-0010 피드백 — 시스템 동작 설명 시 클래스 계층보다 흐름 다이어그램이 효과적 → PAT-024 선택</li>
+      </ul>
+    </div>
+  </details>
+
+</div>
+
+</body>
+</html>
