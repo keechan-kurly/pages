@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Impression 이벤트 전송 구조 개선</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════
+   Toss Tech Light Theme — Blog Template
+   Reference: toss.tech/article/will-ai-replace-developers
+   ═══════════════════════════════════════════════ */
+:root {
+    /* Adaptive Grays (Toss Design System) */
+    --grey-50: #f9fafb;
+    --grey-100: #f2f4f6;
+    --grey-200: #e5e8eb;
+    --grey-300: #d1d6db;
+    --grey-400: #b0b8c1;
+    --grey-500: #8b95a1;
+    --grey-600: #6b7684;
+    --grey-700: #4e5968;
+    --grey-800: #333d4b;
+    --grey-900: #191f28;
+
+    /* Brand */
+    --toss-blue: #0064FF;
+    --toss-blue-light: rgba(0, 100, 255, 0.08);
+    --toss-blue-border: rgba(0, 100, 255, 0.2);
+
+    /* Semantic */
+    --bg: #ffffff;
+    --bg-elevated: var(--grey-50);
+    --bg-highlight: #ffc34236;
+    --bg-code: var(--grey-100);
+    --bg-blockquote: transparent;
+    --text-primary: var(--grey-900);
+    --text-secondary: var(--grey-700);
+    --text-tertiary: var(--grey-500);
+    --border-light: var(--grey-200);
+    --border-blockquote: var(--grey-800);
+
+    /* Layout */
+    --content-width: 680px;
+    --wide-width: 780px;
+    --radius: 16px;
+    --radius-sm: 10px;
+
+    /* Typography */
+    --font-body: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --font-code: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+}
+
+/* Reset */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text-primary);
+    line-height: 1.8;
+    font-size: 16.5px;
+    -webkit-font-smoothing: antialiased;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+}
+
+::selection {
+    background: rgba(0, 100, 255, 0.15);
+    color: var(--grey-900);
+}
+
+a { color: var(--toss-blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ═══════════════════════════════════════════════
+   Layout
+   ═══════════════════════════════════════════════ */
+.article {
+    max-width: var(--content-width);
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+.article-wide {
+    max-width: var(--wide-width);
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+/* ═══════════════════════════════════════════════
+   Hero Header
+   ═══════════════════════════════════════════════ */
+.hero {
+    padding: 80px 24px 48px;
+    max-width: var(--content-width);
+    margin: 0 auto;
+}
+
+.hero-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 24px;
+    font-size: 0.875rem;
+    color: var(--text-tertiary);
+}
+
+.hero-meta .author {
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.hero-meta .dot {
+    color: var(--grey-300);
+}
+
+.hero-title {
+    font-size: 2.2rem;
+    font-weight: 800;
+    line-height: 1.3;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+    letter-spacing: -0.02em;
+}
+
+.hero-subtitle {
+    font-size: 1.1rem;
+    line-height: 1.7;
+    color: var(--text-secondary);
+    max-width: 580px;
+}
+
+.hero-tags {
+    display: flex;
+    gap: 8px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+}
+
+.hero-tag {
+    padding: 4px 12px;
+    border-radius: var(--radius-sm);
+    background: var(--toss-blue-light);
+    border: 1px solid var(--toss-blue-border);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--toss-blue);
+}
+
+/* ═══════════════════════════════════════════════
+   Typography
+   ═══════════════════════════════════════════════ */
+.article h2 {
+    font-size: 1.55rem;
+    font-weight: 800;
+    line-height: 1.35;
+    color: var(--text-primary);
+    margin: 56px 0 20px 0;
+    letter-spacing: -0.01em;
+}
+
+.article h2:first-child {
+    margin-top: 0;
+}
+
+.article h3 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    line-height: 1.4;
+    color: var(--text-primary);
+    margin: 40px 0 14px 0;
+}
+
+.article p {
+    margin: 0 0 20px 0;
+    color: var(--text-primary);
+}
+
+.article strong {
+    font-weight: 700;
+    color: var(--grey-900);
+}
+
+/* ═══════════════════════════════════════════════
+   Blockquote (Left border style)
+   ═══════════════════════════════════════════════ */
+.article blockquote {
+    margin: 28px 0;
+    padding: 0 0 0 20px;
+    border-left: 2.5px solid var(--border-blockquote);
+    font-size: 1.05rem;
+    font-weight: 600;
+    line-height: 1.7;
+    color: var(--text-primary);
+}
+
+.article blockquote p {
+    margin: 0;
+}
+
+/* ═══════════════════════════════════════════════
+   Highlight Box (Yellow)
+   ═══════════════════════════════════════════════ */
+.highlight-box {
+    margin: 28px 0;
+    padding: 20px 24px;
+    background: var(--bg-highlight);
+    border-radius: var(--radius);
+    font-weight: 600;
+    line-height: 1.7;
+    color: var(--text-primary);
+}
+
+/* ═══════════════════════════════════════════════
+   Content Box (Gray rounded)
+   ═══════════════════════════════════════════════ */
+.content-box {
+    margin: 28px 0;
+    padding: 24px 28px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+}
+
+.content-box-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+}
+
+/* ═══════════════════════════════════════════════
+   Code Blocks
+   ═══════════════════════════════════════════════ */
+.article code {
+    font-family: var(--font-code);
+    font-size: 0.88em;
+    padding: 2px 6px;
+    background: var(--bg-code);
+    border-radius: 5px;
+    color: var(--grey-800);
+}
+
+.article pre {
+    margin: 24px 0;
+    padding: 24px;
+    background: var(--grey-900);
+    border-radius: var(--radius);
+    overflow-x: auto;
+    line-height: 1.6;
+}
+
+.article pre code {
+    font-family: var(--font-code);
+    font-size: 0.85rem;
+    background: none;
+    padding: 0;
+    color: #abb2bf;
+    border-radius: 0;
+}
+
+/* Syntax highlighting (One Dark) */
+.kw { color: #c678dd; }
+.str { color: #98c379; }
+.cmt { color: #5c6370; font-style: italic; }
+.typ { color: #e5c07b; }
+.fn { color: #61afef; }
+.ann { color: #d19a66; }
+.op { color: #56b6c2; }
+
+/* ═══════════════════════════════════════════════
+   Lists
+   ═══════════════════════════════════════════════ */
+.article ul, .article ol {
+    margin: 0 0 20px 0;
+    padding-left: 24px;
+}
+
+.article li {
+    margin-bottom: 10px;
+    line-height: 1.7;
+}
+
+.article li::marker {
+    color: var(--text-tertiary);
+}
+
+/* Checklist style */
+.checklist {
+    list-style: none;
+    padding: 0;
+    counter-reset: check;
+}
+
+.checklist li {
+    counter-increment: check;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.checklist li:last-child {
+    border-bottom: none;
+}
+
+.checklist-num {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: var(--toss-blue);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: white;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+/* ═══════════════════════════════════════════════
+   Metrics Table
+   ═══════════════════════════════════════════════ */
+.metrics-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0;
+    font-size: 0.9rem;
+}
+
+.metrics-table th {
+    text-align: left;
+    padding: 12px 16px;
+    background: var(--bg-elevated);
+    border-bottom: 2px solid var(--border-light);
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.metrics-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-light);
+    color: var(--text-secondary);
+}
+
+.metrics-table .metric-label {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.metrics-table .metric-good {
+    color: #16a34a;
+    font-weight: 700;
+}
+
+.metrics-table .metric-bad {
+    color: #dc2626;
+    font-weight: 600;
+}
+
+.metrics-table .metric-neutral {
+    color: var(--text-tertiary);
+}
+
+/* Delta badges */
+.delta {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.delta-good {
+    background: rgba(22, 163, 74, 0.1);
+    color: #16a34a;
+}
+
+.delta-bad {
+    background: rgba(220, 38, 38, 0.1);
+    color: #dc2626;
+}
+
+.delta-neutral {
+    background: var(--grey-100);
+    color: var(--text-tertiary);
+}
+
+/* ═══════════════════════════════════════════════
+   Summary / Key Takeaway Box
+   ═══════════════════════════════════════════════ */
+.summary-box {
+    margin: 36px 0;
+    padding: 24px 28px;
+    background: var(--toss-blue-light);
+    border: 1px solid var(--toss-blue-border);
+    border-radius: var(--radius);
+}
+
+.summary-box-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--toss-blue);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.summary-box p, .summary-box li {
+    color: var(--text-primary);
+    font-size: 0.95rem;
+}
+
+/* ═══════════════════════════════════════════════
+   Comparison Cards (Inline)
+   ═══════════════════════════════════════════════ */
+.compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 28px 0;
+}
+
+.compare-card {
+    padding: 20px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+    background: var(--bg);
+    transition: border-color 0.2s;
+}
+
+.compare-card:hover {
+    border-color: var(--grey-300);
+}
+
+.compare-card-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+}
+
+.compare-before {
+    border-left: 3px solid var(--grey-400);
+}
+
+.compare-after {
+    border-left: 3px solid var(--toss-blue);
+}
+
+/* ═══════════════════════════════════════════════
+   Visualization Section (wider)
+   ═══════════════════════════════════════════════ */
+.viz-section {
+    max-width: var(--wide-width);
+    margin: 40px auto;
+    padding: 0 24px;
+}
+
+.viz-card {
+    padding: 32px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+}
+
+.viz-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--toss-blue);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 16px;
+}
+
+/* ═══════════════════════════════════════════════
+   Category Cards (3-column grid)
+   ═══════════════════════════════════════════════ */
+.category-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin: 28px 0;
+}
+
+.category-card {
+    padding: 20px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+    background: var(--bg);
+}
+
+.category-card-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    margin-bottom: 12px;
+    font-weight: 700;
+}
+
+.category-card-icon.scroll {
+    background: rgba(192, 38, 211, 0.1);
+    color: #c026d3;
+}
+
+.category-card-icon.view {
+    background: rgba(234, 88, 12, 0.1);
+    color: #ea580c;
+}
+
+.category-card-icon.dual {
+    background: rgba(0, 100, 255, 0.1);
+    color: var(--toss-blue);
+}
+
+.category-card-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+}
+
+.category-card-desc {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+/* ═══════════════════════════════════════════════
+   Strategy Variant Cards (2-column)
+   ═══════════════════════════════════════════════ */
+.strategy-variants {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 20px 0;
+}
+
+.strategy-variant {
+    padding: 16px 20px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-light);
+    background: var(--bg-elevated);
+}
+
+.strategy-variant-name {
+    font-family: var(--font-code);
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--toss-blue);
+    margin-bottom: 6px;
+}
+
+.strategy-variant-desc {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+/* 3-column variant */
+.strategy-variants-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin: 20px 0;
+}
+
+.strategy-variants-3 .strategy-variant {
+    padding: 16px 20px;
+}
+
+/* ═══════════════════════════════════════════════
+   Separator
+   ═══════════════════════════════════════════════ */
+.article hr {
+    border: none;
+    height: 1px;
+    background: var(--border-light);
+    margin: 48px 0;
+}
+
+/* ═══════════════════════════════════════════════
+   Footnotes
+   ═══════════════════════════════════════════════ */
+.footnotes {
+    margin-top: 56px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border-light);
+    font-size: 0.82rem;
+    color: var(--text-tertiary);
+    line-height: 1.8;
+}
+
+/* ═══════════════════════════════════════════════
+   Footer
+   ═══════════════════════════════════════════════ */
+.article-footer {
+    margin-top: 56px;
+    padding: 32px 0;
+    text-align: center;
+    color: var(--text-tertiary);
+    font-size: 0.82rem;
+}
+
+.share-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.share-btn {
+    padding: 8px 20px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-light);
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.share-btn:hover {
+    background: var(--grey-200);
+    color: var(--text-primary);
+}
+
+/* ═══════════════════════════════════════════════
+   Responsive
+   ═══════════════════════════════════════════════ */
+@media (max-width: 768px) {
+    .hero { padding: 48px 20px 32px; }
+    .hero-title { font-size: 1.7rem; }
+    .article, .article-wide { padding: 0 20px; }
+    .article h2 { font-size: 1.35rem; margin-top: 40px; }
+    .article h3 { font-size: 1.1rem; }
+    .compare-grid { grid-template-columns: 1fr; }
+    .category-cards { grid-template-columns: 1fr; }
+    .strategy-variants { grid-template-columns: 1fr; }
+    .strategy-variants-3 { grid-template-columns: 1fr; }
+    .article pre { padding: 16px; margin-left: -8px; margin-right: -8px; border-radius: 12px; }
+}
+
+/* ═══════════════════════════════════════════════
+   Print
+   ═══════════════════════════════════════════════ */
+@media print {
+    body { font-size: 11pt; }
+    .hero { padding: 24px 0; }
+    .article pre { white-space: pre-wrap; }
+    .share-buttons, .article-footer { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     Hero Header
+     ═══════════════════════════════════════════ -->
+<header class="hero">
+    <div class="hero-meta">
+        <span class="author">keechan-kurly</span>
+        <span class="dot">&middot;</span>
+        <span>Android Developer</span>
+        <span class="dot">&middot;</span>
+        <time>2024년 10월</time>
+    </div>
+    <h1 class="hero-title">Impression 이벤트 전송 구조 개선</h1>
+    <p class="hero-subtitle">Strategy 패턴 기반 스크롤/노출 정책 분리, ImpressionTracker + ImpressionTrackUnit 아키텍처</p>
+    <div class="hero-tags">
+        <span class="hero-tag">Impression</span>
+        <span class="hero-tag">Strategy Pattern</span>
+        <span class="hero-tag">RecyclerView</span>
+        <span class="hero-tag">Compose</span>
+        <span class="hero-tag">KMA-4188</span>
+    </div>
+</header>
+
+<!-- ═══════════════════════════════════════════
+     Article Body
+     ═══════════════════════════════════════════ -->
+<article class="article">
+
+    <!-- ───────────────────────────────────────
+         Section 1: 배경
+         ─────────────────────────────────────── -->
+    <h2 id="background">배경</h2>
+
+    <p>PR #4100에서 <code>AmplitudeEventConsumer</code>를 도입해 이벤트 전송 경로를 일원화했지만, 그 아래에서 <strong>Impression 수집</strong> 자체의 구조적 문제 3가지가 여전히 남아있었다.</p>
+
+    <div class="category-cards">
+        <div class="category-card">
+            <div class="category-card-icon scroll">S</div>
+            <div class="category-card-title">스크롤 정책 혼재</div>
+            <div class="category-card-desc">Idle 감지와 Velocity 감지가 각 화면마다 다르게 구현. 동일한 목적의 ScrollListener가 4개 이상 존재.</div>
+        </div>
+        <div class="category-card">
+            <div class="category-card-icon view">V</div>
+            <div class="category-card-title">노출 판정 산발</div>
+            <div class="category-card-desc">70% 비율, 중첩 뷰 교차, 단순 visible 등 판정 로직이 ViewHolder마다 하드코딩.</div>
+        </div>
+        <div class="category-card">
+            <div class="category-card-icon dual">D</div>
+            <div class="category-card-title">View/Compose 이중 구조</div>
+            <div class="category-card-desc">Android View 기반과 Compose 기반의 Impression 로직이 완전히 분리되어 코드 중복.</div>
+        </div>
+    </div>
+
+    <p>결과적으로 새 화면을 추가할 때마다 "어떤 ScrollListener를 쓰지?", "노출 판정은 어떻게 하지?"를 매번 결정해야 했고, 그 결정이 ViewHolder 곳곳에 산발적으로 흩어졌다. 146개 파일, +2357/-1978 라인의 PR로 이 구조를 전면 재설계했다.</p>
+
+    <hr>
+
+    <!-- ───────────────────────────────────────
+         Section 2: 새 아키텍처
+         ─────────────────────────────────────── -->
+    <h2 id="architecture">새 아키텍처</h2>
+
+    <p>핵심 설계 원칙: <strong>정책(언제, 어떻게)과 대상(무엇을)을 분리</strong>한다.</p>
+
+    <table class="metrics-table">
+        <thead>
+            <tr>
+                <th>요구사항</th>
+                <th>설계</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="metric-label">스크롤 감지 방식이 화면마다 다름</td>
+                <td><code>ScrollImpressionStrategy</code> (Idle / Velocity)</td>
+            </tr>
+            <tr>
+                <td class="metric-label">뷰 노출 판정 기준이 다양함</td>
+                <td><code>ViewImpressionStrategy</code> (Always / Ratio / Nested)</td>
+            </tr>
+            <tr>
+                <td class="metric-label">View와 Compose를 동일하게 추적</td>
+                <td><code>ImpressionTrackUnit</code> (AndroidView / Compose)</td>
+            </tr>
+            <tr>
+                <td class="metric-label">ViewHolder마다 추적 대상이 다름</td>
+                <td><code>ImpressionCapturable</code> 인터페이스</td>
+            </tr>
+            <tr>
+                <td class="metric-label">이벤트 중복 전송 방지</td>
+                <td><code>AnalyticsEventConsumer</code></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <p>각 행이 독립적인 sealed interface 또는 interface로 구현되며, 조합 방식으로 동작한다. 하나의 RecyclerView에서 스크롤 정책과 노출 정책을 자유롭게 선택할 수 있다.</p>
+
+    <hr>
+
+    <!-- ───────────────────────────────────────
+         Section 3: ScrollImpressionStrategy
+         ─────────────────────────────────────── -->
+    <h2 id="scroll-strategy">Strategy 패턴 -- ScrollImpressionStrategy</h2>
+
+    <p>"스크롤이 어떤 조건일 때 Impression을 수집할 것인가"를 정의한다.</p>
+
+    <div class="strategy-variants">
+        <div class="strategy-variant">
+            <div class="strategy-variant-name">Idle</div>
+            <div class="strategy-variant-desc">스크롤 정지(SCROLL_STATE_IDLE) 시 화면에 보이는 항목을 수집. 가장 단순하고 확실한 방식.</div>
+        </div>
+        <div class="strategy-variant">
+            <div class="strategy-variant-name">Velocity</div>
+            <div class="strategy-variant-desc">스크롤 속도를 계산해서 기준 이하로 느려지면 수집. 빠르게 스와이프하는 항목은 무시.</div>
+        </div>
+    </div>
+
+    <pre><code><span class="kw">sealed interface</span> <span class="typ">ScrollImpressionStrategy</span> {
+    <span class="cmt">/** 스크롤이 완전히 멈출 때 수집 */</span>
+    <span class="kw">data object</span> <span class="typ">Idle</span> : <span class="typ">ScrollImpressionStrategy</span>
+
+    <span class="cmt">/** 스크롤 속도가 기준 이하일 때 수집 */</span>
+    <span class="kw">data class</span> <span class="typ">Velocity</span>(
+        <span class="kw">val</span> thresholdPixelsPerSecond: <span class="typ">Float</span>,
+    ) : <span class="typ">ScrollImpressionStrategy</span>
+}</code></pre>
+
+    <p>각 Strategy에 대응하는 ScrollListener가 1:1로 매핑된다.</p>
+
+    <div class="compare-grid">
+        <div class="compare-card compare-before">
+            <div class="compare-card-label">Idle Listener</div>
+            <p><code>IdleImpressionScrollListener</code> -- <code>SCROLL_STATE_IDLE</code>일 때 화면의 ViewHolder를 순회하며 <code>captureImpressionUnits()</code> 호출</p>
+        </div>
+        <div class="compare-card compare-after">
+            <div class="compare-card-label">Velocity Listener</div>
+            <p><code>VelocityImpressionScrollListener</code> -- <code>ScrollVelocityDetector</code>로 속도 측정, 임계값 이하면 수집 트리거</p>
+        </div>
+    </div>
+
+    <h3>IdleImpressionScrollListener 핵심 로직</h3>
+
+    <pre><code><span class="kw">class</span> <span class="typ">IdleImpressionScrollListener</span>(
+    <span class="kw">private val</span> eventConsumer: <span class="typ">AnalyticsEventConsumer</span>,
+) : <span class="typ">RecyclerView.OnScrollListener</span>() {
+
+    <span class="kw">override fun</span> <span class="fn">onScrollStateChanged</span>(
+        recyclerView: <span class="typ">RecyclerView</span>,
+        newState: <span class="typ">Int</span>,
+    ) {
+        <span class="kw">if</span> (newState != <span class="typ">RecyclerView</span>.SCROLL_STATE_IDLE) <span class="kw">return</span>
+
+        <span class="kw">val</span> layoutManager = recyclerView.layoutManager <span class="kw">as</span>? <span class="typ">LinearLayoutManager</span>
+            ?: <span class="kw">return</span>
+        <span class="kw">val</span> first = layoutManager.<span class="fn">findFirstVisibleItemPosition</span>()
+        <span class="kw">val</span> last = layoutManager.<span class="fn">findLastVisibleItemPosition</span>()
+
+        (<span class="fn">first</span>..<span class="fn">last</span>).<span class="fn">mapNotNull</span> { position ->
+            recyclerView.<span class="fn">findViewHolderForAdapterPosition</span>(position)
+        }.<span class="fn">filterIsInstance</span>&lt;<span class="typ">ImpressionCapturable</span>&gt;()
+         .<span class="fn">flatMap</span> { it.<span class="fn">captureImpressionUnits</span>() }
+         .<span class="fn">mapAnalyticsEventsIfVisible</span>()
+         .<span class="fn">forEach</span> { eventConsumer.<span class="fn">send</span>(it) }
+    }
+}</code></pre>
+
+    <hr>
+
+    <!-- ───────────────────────────────────────
+         Section 4: ViewImpressionStrategy
+         ─────────────────────────────────────── -->
+    <h2 id="view-strategy">Strategy 패턴 -- ViewImpressionStrategy</h2>
+
+    <p>"뷰가 어떤 상태일 때 노출된 것으로 판정할 것인가"를 정의한다.</p>
+
+    <div class="strategy-variants-3">
+        <div class="strategy-variant">
+            <div class="strategy-variant-name">Always</div>
+            <div class="strategy-variant-desc"><code>getVisibleHeight > 0</code>이면 무조건 노출. 단순 배너나 전체 노출 항목에 적합.</div>
+        </div>
+        <div class="strategy-variant">
+            <div class="strategy-variant-name">Ratio(percentage)</div>
+            <div class="strategy-variant-desc">뷰 높이의 지정 비율(e.g. 70%) 이상이 화면에 보여야 노출 판정. 상품 카드 등에 사용.</div>
+        </div>
+        <div class="strategy-variant">
+            <div class="strategy-variant-name">Nested(nestedView)</div>
+            <div class="strategy-variant-desc">중첩 뷰(e.g. 가로 스크롤 내부)와 타겟 뷰 간 교차 영역을 계산해 판정.</div>
+        </div>
+    </div>
+
+    <pre><code><span class="kw">sealed interface</span> <span class="typ">ViewImpressionStrategy</span> {
+
+    <span class="kw">fun</span> <span class="fn">isVisible</span>(targetView: <span class="typ">View</span>): <span class="typ">Boolean</span>
+
+    <span class="cmt">/** 화면에 1px이라도 보이면 true */</span>
+    <span class="kw">data object</span> <span class="typ">Always</span> : <span class="typ">ViewImpressionStrategy</span> {
+        <span class="kw">override fun</span> <span class="fn">isVisible</span>(targetView: <span class="typ">View</span>): <span class="typ">Boolean</span> =
+            targetView.<span class="fn">getVisibleHeight</span>() > <span class="ann">0</span>
+    }
+
+    <span class="cmt">/** 지정 비율 이상 노출 시 true */</span>
+    <span class="kw">data class</span> <span class="typ">Ratio</span>(
+        <span class="kw">val</span> percentage: <span class="typ">Int</span>,
+    ) : <span class="typ">ViewImpressionStrategy</span> {
+        <span class="kw">override fun</span> <span class="fn">isVisible</span>(targetView: <span class="typ">View</span>): <span class="typ">Boolean</span> {
+            <span class="kw">val</span> visibleHeight = targetView.<span class="fn">getVisibleHeight</span>()
+            <span class="kw">val</span> totalHeight = targetView.height
+            <span class="kw">if</span> (totalHeight <= <span class="ann">0</span>) <span class="kw">return false</span>
+            <span class="kw">return</span> (visibleHeight * <span class="ann">100</span> / totalHeight) >= percentage
+        }
+    }
+
+    <span class="cmt">/** 중첩 뷰와의 교차 영역으로 판정 */</span>
+    <span class="kw">data class</span> <span class="typ">Nested</span>(
+        <span class="kw">val</span> nestedView: <span class="typ">View</span>,
+    ) : <span class="typ">ViewImpressionStrategy</span> {
+        <span class="kw">override fun</span> <span class="fn">isVisible</span>(targetView: <span class="typ">View</span>): <span class="typ">Boolean</span> {
+            <span class="kw">val</span> targetRect = <span class="typ">Rect</span>()
+            <span class="kw">val</span> nestedRect = <span class="typ">Rect</span>()
+            targetView.<span class="fn">getGlobalVisibleRect</span>(targetRect)
+            nestedView.<span class="fn">getGlobalVisibleRect</span>(nestedRect)
+            <span class="kw">return</span> targetRect.<span class="fn">intersect</span>(nestedRect)
+        }
+    }
+}</code></pre>
+
+    <hr>
+
+    <!-- ───────────────────────────────────────
+         Section 5: ImpressionTrackUnit + ImpressionCapturable
+         ─────────────────────────────────────── -->
+    <h2 id="track-unit">ImpressionTrackUnit + ImpressionCapturable</h2>
+
+    <p>두 Strategy가 "언제, 어떻게"를 결정한다면, <code>ImpressionTrackUnit</code>은 "무엇을"을 정의한다.</p>
+
+    <h3>ImpressionTrackUnit</h3>
+
+    <pre><code><span class="kw">sealed interface</span> <span class="typ">ImpressionTrackUnit</span> {
+    <span class="kw">fun</span> <span class="fn">isVisible</span>(): <span class="typ">Boolean</span>
+    <span class="kw">fun</span> <span class="fn">getAnalyticsEvents</span>(): <span class="typ">List</span>&lt;<span class="typ">AnalyticsEvent</span>&gt;
+}
+
+<span class="cmt">/** Android View 기반 — targetView + strategy + eventProvider */</span>
+<span class="kw">data class</span> <span class="typ">AndroidViewImpressionTrackUnit</span>(
+    <span class="kw">val</span> targetView: <span class="typ">View</span>,
+    <span class="kw">val</span> viewImpressionStrategy: <span class="typ">ViewImpressionStrategy</span>,
+    <span class="kw">val</span> eventProvider: () -> <span class="typ">List</span>&lt;<span class="typ">AnalyticsEvent</span>&gt;,
+) : <span class="typ">ImpressionTrackUnit</span> {
+    <span class="kw">override fun</span> <span class="fn">isVisible</span>(): <span class="typ">Boolean</span> =
+        viewImpressionStrategy.<span class="fn">isVisible</span>(targetView)
+    <span class="kw">override fun</span> <span class="fn">getAnalyticsEvents</span>(): <span class="typ">List</span>&lt;<span class="typ">AnalyticsEvent</span>&gt; =
+        <span class="fn">eventProvider</span>()
+}
+
+<span class="cmt">/** Compose 기반 — Compose가 자체 visibility 관리 */</span>
+<span class="kw">data class</span> <span class="typ">ComposeImpressionTrackUnit</span>(
+    <span class="kw">val</span> eventProvider: () -> <span class="typ">List</span>&lt;<span class="typ">AnalyticsEvent</span>&gt;,
+) : <span class="typ">ImpressionTrackUnit</span> {
+    <span class="kw">override fun</span> <span class="fn">isVisible</span>(): <span class="typ">Boolean</span> = <span class="kw">true</span>
+    <span class="kw">override fun</span> <span class="fn">getAnalyticsEvents</span>(): <span class="typ">List</span>&lt;<span class="typ">AnalyticsEvent</span>&gt; =
+        <span class="fn">eventProvider</span>()
+}</code></pre>
+
+    <p><code>AndroidViewImpressionTrackUnit</code>은 targetView와 ViewImpressionStrategy를 조합해서 노출 판정을 위임한다. <code>ComposeImpressionTrackUnit</code>은 Compose가 자체적으로 visibility를 관리하므로 <code>isVisible()</code>이 항상 <code>true</code>를 반환한다.</p>
+
+    <h3>ImpressionCapturable</h3>
+
+    <p>ViewHolder가 구현하는 인터페이스. "이 ViewHolder에서 어떤 이벤트를 어떤 기준으로 추적할지"를 정의한다.</p>
+
+    <pre><code><span class="kw">interface</span> <span class="typ">ImpressionCapturable</span> {
+    <span class="cmt">/** 이 ViewHolder가 추적하는 ImpressionTrackUnit 목록 */</span>
+    <span class="kw">fun</span> <span class="fn">captureImpressionUnits</span>(): <span class="typ">List</span>&lt;<span class="typ">ImpressionTrackUnit</span>&gt;
+
+    <span class="cmt">/** 편의 확장 — 노출된 unit들의 이벤트를 flat하게 반환 */</span>
+    <span class="kw">fun</span> <span class="fn">getAnalyticsEvents</span>(): <span class="typ">List</span>&lt;<span class="typ">AnalyticsEvent</span>&gt; =
+        <span class="fn">captureImpressionUnits</span>()
+            .<span class="fn">flatMap</span> { it.<span class="fn">getAnalyticsEvents</span>() }
+}</code></pre>
+
+    <div class="content-box">
+        <div class="content-box-title">ViewHolder 구현 예시</div>
+        <p>하나의 ViewHolder가 여러 TrackUnit을 반환할 수 있다. 예를 들어 상품 카드 ViewHolder는 카드 자체의 Impression + 내부 배지의 Impression을 각각 다른 Strategy로 추적할 수 있다.</p>
+    </div>
+
+    <pre><code><span class="kw">class</span> <span class="typ">ProductCardViewHolder</span>(
+    <span class="kw">private val</span> binding: <span class="typ">ItemProductCardBinding</span>,
+) : <span class="typ">RecyclerView.ViewHolder</span>(binding.root),
+    <span class="typ">ImpressionCapturable</span> {
+
+    <span class="kw">private var</span> product: <span class="typ">Product</span>? = <span class="kw">null</span>
+
+    <span class="kw">override fun</span> <span class="fn">captureImpressionUnits</span>(): <span class="typ">List</span>&lt;<span class="typ">ImpressionTrackUnit</span>&gt; {
+        <span class="kw">val</span> product = product ?: <span class="kw">return</span> emptyList()
+        <span class="kw">return</span> listOf(
+            <span class="typ">AndroidViewImpressionTrackUnit</span>(
+                targetView = binding.root,
+                viewImpressionStrategy = <span class="typ">ViewImpressionStrategy</span>.<span class="typ">Ratio</span>(
+                    percentage = <span class="ann">70</span>,
+                ),
+                eventProvider = {
+                    listOf(product.<span class="fn">toImpressionEvent</span>())
+                },
+            ),
+        )
+    }
+}</code></pre>
+
+    <hr>
+
+    <!-- ───────────────────────────────────────
+         Section 6: 전체 흐름
+         ─────────────────────────────────────── -->
+    <h2 id="flow">전체 흐름</h2>
+
+    <ul class="checklist">
+        <li>
+            <span class="checklist-num">1</span>
+            <span>RecyclerView에 <code>ScrollImpressionStrategy</code>를 설정한다. 화면 특성에 따라 <code>Idle</code> 또는 <code>Velocity</code>를 선택.</span>
+        </li>
+        <li>
+            <span class="checklist-num">2</span>
+            <span>대응하는 ScrollListener(<code>IdleImpressionScrollListener</code> 또는 <code>VelocityImpressionScrollListener</code>)가 트리거 조건을 감지한다.</span>
+        </li>
+        <li>
+            <span class="checklist-num">3</span>
+            <span>화면에 보이는 ViewHolder들을 순회하며 <code>ImpressionCapturable</code>인 것들에서 <code>captureImpressionUnits()</code>를 호출한다.</span>
+        </li>
+        <li>
+            <span class="checklist-num">4</span>
+            <span>각 <code>ImpressionTrackUnit</code>의 <code>isVisible()</code>로 노출 판정. <code>ViewImpressionStrategy</code>에 위임.</span>
+        </li>
+        <li>
+            <span class="checklist-num">5</span>
+            <span><code>AnalyticsEventConsumer</code>가 <code>markConsumed</code>로 중복 체크 후, 새 이벤트만 전송한다.</span>
+        </li>
+    </ul>
+
+    <div class="highlight-box">
+        <code>ImpressionTracker</code>는 RecyclerView의 tag에 저장되어 lifecycle이 RecyclerView와 동일하게 관리된다. 화면이 사라지면 자연스럽게 GC 대상.
+    </div>
+
+    <div style="margin: 24px 0; padding: 24px 28px; border-radius: var(--radius); border: 1px solid var(--toss-blue-border); background: var(--toss-blue-light); text-align: center;">
+        <div style="font-size: 0.95rem; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">Impression Tracker 아키텍처 — 시각화</div>
+        <div style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 16px;">Strategy 패턴 기반 스크롤/노출 정책, ImpressionTrackUnit, Before/After 비교</div>
+        <a href="impression-tracker-architecture.html" target="_blank" style="display: inline-block; padding: 10px 24px; border-radius: var(--radius-sm); background: var(--toss-blue); color: white; font-size: 0.88rem; font-weight: 700; text-decoration: none; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">시각화 보기 →</a>
+    </div>
+
+    <hr>
+
+    <!-- ───────────────────────────────────────
+         Section 7: 삭제된 코드
+         ─────────────────────────────────────── -->
+    <h2 id="deleted">삭제된 코드</h2>
+
+    <p>구조 개선의 핵심은 추가만이 아니라 <strong>제거</strong>에 있다. 1,978줄이 삭제됐다.</p>
+
+    <div class="compare-grid">
+        <div class="compare-card compare-before">
+            <div class="compare-card-label">Before -- 삭제 대상</div>
+            <ul style="list-style: none; padding: 0; margin: 0; font-size: 0.88rem;">
+                <li style="padding: 4px 0; border-bottom: 1px solid var(--border-light);"><code>AmplitudeEventConsumer</code></li>
+                <li style="padding: 4px 0; border-bottom: 1px solid var(--border-light);"><code>AmplitudeEventMutableConsumer</code></li>
+                <li style="padding: 4px 0; border-bottom: 1px solid var(--border-light);"><code>AmplitudeEventOneShotConsumer</code></li>
+                <li style="padding: 4px 0; border-bottom: 1px solid var(--border-light);"><code>ProductImpressionScrollListener</code></li>
+                <li style="padding: 4px 0; border-bottom: 1px solid var(--border-light);"><code>ImpressionEventViewHolder</code></li>
+                <li style="padding: 4px 0; border-bottom: 1px solid var(--border-light);"><code>ViewHolderEx</code> impression 확장 함수들</li>
+                <li style="padding: 4px 0;"><code>LifecycleOwnerEx</code> impression 확장 함수들</li>
+            </ul>
+        </div>
+        <div class="compare-card compare-after">
+            <div class="compare-card-label">After -- 대체 구조</div>
+            <ul style="list-style: none; padding: 0; margin: 0; font-size: 0.88rem;">
+                <li style="padding: 4px 0; border-bottom: 1px solid var(--border-light);"><code>AnalyticsEventConsumer</code></li>
+                <li style="padding: 4px 0; border-bottom: 1px solid var(--border-light);"><code>ScrollImpressionStrategy</code></li>
+                <li style="padding: 4px 0; border-bottom: 1px solid var(--border-light);"><code>ViewImpressionStrategy</code></li>
+                <li style="padding: 4px 0; border-bottom: 1px solid var(--border-light);"><code>ImpressionTrackUnit</code></li>
+                <li style="padding: 4px 0; border-bottom: 1px solid var(--border-light);"><code>ImpressionCapturable</code></li>
+                <li style="padding: 4px 0; border-bottom: 1px solid var(--border-light);"><code>IdleImpressionScrollListener</code></li>
+                <li style="padding: 4px 0;"><code>VelocityImpressionScrollListener</code></li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="summary-box">
+        <div class="summary-box-title">제거의 핵심</div>
+        <ul style="list-style: none; padding: 0; margin: 0;">
+            <li style="padding: 4px 0;"><strong>Amplitude 특화 Consumer 3종</strong> -- SDK 이름이 인터페이스에 박혀있던 결합도를 <code>AnalyticsEventConsumer</code>로 일반화</li>
+            <li style="padding: 4px 0;"><strong>화면별 ScrollListener</strong> -- 각 화면이 자체 구현하던 것을 2가지 Strategy ScrollListener로 통합</li>
+            <li style="padding: 4px 0;"><strong>ViewHolder 확장 함수</strong> -- 산발적 <code>hasBeenHandledAmplitudeEvent</code> 체크를 <code>ImpressionCapturable</code> 계약으로 대체</li>
+        </ul>
+    </div>
+
+    <hr>
+
+    <!-- ───────────────────────────────────────
+         Section 8: 한계
+         ─────────────────────────────────────── -->
+    <h2 id="limitations">한계</h2>
+
+    <ul>
+        <li><strong>ViewHolder boilerplate</strong> -- Impression 추적이 필요한 모든 ViewHolder가 <code>ImpressionCapturable</code>을 구현해야 한다. <code>captureImpressionUnits()</code> 구현이 반복적일 수 있으며, ViewHolder 수가 많은 화면에서는 작업량이 체감된다.</li>
+        <li><strong>Velocity 임계값 하드코딩</strong> -- <code>VelocityImpressionScrollListener</code>의 속도 임계값이 코드에 고정되어 있다. 화면별로 최적의 임계값이 다를 수 있으나 현재는 설정을 변경할 수 없는 구조.</li>
+        <li><strong>Compose 통합의 한계</strong> -- <code>ComposeImpressionTrackUnit</code>은 <code>isVisible()</code>이 항상 <code>true</code>를 반환한다. Compose 자체의 visibility 판정을 Strategy로 끌어오지 못했으며, RecyclerView 내부에 Compose가 중첩된 하이브리드 구조에서만 의미를 가진다.</li>
+    </ul>
+
+    <hr>
+
+    <!-- ───────────────────────────────────────
+         Section 9: 정리
+         ─────────────────────────────────────── -->
+    <h2 id="summary">정리</h2>
+
+    <blockquote>
+        <p>Impression 이벤트의 수집 과정을 "언제(ScrollImpressionStrategy)", "어떻게(ViewImpressionStrategy)", "무엇을(ImpressionTrackUnit)"로 분리하고, 각 ViewHolder가 ImpressionCapturable을 통해 자신의 추적 정책을 선언하는 구조.</p>
+    </blockquote>
+
+    <table class="metrics-table">
+        <thead>
+            <tr>
+                <th>항목</th>
+                <th>Before</th>
+                <th>After</th>
+                <th>변화</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="metric-label">ScrollListener 종류</td>
+                <td>화면당 1개씩 (4+)</td>
+                <td>2개 (Idle + Velocity)</td>
+                <td><span class="delta delta-good">통합</span></td>
+            </tr>
+            <tr>
+                <td class="metric-label">노출 판정 로직 위치</td>
+                <td>ViewHolder 내부 하드코딩</td>
+                <td>ViewImpressionStrategy</td>
+                <td><span class="delta delta-good">분리</span></td>
+            </tr>
+            <tr>
+                <td class="metric-label">View/Compose 통합</td>
+                <td>완전 분리</td>
+                <td>ImpressionTrackUnit sealed interface</td>
+                <td><span class="delta delta-good">통합</span></td>
+            </tr>
+            <tr>
+                <td class="metric-label">이벤트 Consumer</td>
+                <td>Amplitude 특화 3종</td>
+                <td>AnalyticsEventConsumer 1개</td>
+                <td><span class="delta delta-good">일반화</span></td>
+            </tr>
+            <tr>
+                <td class="metric-label">코드 변화</td>
+                <td>+2,357</td>
+                <td>-1,978</td>
+                <td><span class="delta delta-good">net +379</span></td>
+            </tr>
+        </tbody>
+    </table>
+
+</article>
+
+<!-- ═══════════════════════════════════════════
+     Footer
+     ═══════════════════════════════════════════ -->
+<footer class="article-footer">
+    <div class="share-buttons">
+        <button class="share-btn" onclick="navigator.clipboard.writeText(location.href)">링크 복사</button>
+    </div>
+</footer>
+
+</body>
+</html>
