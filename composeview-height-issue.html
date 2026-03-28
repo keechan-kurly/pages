@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RecyclerView.ViewHolder 내 ComposeView 높이 갱신 이슈</title>
+  <style>
+    /* ── Slate Dark Theme (RULE-C09) ── */
+    :root {
+      --color-bg: #0a0e1a;
+      --color-surface: #1e293b;
+      --color-surface-inner: #334155;
+      --color-surface-hover: #253348;
+      --color-border: rgba(148, 163, 184, 0.15);
+      --color-border-strong: rgba(148, 163, 184, 0.3);
+      --color-on-surface: #f1f5f9;
+      --color-on-surface-body: #94a3b8;
+      --color-on-surface-muted: #64748b;
+
+      /* Semantic Colors (dark-adjusted) */
+      --viz-add: #4ade80;
+      --viz-remove: #6b7280;
+      --viz-move: #60a5fa;
+      --viz-emphasis: #a78bfa;
+      --viz-merge: #fb923c;
+      --viz-danger: #f87171;
+      --viz-warning: #fbbf24;
+      --viz-success: #4ade80;
+
+      /* Accent tints for categories */
+      --tint-blue: rgba(96, 165, 250, 0.06);
+      --tint-blue-border: rgba(96, 165, 250, 0.15);
+      --tint-purple: rgba(167, 139, 250, 0.06);
+      --tint-purple-border: rgba(167, 139, 250, 0.15);
+      --tint-orange: rgba(251, 146, 60, 0.06);
+      --tint-orange-border: rgba(251, 146, 60, 0.15);
+      --tint-green: rgba(74, 222, 128, 0.06);
+      --tint-green-border: rgba(74, 222, 128, 0.15);
+      --tint-red: rgba(248, 113, 113, 0.06);
+      --tint-red-border: rgba(248, 113, 113, 0.15);
+
+      /* Spacing */
+      --sp-xs: 4px; --sp-sm: 8px; --sp-md: 16px; --sp-lg: 24px; --sp-xl: 32px; --sp-2xl: 48px;
+
+      /* Shape */
+      --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-xl: 20px; --radius-pill: 9999px;
+
+      /* Font */
+      --font-sans: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', Menlo, Consolas, monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--color-bg);
+      color: var(--color-on-surface);
+      min-height: 100vh;
+      padding: var(--sp-2xl) var(--sp-lg);
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    /* ── Hero (EVAL-0004) ── */
+    .hero {
+      text-align: center;
+      margin-bottom: var(--sp-2xl);
+      position: relative;
+      padding: var(--sp-xl) 0;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -40px; left: 50%;
+      transform: translateX(-50%);
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, rgba(96,165,250,0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero::after {
+      content: '';
+      position: absolute;
+      top: 0; right: 30%;
+      width: 300px; height: 300px;
+      background: radial-gradient(circle, rgba(167,139,250,0.06) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--sp-sm);
+      padding: 6px 16px;
+      border-radius: var(--radius-pill);
+      background: linear-gradient(135deg, rgba(96,165,250,0.15), rgba(167,139,250,0.15));
+      border: 1px solid rgba(96,165,250,0.25);
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--viz-move);
+      letter-spacing: 0.04em;
+      margin-bottom: var(--sp-md);
+      position: relative;
+    }
+    .hero h1 {
+      font-size: 2.2rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--color-on-surface), var(--viz-move), var(--viz-emphasis));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.3;
+      margin-bottom: var(--sp-sm);
+      position: relative;
+    }
+    .hero h1 .accent {
+      background: linear-gradient(135deg, var(--viz-merge), var(--viz-danger));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-desc {
+      font-size: 0.95rem;
+      color: var(--color-on-surface-muted);
+      max-width: 640px;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    /* ── Section Labels (pill) ── */
+    .section-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 14px;
+      border-radius: var(--radius-pill);
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      margin-bottom: var(--sp-md);
+    }
+    .section-label.blue {
+      background: rgba(96,165,250,0.1);
+      border: 1px solid rgba(96,165,250,0.2);
+      color: var(--viz-move);
+    }
+    .section-label.purple {
+      background: rgba(167,139,250,0.1);
+      border: 1px solid rgba(167,139,250,0.2);
+      color: var(--viz-emphasis);
+    }
+    .section-label.orange {
+      background: rgba(251,146,60,0.1);
+      border: 1px solid rgba(251,146,60,0.2);
+      color: var(--viz-merge);
+    }
+    .section-label.green {
+      background: rgba(74,222,128,0.1);
+      border: 1px solid rgba(74,222,128,0.2);
+      color: var(--viz-success);
+    }
+    .section-label.red {
+      background: rgba(248,113,113,0.1);
+      border: 1px solid rgba(248,113,113,0.2);
+      color: var(--viz-danger);
+    }
+
+    /* ── Section ── */
+    .section {
+      margin-bottom: var(--sp-2xl);
+    }
+    .section-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: var(--sp-lg);
+      color: var(--color-on-surface);
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-xl);
+      padding: 28px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .card:hover {
+      border-color: var(--color-border-strong);
+      transform: translateY(-2px);
+    }
+
+    /* ── Primer: invalidate vs requestLayout ── */
+    .primer-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--sp-lg);
+    }
+    @media (max-width: 768px) {
+      .primer-grid { grid-template-columns: 1fr; }
+    }
+    .primer-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-xl);
+      padding: 28px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .primer-card:hover {
+      border-color: var(--color-border-strong);
+      transform: translateY(-2px);
+    }
+    .primer-card.invalidate {
+      background: linear-gradient(135deg, var(--tint-red), rgba(248,113,113,0.02));
+      border-color: rgba(248,113,113,0.12);
+    }
+    .primer-card.invalidate:hover { border-color: rgba(248,113,113,0.25); }
+    .primer-card.request-layout {
+      background: linear-gradient(135deg, var(--tint-green), rgba(74,222,128,0.02));
+      border-color: rgba(74,222,128,0.12);
+    }
+    .primer-card.request-layout:hover { border-color: rgba(74,222,128,0.25); }
+    .primer-method {
+      font-family: var(--font-mono);
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: var(--sp-sm);
+    }
+    .primer-card.invalidate .primer-method { color: var(--viz-danger); }
+    .primer-card.request-layout .primer-method { color: var(--viz-success); }
+    .primer-desc {
+      font-size: 0.85rem;
+      color: var(--color-on-surface-body);
+      margin-bottom: var(--sp-md);
+    }
+    .phase-flow {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .phase-box {
+      padding: 10px 20px;
+      border-radius: var(--radius-sm);
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .phase-box.active {
+      background: rgba(74,222,128,0.12);
+      color: var(--viz-success);
+      border: 1px solid rgba(74,222,128,0.25);
+    }
+    .phase-box.inactive {
+      background: rgba(107,114,128,0.1);
+      color: var(--color-on-surface-muted);
+      border: 1px solid rgba(107,114,128,0.15);
+      text-decoration: line-through;
+      opacity: 0.5;
+    }
+    .phase-box.draw-only {
+      background: rgba(248,113,113,0.12);
+      color: var(--viz-danger);
+      border: 1px solid rgba(248,113,113,0.25);
+    }
+    .phase-arrow {
+      color: var(--color-on-surface-muted);
+      font-size: 1.1rem;
+    }
+    .primer-tag {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: var(--radius-pill);
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-top: var(--sp-sm);
+    }
+    .primer-card.invalidate .primer-tag {
+      background: rgba(248,113,113,0.12);
+      color: var(--viz-danger);
+    }
+    .primer-card.request-layout .primer-tag {
+      background: rgba(74,222,128,0.12);
+      color: var(--viz-success);
+    }
+
+    /* ── Flow Diagram ── */
+    .flow-container {
+      position: relative;
+      padding: 32px 0;
+    }
+    .flow-step {
+      display: flex;
+      align-items: stretch;
+      margin-bottom: 0;
+      position: relative;
+    }
+    .flow-step + .flow-step { margin-top: 0; }
+    .flow-line-area {
+      width: 60px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      flex-shrink: 0;
+    }
+    .flow-dot {
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      border: 2.5px solid var(--viz-move);
+      background: var(--color-bg);
+      z-index: 2;
+      flex-shrink: 0;
+      margin-top: 18px;
+    }
+    .flow-dot.decision {
+      width: 18px; height: 18px;
+      border-radius: 4px;
+      transform: rotate(45deg);
+      border-color: var(--viz-merge);
+      background: rgba(251,146,60,0.15);
+    }
+    .flow-dot.danger {
+      border-color: var(--viz-danger);
+      background: rgba(248,113,113,0.15);
+    }
+    .flow-dot.success {
+      border-color: var(--viz-success);
+      background: rgba(74,222,128,0.15);
+    }
+    .flow-dot.fix {
+      border-color: var(--viz-success);
+      background: var(--viz-success);
+    }
+    .flow-wire {
+      width: 2px;
+      flex: 1;
+      background: rgba(96,165,250,0.2);
+    }
+    .flow-wire.decision-wire { background: rgba(251,146,60,0.2); }
+    .flow-wire.danger-wire { background: rgba(248,113,113,0.2); }
+    .flow-wire.success-wire { background: rgba(74,222,128,0.2); }
+    .flow-content {
+      flex: 1;
+      padding: 12px 0 12px 16px;
+    }
+    .flow-box {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: 16px 20px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .flow-box:hover {
+      border-color: var(--color-border-strong);
+      transform: translateX(4px);
+    }
+    .flow-box.decision-box {
+      background: linear-gradient(135deg, var(--tint-orange), rgba(251,146,60,0.02));
+      border-color: var(--tint-orange-border);
+    }
+    .flow-box.danger-box {
+      background: linear-gradient(135deg, var(--tint-red), rgba(248,113,113,0.02));
+      border-color: rgba(248,113,113,0.12);
+    }
+    .flow-box.success-box {
+      background: linear-gradient(135deg, var(--tint-green), rgba(74,222,128,0.02));
+      border-color: rgba(74,222,128,0.12);
+    }
+    .flow-box.fix-box {
+      background: linear-gradient(135deg, rgba(74,222,128,0.1), rgba(74,222,128,0.03));
+      border: 2px solid rgba(74,222,128,0.3);
+    }
+    .flow-method {
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--color-on-surface);
+      margin-bottom: 4px;
+    }
+    .flow-desc {
+      font-size: 0.78rem;
+      color: var(--color-on-surface-body);
+      line-height: 1.5;
+    }
+    .flow-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px; height: 22px;
+      border-radius: 6px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      margin-right: 8px;
+      flex-shrink: 0;
+    }
+    .flow-number.blue { background: rgba(96,165,250,0.15); color: var(--viz-move); }
+    .flow-number.orange { background: rgba(251,146,60,0.15); color: var(--viz-merge); }
+    .flow-number.red { background: rgba(248,113,113,0.15); color: var(--viz-danger); }
+    .flow-number.green { background: rgba(74,222,128,0.15); color: var(--viz-success); }
+
+    /* ── Decision Branch ── */
+    .branch-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--sp-md);
+      margin-top: 4px;
+    }
+    @media (max-width: 768px) {
+      .branch-container { grid-template-columns: 1fr; }
+    }
+    .branch-path {
+      border-radius: var(--radius-lg);
+      padding: 16px 20px;
+      border: 1px solid;
+    }
+    .branch-path.correct {
+      background: linear-gradient(135deg, var(--tint-green), rgba(74,222,128,0.02));
+      border-color: rgba(74,222,128,0.15);
+    }
+    .branch-path.buggy {
+      background: linear-gradient(135deg, var(--tint-red), rgba(248,113,113,0.02));
+      border-color: rgba(248,113,113,0.15);
+    }
+    .branch-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+    .branch-path.correct .branch-label { color: var(--viz-success); }
+    .branch-path.buggy .branch-label { color: var(--viz-danger); }
+    .branch-code {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .branch-path.correct .branch-code { color: var(--viz-success); }
+    .branch-path.buggy .branch-code { color: var(--viz-danger); }
+    .branch-result {
+      font-size: 0.75rem;
+      color: var(--color-on-surface-body);
+    }
+
+    /* ── Comparison Section ── */
+    .compare-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--sp-lg);
+    }
+    @media (max-width: 768px) {
+      .compare-grid { grid-template-columns: 1fr; }
+    }
+    .compare-card {
+      border-radius: var(--radius-xl);
+      padding: 28px;
+      border: 1px solid;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .compare-card:hover {
+      transform: translateY(-2px);
+    }
+    .compare-card.works {
+      background: linear-gradient(135deg, var(--tint-green), rgba(74,222,128,0.02));
+      border-color: rgba(74,222,128,0.12);
+    }
+    .compare-card.works:hover { border-color: rgba(74,222,128,0.25); }
+    .compare-card.broken {
+      background: linear-gradient(135deg, var(--tint-red), rgba(248,113,113,0.02));
+      border-color: rgba(248,113,113,0.12);
+    }
+    .compare-card.broken:hover { border-color: rgba(248,113,113,0.25); }
+    .compare-header {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-sm);
+      margin-bottom: var(--sp-md);
+    }
+    .compare-icon {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+    .compare-card.works .compare-icon {
+      background: linear-gradient(135deg, rgba(74,222,128,0.2), rgba(74,222,128,0.1));
+      color: var(--viz-success);
+    }
+    .compare-card.broken .compare-icon {
+      background: linear-gradient(135deg, rgba(248,113,113,0.2), rgba(248,113,113,0.1));
+      color: var(--viz-danger);
+    }
+    .compare-name {
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+    .compare-sub {
+      font-size: 0.72rem;
+      color: var(--color-on-surface-muted);
+    }
+    .compare-chain {
+      margin-top: var(--sp-sm);
+    }
+    .chain-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(148,163,184,0.07);
+    }
+    .chain-step:last-child { border-bottom: none; }
+    .chain-num {
+      width: 20px; height: 20px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.6rem;
+      font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .compare-card.works .chain-num {
+      background: rgba(74,222,128,0.12);
+      color: var(--viz-success);
+    }
+    .compare-card.broken .chain-num {
+      background: rgba(248,113,113,0.12);
+      color: var(--viz-danger);
+    }
+    .chain-text {
+      font-size: 0.78rem;
+      color: var(--color-on-surface-body);
+      line-height: 1.5;
+    }
+    .chain-code {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 600;
+    }
+    .compare-card.works .chain-code { color: var(--viz-success); }
+    .compare-card.broken .chain-code { color: var(--viz-danger); }
+    .chain-highlight {
+      font-weight: 600;
+      color: var(--color-on-surface);
+    }
+
+    /* ── Fix Section ── */
+    .fix-card {
+      background: linear-gradient(135deg, rgba(74,222,128,0.08), rgba(96,165,250,0.04));
+      border: 2px solid rgba(74,222,128,0.2);
+      border-radius: var(--radius-xl);
+      padding: 28px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .fix-card:hover {
+      border-color: rgba(74,222,128,0.35);
+      transform: translateY(-2px);
+    }
+    .fix-card::before {
+      content: '';
+      position: absolute;
+      top: -20px; right: -20px;
+      width: 120px; height: 120px;
+      background: radial-gradient(circle, rgba(74,222,128,0.08), transparent 70%);
+      pointer-events: none;
+    }
+    .fix-title {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-sm);
+      margin-bottom: var(--sp-md);
+    }
+    .fix-icon {
+      width: 32px; height: 32px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--viz-success), rgba(74,222,128,0.6));
+      color: var(--color-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      font-weight: 800;
+    }
+    .fix-heading {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--viz-success);
+    }
+    .code-block {
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(148,163,184,0.1);
+      border-radius: var(--radius-md);
+      padding: 16px 20px;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      line-height: 1.7;
+      color: var(--color-on-surface-body);
+      margin: var(--sp-md) 0;
+      overflow-x: auto;
+    }
+    .code-block .removed {
+      color: var(--viz-danger);
+      text-decoration: line-through;
+      opacity: 0.6;
+    }
+    .code-block .added {
+      color: var(--viz-success);
+      font-weight: 600;
+    }
+    .code-block .comment {
+      color: var(--color-on-surface-muted);
+      font-style: italic;
+    }
+    .code-block .neutral {
+      color: var(--color-on-surface-body);
+    }
+    .fix-explain {
+      font-size: 0.82rem;
+      color: var(--color-on-surface-body);
+      line-height: 1.6;
+      margin-top: var(--sp-sm);
+    }
+    .fix-explain strong {
+      color: var(--color-on-surface);
+    }
+
+    /* ── Key Insight ── */
+    .insight-box {
+      background: linear-gradient(135deg, var(--tint-purple), rgba(167,139,250,0.02));
+      border: 1px solid var(--tint-purple-border);
+      border-radius: var(--radius-lg);
+      padding: 16px 20px;
+      margin-top: var(--sp-md);
+    }
+    .insight-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--viz-emphasis);
+      margin-bottom: 6px;
+    }
+    .insight-text {
+      font-size: 0.82rem;
+      color: var(--color-on-surface-body);
+      line-height: 1.6;
+    }
+    .insight-text code {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      background: rgba(167,139,250,0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--viz-emphasis);
+    }
+
+    /* ── View Tree Diagram (SVG) ── */
+    .tree-diagram {
+      display: flex;
+      justify-content: center;
+      margin: var(--sp-lg) 0;
+    }
+    .tree-diagram svg {
+      max-width: 100%;
+    }
+
+    /* ── Cognitive Rationale ── */
+    .rationale {
+      margin-top: var(--sp-2xl);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-xl);
+      background: var(--color-surface);
+    }
+    .rationale summary {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--color-on-surface-muted);
+      padding: var(--sp-md) 20px;
+      cursor: pointer;
+      user-select: none;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: var(--sp-sm);
+    }
+    .rationale summary::before { content: '\25B8'; transition: transform 0.2s; }
+    .rationale[open] summary::before { transform: rotate(90deg); }
+    .rationale-body {
+      padding: 0 20px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: var(--sp-md);
+    }
+    .rationale-block-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--color-on-surface-muted);
+      margin-bottom: var(--sp-xs);
+    }
+    .rationale-text {
+      font-size: 0.82rem;
+      color: var(--color-on-surface-body);
+      line-height: 1.6;
+    }
+    .rationale-rules-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .rationale-rules-list li {
+      font-size: 0.78rem;
+      color: var(--color-on-surface-body);
+      line-height: 1.5;
+      padding: 8px 12px;
+      background: rgba(255,255,255,0.03);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--color-border);
+    }
+    .rule-id {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--viz-emphasis);
+      margin-right: 6px;
+    }
+    .principle-ref {
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      color: var(--color-on-surface-muted);
+      margin-left: 4px;
+    }
+    .eval-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--sp-sm);
+    }
+    @media (max-width: 600px) {
+      .eval-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    .eval-cell {
+      text-align: center;
+      padding: var(--sp-sm) var(--sp-xs);
+      background: rgba(255,255,255,0.03);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--color-border);
+    }
+    .eval-score {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--viz-emphasis);
+    }
+    .eval-label {
+      font-size: 0.6rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--color-on-surface-muted);
+      margin-top: 2px;
+    }
+    .evidence-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .evidence-list li {
+      font-size: 0.75rem;
+      color: var(--color-on-surface-muted);
+      line-height: 1.4;
+      padding-left: 12px;
+      position: relative;
+    }
+    .evidence-list li::before {
+      content: '\00B7';
+      position: absolute;
+      left: 0;
+      font-weight: 700;
+    }
+    .evidence-level {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 3px;
+      margin-right: 4px;
+    }
+    .evidence-level.l1 { background: rgba(74,222,128,0.15); color: var(--viz-success); }
+    .evidence-level.l2 { background: rgba(96,165,250,0.15); color: var(--viz-move); }
+    .evidence-level.l3 { background: rgba(251,146,60,0.15); color: var(--viz-merge); }
+    .evidence-level.l4 { background: rgba(167,139,250,0.15); color: var(--viz-emphasis); }
+
+    /* ── Utility ── */
+    .mt-sm { margin-top: var(--sp-sm); }
+    .mt-md { margin-top: var(--sp-md); }
+    .text-mono { font-family: var(--font-mono); }
+    .text-sm { font-size: 0.78rem; }
+    .text-muted { color: var(--color-on-surface-muted); }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- ═══ HERO ═══ -->
+  <header class="hero">
+    <div class="hero-badge">KMA-3701 &middot; Kurly Android</div>
+    <h1>ComposeView <span class="accent">높이 갱신</span> 이슈</h1>
+    <p class="hero-desc">GridLayoutManager가 고정 크기 제약을 전달하면, AndroidComposeView가 <code style="font-family:var(--font-mono);font-size:0.85rem;color:var(--viz-danger)">invalidate()</code>를 호출하여 높이 갱신이 누락된다</p>
+  </header>
+
+  <!-- ═══ SECTION 1: Primer ═══ -->
+  <div class="section">
+    <span class="section-label blue">배경 지식</span>
+    <h2 class="section-title">invalidate vs requestLayout 차이점</h2>
+    <div class="primer-grid">
+      <div class="primer-card invalidate">
+        <div class="primer-method">invalidate()</div>
+        <div class="primer-desc">View의 <strong style="color:var(--color-on-surface)">그리기(draw)</strong>만 재요청한다. 크기와 위치는 변경되지 않는다.</div>
+        <div class="phase-flow">
+          <div class="phase-box inactive">measure</div>
+          <span class="phase-arrow">&rarr;</span>
+          <div class="phase-box inactive">layout</div>
+          <span class="phase-arrow">&rarr;</span>
+          <div class="phase-box draw-only">draw</div>
+        </div>
+        <div class="primer-tag">크기 변경 불가</div>
+      </div>
+      <div class="primer-card request-layout">
+        <div class="primer-method">requestLayout()</div>
+        <div class="primer-desc"><strong style="color:var(--color-on-surface)">측정 &rarr; 배치 &rarr; 그리기</strong> 전 과정을 재수행한다. 크기 변경이 부모에게 전파된다.</div>
+        <div class="phase-flow">
+          <div class="phase-box active">measure</div>
+          <span class="phase-arrow">&rarr;</span>
+          <div class="phase-box active">layout</div>
+          <span class="phase-arrow">&rarr;</span>
+          <div class="phase-box active">draw</div>
+        </div>
+        <div class="primer-tag">크기 변경 전파</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SECTION 2: Bug Mechanism Flow ═══ -->
+  <div class="section">
+    <span class="section-label red">버그 메커니즘</span>
+    <h2 class="section-title">ComposeView 내부 측정 흐름</h2>
+
+    <div class="card">
+      <div class="flow-container">
+
+        <!-- Step 1 -->
+        <div class="flow-step">
+          <div class="flow-line-area">
+            <div class="flow-dot"></div>
+            <div class="flow-wire"></div>
+          </div>
+          <div class="flow-content">
+            <div class="flow-box">
+              <div class="flow-method"><span class="flow-number blue">1</span>onBindViewHolder()</div>
+              <div class="flow-desc">ViewHolder가 재활용되면서 <code class="text-mono" style="color:var(--viz-move)">composeView.setContent { ... }</code> 호출</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="flow-step">
+          <div class="flow-line-area">
+            <div class="flow-dot"></div>
+            <div class="flow-wire"></div>
+          </div>
+          <div class="flow-content">
+            <div class="flow-box">
+              <div class="flow-method"><span class="flow-number blue">2</span>ComposeView.onMeasure() &rarr; AndroidComposeView.onMeasure()</div>
+              <div class="flow-desc">아직 <code class="text-mono" style="color:var(--viz-merge)">Content()</code> 호출이 발생하지 않은 시점에 크기를 측정한다. 부모로부터 전달받은 <code class="text-mono" style="color:var(--viz-emphasis)">MeasureSpec</code>을 기반으로 root constraints를 갱신한다.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="flow-step">
+          <div class="flow-line-area">
+            <div class="flow-dot"></div>
+            <div class="flow-wire"></div>
+          </div>
+          <div class="flow-content">
+            <div class="flow-box">
+              <div class="flow-method"><span class="flow-number blue">3</span>updateRootConstraints() &rarr; markMeasurePending()</div>
+              <div class="flow-desc">이전 Composition 결과를 기반으로 <strong style="color:var(--color-on-surface)">잘못된 크기</strong>가 측정될 수 있다. 측정 대기(Pending) 상태로 설정.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 4 -->
+        <div class="flow-step">
+          <div class="flow-line-area">
+            <div class="flow-dot"></div>
+            <div class="flow-wire"></div>
+          </div>
+          <div class="flow-content">
+            <div class="flow-box">
+              <div class="flow-method"><span class="flow-number blue">4</span>Content() 호출 &rarr; dispatchDraw() &rarr; Pending 해소</div>
+              <div class="flow-desc">새로운 Composition이 완료되고, Pending 상태가 해소되면서 크기 재측정 로직이 실행된다.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 5: DECISION POINT -->
+        <div class="flow-step">
+          <div class="flow-line-area">
+            <div class="flow-dot decision"></div>
+            <div class="flow-wire decision-wire"></div>
+          </div>
+          <div class="flow-content">
+            <div class="flow-box decision-box">
+              <div class="flow-method"><span class="flow-number orange">5</span>scheduleMeasureAndLayout()</div>
+              <div class="flow-desc" style="margin-bottom:12px">
+                핵심 분기: <code class="text-mono" style="color:var(--viz-merge)">childSizeCanAffectParentSize()</code>를 확인하여 <strong style="color:var(--color-on-surface)">부모 크기에 영향을 줄 수 있는지</strong> 판정한다.
+              </div>
+
+              <!-- Decision branches -->
+              <div class="branch-container">
+                <div class="branch-path correct">
+                  <div class="branch-label">&check; true &mdash; 부모 크기 영향 가능</div>
+                  <div class="branch-code">requestLayout()</div>
+                  <div class="branch-result">measure &rarr; layout &rarr; draw 전체 수행<br>
+                  <strong style="color:var(--viz-success)">높이가 정상 갱신된다</strong></div>
+                </div>
+                <div class="branch-path buggy">
+                  <div class="branch-label">&cross; false &mdash; 부모 크기 영향 불가</div>
+                  <div class="branch-code">invalidate()</div>
+                  <div class="branch-result">draw만 수행, 크기 재측정 없음<br>
+                  <strong style="color:var(--viz-danger)">높이가 갱신되지 않는다</strong></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /flow-container -->
+
+      <div class="insight-box">
+        <div class="insight-label">핵심 인사이트</div>
+        <div class="insight-text">
+          <code>childSizeCanAffectParentSize()</code>는 <code>hasFixedInnerContentConstraints</code>를 검사한다. 이 값은 <code>AndroidComposeView.onMeasure()</code> 시점에 갱신된 <code>Constraints</code>를 참조하는데, 아직 <strong style="color:var(--color-on-surface)">새 Composition이 반영되기 전</strong>의 제약이다. 즉, 이전 콘텐츠 기준의 제약으로 판단을 내리는 것이 문제의 근본 원인이다.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SECTION 3: Why GridLayoutManager ═══ -->
+  <div class="section">
+    <span class="section-label orange">원인 비교</span>
+    <h2 class="section-title">왜 GridLayoutManager에서만 발생하는가?</h2>
+
+    <div class="compare-grid">
+      <!-- LinearLayoutManager -->
+      <div class="compare-card works">
+        <div class="compare-header">
+          <div class="compare-icon">&check;</div>
+          <div>
+            <div class="compare-name">LinearLayoutManager</div>
+            <div class="compare-sub">또는 GridLayoutManager(spanCount = 1)</div>
+          </div>
+        </div>
+        <div class="compare-chain">
+          <div class="chain-step">
+            <div class="chain-num">1</div>
+            <div class="chain-text">MeasureSpec = <span class="chain-code">UNSPECIFIED</span><br><span class="text-muted text-sm">높이에 제한을 두지 않음</span></div>
+          </div>
+          <div class="chain-step">
+            <div class="chain-num">2</div>
+            <div class="chain-text"><span class="chain-code">hasFixedInnerContentConstraints</span> = <span class="chain-highlight">false</span><br><span class="text-muted text-sm">제약이 고정되어 있지 않음</span></div>
+          </div>
+          <div class="chain-step">
+            <div class="chain-num">3</div>
+            <div class="chain-text"><span class="chain-code">childSizeCanAffectParentSize()</span> = <span class="chain-highlight">true</span></div>
+          </div>
+          <div class="chain-step">
+            <div class="chain-num">4</div>
+            <div class="chain-text"><span class="chain-code">requestLayout()</span> 호출<br><span class="text-muted text-sm" style="color:var(--viz-success)">높이 정상 갱신</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- GridLayoutManager -->
+      <div class="compare-card broken">
+        <div class="compare-header">
+          <div class="compare-icon">&cross;</div>
+          <div>
+            <div class="compare-name">GridLayoutManager</div>
+            <div class="compare-sub">spanCount &ge; 2</div>
+          </div>
+        </div>
+        <div class="compare-chain">
+          <div class="chain-step">
+            <div class="chain-num">1</div>
+            <div class="chain-text">MeasureSpec = <span class="chain-code">EXACTLY / AT_MOST</span><br><span class="text-muted text-sm">행 내 최대 높이 기준 고정</span></div>
+          </div>
+          <div class="chain-step">
+            <div class="chain-num">2</div>
+            <div class="chain-text"><span class="chain-code">hasFixedInnerContentConstraints</span> = <span class="chain-highlight">true</span><br><span class="text-muted text-sm">제약이 고정(hasFixedWidth &amp;&amp; hasFixedHeight)</span></div>
+          </div>
+          <div class="chain-step">
+            <div class="chain-num">3</div>
+            <div class="chain-text"><span class="chain-code">childSizeCanAffectParentSize()</span> = <span class="chain-highlight">false</span></div>
+          </div>
+          <div class="chain-step">
+            <div class="chain-num">4</div>
+            <div class="chain-text"><span class="chain-code">invalidate()</span> 호출<br><span class="text-muted text-sm" style="color:var(--viz-danger)">높이 갱신 실패 — draw만 수행</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="insight-box" style="margin-top:var(--sp-lg)">
+      <div class="insight-label">GridLayoutManager 동작 원리</div>
+      <div class="insight-text">
+        <code>spanCount &ge; 2</code>일 경우, 같은 행의 여러 아이템 중 <strong style="color:var(--color-on-surface)">최대 높이</strong>를 기준으로 모든 아이템의 높이를 동일하게 설정한다. 이로 인해 <code>MeasureSpec</code>이 <code>EXACTLY</code> 또는 <code>AT_MOST</code>로 전달되어 고정 제약이 설정된다. 구글은 이 문제를 인지하고 있으나 <strong style="color:var(--viz-danger)">별도 수정 계획은 없다</strong>고 밝혔다.
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SECTION 4: Fix ═══ -->
+  <div class="section">
+    <span class="section-label green">수정 방법</span>
+    <h2 class="section-title">수동 requestLayout() 호출</h2>
+
+    <div class="fix-card">
+      <div class="fix-title">
+        <div class="fix-icon">&check;</div>
+        <div class="fix-heading">PR #4211 — SearchProductViewHolder</div>
+      </div>
+
+      <div class="code-block">
+<span class="neutral">composeView.setContent {</span>
+<span class="neutral">    ProductScreen(</span>
+<span class="neutral">        item = item,</span>
+<span class="neutral">        sectionPosition = sectionPosition ?: Int.MIN_VALUE,</span>
+<span class="neutral">        productPosition = productPosition ?: Int.MIN_VALUE</span>
+<span class="neutral">    )</span>
+<span class="neutral">}</span>
+<span class="added">
+<span class="comment">// GridLayoutManager + ComposeView 조합으로 구현 시</span>
+<span class="comment">// ViewHolder 높이가 갱신되지 않는 이슈로 인해 추가</span>
+<span class="added">composeView.getChildAt(0)?.requestLayout()</span></span>
+      </div>
+
+      <div class="fix-explain">
+        <code style="font-family:var(--font-mono);font-size:0.78rem;color:var(--viz-success)">composeView.getChildAt(0)</code>은 내부의 <strong>AndroidComposeView</strong>를 가리킨다.
+        <code style="font-family:var(--font-mono);font-size:0.78rem;color:var(--viz-success)">setContent</code> 직후에 수동으로 <code style="font-family:var(--font-mono);font-size:0.78rem;color:var(--viz-success)">requestLayout()</code>을 호출하면,
+        <code style="font-family:var(--font-mono);font-size:0.78rem;color:var(--viz-danger)">scheduleMeasureAndLayout()</code>의 잘못된 분기 판정과 무관하게
+        <strong>measure &rarr; layout &rarr; draw</strong> 전체 사이클이 강제 실행되어 높이가 정상 갱신된다.
+      </div>
+
+      <!-- View Tree Diagram -->
+      <div class="tree-diagram" style="margin-top:var(--sp-lg)">
+        <svg width="520" height="200" viewBox="0 0 520 200" xmlns="http://www.w3.org/2000/svg">
+          <!-- RecyclerView -->
+          <rect x="180" y="10" width="160" height="36" rx="10" fill="rgba(148,163,184,0.08)" stroke="var(--color-border-strong)" stroke-width="1.5"/>
+          <text x="260" y="33" text-anchor="middle" fill="var(--color-on-surface-body)" font-family="var(--font-mono)" font-size="12" font-weight="600">RecyclerView</text>
+
+          <!-- Wire -->
+          <line x1="260" y1="46" x2="260" y2="68" stroke="rgba(148,163,184,0.2)" stroke-width="1.5"/>
+
+          <!-- ComposeView -->
+          <rect x="170" y="68" width="180" height="36" rx="10" fill="rgba(96,165,250,0.08)" stroke="rgba(96,165,250,0.3)" stroke-width="1.5"/>
+          <text x="260" y="91" text-anchor="middle" fill="var(--viz-move)" font-family="var(--font-mono)" font-size="12" font-weight="600">ComposeView</text>
+
+          <!-- Wire -->
+          <line x1="260" y1="104" x2="260" y2="126" stroke="rgba(96,165,250,0.2)" stroke-width="1.5"/>
+
+          <!-- AndroidComposeView -->
+          <rect x="140" y="126" width="240" height="36" rx="10" fill="rgba(74,222,128,0.08)" stroke="rgba(74,222,128,0.3)" stroke-width="2"/>
+          <text x="260" y="149" text-anchor="middle" fill="var(--viz-success)" font-family="var(--font-mono)" font-size="12" font-weight="700">AndroidComposeView</text>
+
+          <!-- getChildAt(0) annotation -->
+          <line x1="382" y1="144" x2="430" y2="144" stroke="rgba(74,222,128,0.4)" stroke-width="1" stroke-dasharray="4"/>
+          <text x="435" y="140" fill="var(--viz-success)" font-family="var(--font-mono)" font-size="10" font-weight="600">getChildAt(0)</text>
+          <text x="435" y="155" fill="var(--viz-success)" font-family="var(--font-mono)" font-size="10" font-weight="700">.requestLayout()</text>
+
+          <!-- Arrow pointing to AndroidComposeView -->
+          <polygon points="428,144 422,140 422,148" fill="rgba(74,222,128,0.5)"/>
+
+          <!-- Label -->
+          <text x="260" y="185" text-anchor="middle" fill="var(--color-on-surface-muted)" font-family="var(--font-sans)" font-size="11">ComposeView의 유일한 자식 = AndroidComposeView</text>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ COGNITIVE RATIONALE ═══ -->
+  <details class="rationale">
+    <summary>Cognitive Rationale &mdash; 이 시각화가 이렇게 구성된 이유</summary>
+    <div class="rationale-body">
+
+      <!-- 1. Pattern -->
+      <div>
+        <div class="rationale-block-label">Pattern</div>
+        <div class="rationale-text">
+          <strong>PAT-024</strong> &mdash; Data Flow Diagram (커스텀 변형)<br>
+          시스템의 <strong>동작/행위</strong>를 설명하는 것이 핵심이므로 클래스 계층 구조보다 <strong>메서드 호출 체인 + 결정 분기</strong>를 시각화했다. 변경의 본질이 "순차 흐름에서 잘못된 분기를 타는 메커니즘"이므로 PAT-024(데이터 흐름도)를 기반으로, Step 5에 Decision Gate 패턴을 삽입하여 두 경로의 결과를 즉각 대비시켰다.
+        </div>
+      </div>
+
+      <!-- 2. Applied Rules -->
+      <div>
+        <div class="rationale-block-label">Applied Rules</div>
+        <ul class="rationale-rules-list">
+          <li><span class="rule-id">RULE-C01</span> 변경 유형별 색상 언어 &mdash; 정상 경로(초록), 버그 경로(빨강), 결정 분기(주황), 구조 설명(파랑) <span class="principle-ref">&larr; PRC-003</span></li>
+          <li><span class="rule-id">RULE-C09</span> Slate 다크 테마 &mdash; Deep Navy 배경 + Slate 카드 + 다크 배경 최적화 시맨틱 색상 <span class="principle-ref">&larr; PRC-004, AES-003</span></li>
+          <li><span class="rule-id">RULE-L02</span> 동시 강조 &le; 2 &mdash; 각 섹션에서 핵심 대비 쌍만 강조 (invalidate vs requestLayout, Linear vs Grid) <span class="principle-ref">&larr; ATT-003</span></li>
+          <li><span class="rule-id">RULE-T01</span> 화면당 한 문장 narration &mdash; 각 flow step이 하나의 핵심 메시지만 전달 <span class="principle-ref">&larr; WM-001</span></li>
+          <li><span class="rule-id">RULE-CMP03</span> 변경 안내 &mdash; Decision Gate에서 두 경로를 나란히 배치하여 change blindness 방지 <span class="principle-ref">&larr; ATT-002</span></li>
+          <li><span class="rule-id">RULE-L01</span> 앵커 포인트 유지 &mdash; 비교 섹션에서 4단계 체인 구조를 동일하게 유지하여 시선 안정 <span class="principle-ref">&larr; WM-001</span></li>
+        </ul>
+      </div>
+
+      <!-- 3. Self-Evaluation -->
+      <div>
+        <div class="rationale-block-label">Self-Evaluation</div>
+        <div class="eval-grid">
+          <div class="eval-cell">
+            <div class="eval-score">2/5</div>
+            <div class="eval-label">Cognitive Load</div>
+          </div>
+          <div class="eval-cell">
+            <div class="eval-score">5/5</div>
+            <div class="eval-label">Change Visibility</div>
+          </div>
+          <div class="eval-cell">
+            <div class="eval-score">5/5</div>
+            <div class="eval-label">Anchor Stability</div>
+          </div>
+          <div class="eval-cell">
+            <div class="eval-score">4/5</div>
+            <div class="eval-label">Text Economy</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Evidence Trail -->
+      <div>
+        <div class="rationale-block-label">Evidence Trail</div>
+        <ul class="evidence-list">
+          <li><span class="evidence-level l1">L1</span> Cowan (2001) &mdash; 작업기억 4&plusmn;1 제한 &rarr; 호출 체인 5단계 + 비교 4단계로 제한</li>
+          <li><span class="evidence-level l2">L2</span> Ware (2004) &mdash; 형태는 전주의적 속성으로 범주 인식 &rarr; 원형(일반), 다이아몬드(결정), 사각(결과)으로 노드 유형 구분</li>
+          <li><span class="evidence-level l2">L2</span> Rensink et al. (1997) &mdash; Change blindness 실험 &rarr; 나란한 배치로 변화 탐지율 극대화</li>
+          <li><span class="evidence-level l2">L2</span> Paivio (1986) &mdash; 이중 부호화 이론 &rarr; 시각(색상/형태) + 언어(코드/설명) 병행으로 기억 강화</li>
+          <li><span class="evidence-level l3">L3</span> Hollands &amp; Spence (1992) &mdash; 방향성 에지가 읽기 순서 유도 &rarr; 수직 흐름 + 화살표 와이어</li>
+        </ul>
+      </div>
+
+    </div>
+  </details>
+
+</div>
+</body>
+</html>

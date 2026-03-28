@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RecyclerView + ComposeView 높이 갱신 이슈 — 한 줄로 해결한 Compose 내부 측정 버그</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════
+   Toss Tech Light Theme — Blog Template
+   ═══════════════════════════════════════════════ */
+:root {
+    --grey-50: #f9fafb;
+    --grey-100: #f2f4f6;
+    --grey-200: #e5e8eb;
+    --grey-300: #d1d6db;
+    --grey-400: #b0b8c1;
+    --grey-500: #8b95a1;
+    --grey-600: #6b7684;
+    --grey-700: #4e5968;
+    --grey-800: #333d4b;
+    --grey-900: #191f28;
+
+    --toss-blue: #0064FF;
+    --toss-blue-light: rgba(0, 100, 255, 0.08);
+    --toss-blue-border: rgba(0, 100, 255, 0.2);
+
+    --bg: #ffffff;
+    --bg-elevated: var(--grey-50);
+    --bg-highlight: #ffc34236;
+    --bg-code: var(--grey-100);
+    --bg-blockquote: transparent;
+    --text-primary: var(--grey-900);
+    --text-secondary: var(--grey-700);
+    --text-tertiary: var(--grey-500);
+    --border-light: var(--grey-200);
+    --border-blockquote: var(--grey-800);
+
+    --content-width: 680px;
+    --wide-width: 780px;
+    --radius: 16px;
+    --radius-sm: 10px;
+
+    --font-body: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --font-code: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+
+    /* Diagram colors */
+    --diagram-blue: #0064FF;
+    --diagram-green: #16a34a;
+    --diagram-orange: #ea580c;
+    --diagram-purple: #7c3aed;
+    --diagram-red: #dc2626;
+    --diagram-bg: var(--grey-50);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text-primary);
+    line-height: 1.8;
+    font-size: 16.5px;
+    -webkit-font-smoothing: antialiased;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+}
+
+::selection {
+    background: rgba(0, 100, 255, 0.15);
+    color: var(--grey-900);
+}
+
+a { color: var(--toss-blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Layout */
+.article {
+    max-width: var(--content-width);
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+.article-wide {
+    max-width: var(--wide-width);
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+/* Hero Header */
+.hero {
+    padding: 80px 24px 48px;
+    max-width: var(--content-width);
+    margin: 0 auto;
+}
+
+.hero-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 24px;
+    font-size: 0.875rem;
+    color: var(--text-tertiary);
+}
+
+.hero-meta .author { color: var(--text-secondary); font-weight: 600; }
+.hero-meta .dot { color: var(--grey-300); }
+
+.hero-title {
+    font-size: 2.2rem;
+    font-weight: 800;
+    line-height: 1.3;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+    letter-spacing: -0.02em;
+}
+
+.hero-subtitle {
+    font-size: 1.1rem;
+    line-height: 1.7;
+    color: var(--text-secondary);
+    max-width: 580px;
+}
+
+.hero-tags { display: flex; gap: 8px; margin-top: 20px; flex-wrap: wrap; }
+
+.hero-tag {
+    padding: 4px 12px;
+    border-radius: var(--radius-sm);
+    background: var(--toss-blue-light);
+    border: 1px solid var(--toss-blue-border);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--toss-blue);
+}
+
+/* TOC */
+.toc {
+    margin: 0 0 48px 0;
+    padding: 24px 28px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+}
+
+.toc-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+}
+
+.toc-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+
+.toc-list a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    font-size: 0.92rem;
+    color: var(--text-secondary);
+    transition: color 0.2s;
+}
+
+.toc-list a:hover { color: var(--toss-blue); text-decoration: none; }
+
+.toc-num {
+    width: 24px;
+    height: 24px;
+    border-radius: 7px;
+    background: var(--grey-200);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+/* Typography */
+.article h2 {
+    font-size: 1.55rem;
+    font-weight: 800;
+    line-height: 1.35;
+    color: var(--text-primary);
+    margin: 56px 0 20px 0;
+    letter-spacing: -0.01em;
+}
+
+.article h2:first-child { margin-top: 0; }
+
+.article h3 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    line-height: 1.4;
+    color: var(--text-primary);
+    margin: 40px 0 14px 0;
+}
+
+.article p { margin: 0 0 20px 0; color: var(--text-primary); }
+.article strong { font-weight: 700; color: var(--grey-900); }
+
+/* Blockquote */
+.article blockquote {
+    margin: 28px 0;
+    padding: 0 0 0 20px;
+    border-left: 2.5px solid var(--border-blockquote);
+    font-size: 1.05rem;
+    font-weight: 600;
+    line-height: 1.7;
+    color: var(--text-primary);
+}
+
+.article blockquote p { margin: 0; }
+
+/* Highlight Box */
+.highlight-box {
+    margin: 28px 0;
+    padding: 20px 24px;
+    background: var(--bg-highlight);
+    border-radius: var(--radius);
+    font-weight: 600;
+    line-height: 1.7;
+    color: var(--text-primary);
+}
+
+/* Content Box */
+.content-box {
+    margin: 28px 0;
+    padding: 24px 28px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+}
+
+.content-box-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+}
+
+/* Code Blocks */
+.article code {
+    font-family: var(--font-code);
+    font-size: 0.88em;
+    padding: 2px 6px;
+    background: var(--bg-code);
+    border-radius: 5px;
+    color: var(--grey-800);
+}
+
+.article pre {
+    margin: 24px 0;
+    padding: 24px;
+    background: var(--grey-900);
+    border-radius: var(--radius);
+    overflow-x: auto;
+    line-height: 1.6;
+}
+
+.article pre code {
+    font-family: var(--font-code);
+    font-size: 0.85rem;
+    background: none;
+    padding: 0;
+    color: #abb2bf;
+    border-radius: 0;
+}
+
+/* Syntax highlighting (One Dark) */
+.kw { color: #c678dd; }
+.str { color: #98c379; }
+.cmt { color: #5c6370; font-style: italic; }
+.typ { color: #e5c07b; }
+.fn { color: #61afef; }
+.ann { color: #d19a66; }
+.op { color: #56b6c2; }
+.hl { background: rgba(97, 175, 239, 0.12); display: inline-block; width: 100%; margin: 0 -24px; padding: 0 24px; }
+
+/* Lists */
+.article ul, .article ol { margin: 0 0 20px 0; padding-left: 24px; }
+.article li { margin-bottom: 10px; line-height: 1.7; }
+.article li::marker { color: var(--text-tertiary); }
+
+/* Summary Box */
+.summary-box {
+    margin: 36px 0;
+    padding: 24px 28px;
+    background: var(--toss-blue-light);
+    border: 1px solid var(--toss-blue-border);
+    border-radius: var(--radius);
+}
+
+.summary-box-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--toss-blue);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.summary-box p, .summary-box li { color: var(--text-primary); font-size: 0.95rem; }
+.summary-box ul { margin: 8px 0 0 0; padding-left: 20px; }
+
+/* Comparison Cards */
+.compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 28px 0;
+}
+
+.compare-card {
+    padding: 20px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+    background: var(--bg);
+    transition: border-color 0.2s;
+}
+
+.compare-card:hover { border-color: var(--grey-300); }
+
+.compare-card-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+}
+
+.compare-before { border-left: 3px solid var(--grey-400); }
+.compare-after { border-left: 3px solid var(--toss-blue); }
+
+.compare-card pre {
+    margin: 12px 0 0 0;
+    padding: 14px 16px;
+    font-size: 0.8rem;
+}
+
+/* Images */
+.article img, .article-wide img {
+    max-width: 100%;
+    border-radius: var(--radius);
+    margin: 28px 0;
+    display: block;
+}
+
+.img-caption {
+    text-align: center;
+    font-size: 0.82rem;
+    color: var(--text-tertiary);
+    margin-top: -16px;
+    margin-bottom: 28px;
+}
+
+/* Diagram */
+.diagram-wrap {
+    margin: 28px 0;
+    display: flex;
+    justify-content: center;
+}
+
+.diagram-wrap svg {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Separator */
+.article hr {
+    border: none;
+    height: 1px;
+    background: var(--border-light);
+    margin: 48px 0;
+}
+
+/* Footnotes */
+.footnotes {
+    margin-top: 56px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border-light);
+    font-size: 0.82rem;
+    color: var(--text-tertiary);
+    line-height: 1.8;
+}
+
+.footnotes a { color: var(--text-tertiary); text-decoration: underline; }
+.footnote-ref { font-size: 0.75em; vertical-align: super; color: var(--toss-blue); cursor: pointer; font-weight: 600; }
+
+/* Footer */
+.article-footer {
+    margin-top: 56px;
+    padding: 32px 0;
+    text-align: center;
+    color: var(--text-tertiary);
+    font-size: 0.82rem;
+}
+
+.share-buttons { display: flex; justify-content: center; gap: 12px; margin-top: 16px; }
+
+.share-btn {
+    padding: 8px 20px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-light);
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.share-btn:hover { background: var(--grey-200); color: var(--text-primary); }
+
+/* Metrics Table */
+.metrics-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0;
+    font-size: 0.9rem;
+}
+
+.metrics-table th {
+    text-align: left;
+    padding: 12px 16px;
+    background: var(--bg-elevated);
+    border-bottom: 2px solid var(--border-light);
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.metrics-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-light);
+    color: var(--text-secondary);
+}
+
+.metrics-table .metric-label { color: var(--text-primary); font-weight: 600; }
+
+/* Log block */
+.log-block {
+    margin: 20px 0;
+    padding: 16px 20px;
+    background: var(--grey-900);
+    border-radius: var(--radius);
+    font-family: var(--font-code);
+    font-size: 0.8rem;
+    line-height: 1.7;
+    color: #abb2bf;
+    overflow-x: auto;
+}
+
+.log-block .log-label {
+    color: var(--grey-500);
+    font-weight: 600;
+}
+
+.log-block .log-ok { color: #98c379; }
+.log-block .log-warn { color: #e5c07b; }
+.log-block .log-err { color: #e06c75; }
+
+/* Responsive */
+@media (max-width: 768px) {
+    .hero { padding: 48px 20px 32px; }
+    .hero-title { font-size: 1.7rem; }
+    .article, .article-wide { padding: 0 20px; }
+    .article h2 { font-size: 1.35rem; margin-top: 40px; }
+    .article h3 { font-size: 1.1rem; }
+    .compare-grid { grid-template-columns: 1fr; }
+    .article pre { padding: 16px; margin-left: -8px; margin-right: -8px; border-radius: 12px; }
+}
+
+@media print {
+    body { font-size: 11pt; }
+    .hero { padding: 24px 0; }
+    .article pre { white-space: pre-wrap; }
+    .toc, .share-buttons, .article-footer { display: none; }
+}
+
+</style>
+</head>
+<body>
+
+<!-- Hero Header -->
+<header class="hero">
+    <div class="hero-meta">
+        <span class="author">홍기찬</span>
+        <span class="dot">&middot;</span>
+        <span>Android Developer</span>
+        <span class="dot">&middot;</span>
+        <time>2024. 3</time>
+    </div>
+    <h1 class="hero-title">RecyclerView 안의 ComposeView,<br>높이가 왜 안 바뀌지?</h1>
+    <p class="hero-subtitle">GridLayoutManager + ComposeView 조합에서 ViewHolder 재활용 시 높이가 갱신되지 않는 문제를 Compose 소스 코드 레벨까지 추적하고, 한 줄로 해결한 과정을 공유합니다.</p>
+    <div class="hero-tags">
+        <span class="hero-tag">Compose</span>
+        <span class="hero-tag">RecyclerView</span>
+        <span class="hero-tag">View Internals</span>
+        <span class="hero-tag">Deep Dive</span>
+    </div>
+</header>
+
+<!-- Table of Contents -->
+<nav class="article">
+    <div class="toc">
+        <div class="toc-label">목차</div>
+        <ol class="toc-list">
+            <li><a href="#section-1"><span class="toc-num">1</span> 문제 발견 — 높이가 왜 이전 값 그대로일까</a></li>
+            <li><a href="#section-2"><span class="toc-num">2</span> 배경지식: invalidate()와 requestLayout()</a></li>
+            <li><a href="#section-3"><span class="toc-num">3</span> ComposeView의 측정 플로우</a></li>
+            <li><a href="#section-4"><span class="toc-num">4</span> 원인: scheduleMeasureAndLayout()의 분기</a></li>
+            <li><a href="#section-5"><span class="toc-num">5</span> GridLayoutManager vs LinearLayoutManager</a></li>
+            <li><a href="#section-6"><span class="toc-num">6</span> 해결: 한 줄의 requestLayout()</a></li>
+            <li><a href="#section-7"><span class="toc-num">7</span> 정리</a></li>
+        </ol>
+    </div>
+</nav>
+
+<!-- Article Body -->
+<article class="article">
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- Section 1: 문제 발견 -->
+<!-- ═══════════════════════════════════════════ -->
+<h2 id="section-1">문제 발견 — 높이가 왜 이전 값 그대로일까</h2>
+
+<p>검색 결과 화면을 Compose로 마이그레이션하던 중이었습니다. RecyclerView의 ViewHolder 안에 <code>ComposeView</code>를 넣고 <code>setContent</code>로 Composable을 바인딩하는, Compose 마이그레이션 과도기에서 흔히 쓰는 패턴입니다.</p>
+
+<p>그런데 스크롤을 올렸다 내리면 상품 카드의 높이가 이전 아이템의 높이로 고정된 채 바뀌지 않는 현상이 발생했습니다. 다른 데이터가 바인딩되어 내용은 바뀌는데, <strong>높이만 이전 ViewHolder의 값을 유지</strong>하는 것이었습니다.</p>
+
+<div class="highlight-box">
+    재현 조건이 흥미로웠습니다. <strong>GridLayoutManager에서 spanCount가 2 이상</strong>일 때만 발생하고, <strong>LinearLayoutManager이거나 spanCount가 1</strong>이면 정상 동작했습니다.
+</div>
+
+<p>Google Issue Tracker를 검색해보니 동일한 문제가 이미 보고되어 있었습니다.<sup class="footnote-ref">[1]</sup><sup class="footnote-ref">[2]</sup> 하지만 Google 측의 답변은 "별도 수정 계획 없음"이었습니다. 직접 원인을 파악하고 해결해야 했습니다.</p>
+
+<h3>높이 변화 로그 추적</h3>
+
+<p>문제를 구체적으로 확인하기 위해, 재활용되는 두 ViewHolder의 <code>height</code>와 <code>measuredHeight</code>를 추적했습니다.</p>
+
+<div class="log-block">
+<span class="log-label">ComposeView@52685</span>
+child.height       = <span class="log-warn">1127</span>
+child.measuredHeight = <span class="log-ok">1070</span>   <span class="cmt">← 올바른 높이를 측정했지만...</span>
+
+<span class="log-label">ComposeView@52702</span>
+child.height       = <span class="log-warn">1127</span>
+child.measuredHeight = <span class="log-warn">1127</span>   <span class="cmt">← 이 ViewHolder는 아직 갱신 전</span>
+
+<span class="log-label">ComposeView@52685</span>
+child.height       = <span class="log-err">1127</span>    <span class="cmt">← 결국 height는 갱신되지 않음</span>
+child.measuredHeight = <span class="log-err">1127</span>    <span class="cmt">← measuredHeight도 원래 값으로 복귀</span>
+</div>
+
+<p>한 ViewHolder가 올바른 <code>measuredHeight</code>(1070)를 계산했지만, 최종 <code>height</code>는 갱신되지 않았습니다. GridLayoutManager는 같은 행의 ViewHolder 중 <strong>최대 높이</strong>를 기준으로 모든 ViewHolder의 높이를 설정하는데, 나머지 ViewHolder의 높이가 재설정되지 않아 자연스럽게 이전 최대값을 따라가는 것이었습니다.</p>
+
+<p>이 동작을 이해하려면, 먼저 Android가 View의 크기를 언제 다시 측정하는지를 알아야 합니다.</p>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- Section 2: invalidate vs requestLayout -->
+<!-- ═══════════════════════════════════════════ -->
+<h2 id="section-2">배경지식: invalidate()와 requestLayout()</h2>
+
+<p>Android의 View 렌더링은 <strong>measure → layout → draw</strong> 세 단계로 이루어집니다. 이 파이프라인에서 View가 변경을 알리는 방법은 두 가지입니다.</p>
+
+<!-- Diagram: invalidate vs requestLayout -->
+<div class="diagram-wrap">
+<svg width="620" height="280" viewBox="0 0 620 280" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="620" height="280" rx="16" fill="#f9fafb"/>
+
+  <!-- Pipeline: measure → layout → draw -->
+  <text x="310" y="30" text-anchor="middle" font-family="Pretendard Variable, sans-serif" font-size="13" font-weight="700" fill="#8b95a1">VIEW 렌더링 파이프라인</text>
+
+  <!-- Measure box -->
+  <rect x="60" y="50" width="140" height="52" rx="12" fill="#fff" stroke="#e5e8eb" stroke-width="1.5"/>
+  <text x="130" y="72" text-anchor="middle" font-family="Pretendard Variable, sans-serif" font-size="14" font-weight="700" fill="#191f28">Measure</text>
+  <text x="130" y="90" text-anchor="middle" font-family="Pretendard Variable, sans-serif" font-size="11" fill="#8b95a1">크기 측정</text>
+
+  <!-- Arrow -->
+  <path d="M 200 76 L 230 76" stroke="#d1d6db" stroke-width="2" marker-end="url(#arrowGrey)"/>
+
+  <!-- Layout box -->
+  <rect x="240" y="50" width="140" height="52" rx="12" fill="#fff" stroke="#e5e8eb" stroke-width="1.5"/>
+  <text x="310" y="72" text-anchor="middle" font-family="Pretendard Variable, sans-serif" font-size="14" font-weight="700" fill="#191f28">Layout</text>
+  <text x="310" y="90" text-anchor="middle" font-family="Pretendard Variable, sans-serif" font-size="11" fill="#8b95a1">위치 배치</text>
+
+  <!-- Arrow -->
+  <path d="M 380 76 L 410 76" stroke="#d1d6db" stroke-width="2" marker-end="url(#arrowGrey)"/>
+
+  <!-- Draw box -->
+  <rect x="420" y="50" width="140" height="52" rx="12" fill="#fff" stroke="#e5e8eb" stroke-width="1.5"/>
+  <text x="490" y="72" text-anchor="middle" font-family="Pretendard Variable, sans-serif" font-size="14" font-weight="700" fill="#191f28">Draw</text>
+  <text x="490" y="90" text-anchor="middle" font-family="Pretendard Variable, sans-serif" font-size="11" fill="#8b95a1">화면 그리기</text>
+
+  <!-- requestLayout() -->
+  <rect x="40" y="140" width="280" height="112" rx="14" fill="#fff" stroke="#0064FF" stroke-width="2"/>
+  <rect x="40" y="140" width="280" height="36" rx="14" fill="#0064FF"/>
+  <rect x="40" y="160" width="280" height="16" fill="#0064FF"/>
+  <text x="180" y="163" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="13" font-weight="700" fill="#fff">requestLayout()</text>
+  <text x="180" y="198" text-anchor="middle" font-family="Pretendard Variable, sans-serif" font-size="12" fill="#4e5968">measure → layout → draw</text>
+  <text x="180" y="218" text-anchor="middle" font-family="Pretendard Variable, sans-serif" font-size="12" fill="#4e5968">전체 파이프라인 재실행</text>
+  <text x="180" y="241" text-anchor="middle" font-family="Pretendard Variable, sans-serif" font-size="11" font-weight="600" fill="#0064FF">부모에게 크기 변경을 알림</text>
+
+  <!-- invalidate() -->
+  <rect x="340" y="140" width="240" height="112" rx="14" fill="#fff" stroke="#b0b8c1" stroke-width="2"/>
+  <rect x="340" y="140" width="240" height="36" rx="14" fill="#6b7684"/>
+  <rect x="340" y="160" width="240" height="16" fill="#6b7684"/>
+  <text x="460" y="163" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="13" font-weight="700" fill="#fff">invalidate()</text>
+  <text x="460" y="198" text-anchor="middle" font-family="Pretendard Variable, sans-serif" font-size="12" fill="#4e5968">draw만 재실행</text>
+  <text x="460" y="218" text-anchor="middle" font-family="Pretendard Variable, sans-serif" font-size="12" fill="#4e5968">크기와 위치는 유지</text>
+  <text x="460" y="241" text-anchor="middle" font-family="Pretendard Variable, sans-serif" font-size="11" font-weight="600" fill="#dc2626">부모는 크기 변경을 모름</text>
+
+  <!-- Arrow markers -->
+  <defs>
+    <marker id="arrowGrey" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M 0 0 L 8 3 L 0 6 Z" fill="#d1d6db"/>
+    </marker>
+  </defs>
+</svg>
+</div>
+
+<p><code>requestLayout()</code>은 "내 크기가 바뀌었으니 다시 측정해달라"는 요청입니다. 부모 View까지 전파되어 measure → layout → draw 전체 파이프라인이 재실행됩니다. 반면 <code>invalidate()</code>는 "다시 그려달라"는 요청으로, <strong>draw만 재실행</strong>합니다. 크기나 위치는 변하지 않습니다.</p>
+
+<div class="summary-box">
+    <div class="summary-box-title">핵심 차이</div>
+    <p>ComposeView 안의 콘텐츠가 바뀌어 높이가 달라져야 할 때, <code>requestLayout()</code>이 호출되어야 부모(RecyclerView)가 새로운 높이를 인식합니다. <code>invalidate()</code>만 호출되면 내부적으로 다시 그리기만 하고, 부모는 이전 높이를 그대로 유지합니다.</p>
+</div>
+
+<p>이 차이가 문제의 핵심입니다. Compose 내부에서 어떤 조건일 때 <code>requestLayout()</code> 대신 <code>invalidate()</code>를 호출하는지 추적해야 합니다.</p>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- Section 3: ComposeView 내부 구조 -->
+<!-- ═══════════════════════════════════════════ -->
+<h2 id="section-3">ComposeView의 측정 플로우</h2>
+
+<p>ComposeView의 내부 구조를 먼저 살펴보겠습니다. <code>ComposeView</code>는 View 계층과 Compose 계층을 연결하는 브릿지 역할의 ViewGroup이고, 그 안에 실제 Compose UI를 렌더링하는 <code>AndroidComposeView</code>가 자식으로 존재합니다.</p>
+
+<!-- Diagram: ComposeView hierarchy -->
+<div class="diagram-wrap">
+<svg width="520" height="200" viewBox="0 0 520 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="520" height="200" rx="16" fill="#f9fafb"/>
+
+  <!-- ComposeView -->
+  <rect x="30" y="30" width="200" height="140" rx="14" fill="#fff" stroke="#0064FF" stroke-width="2" stroke-dasharray="6 3"/>
+  <text x="130" y="56" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="13" font-weight="700" fill="#0064FF">ComposeView</text>
+  <text x="130" y="76" text-anchor="middle" font-family="Pretendard Variable, sans-serif" font-size="11" fill="#8b95a1">ViewGroup (브릿지)</text>
+
+  <!-- AndroidComposeView inside -->
+  <rect x="50" y="92" width="160" height="60" rx="10" fill="#fff" stroke="#7c3aed" stroke-width="2"/>
+  <text x="130" y="116" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="12" font-weight="600" fill="#7c3aed">AndroidComposeView</text>
+  <text x="130" y="136" text-anchor="middle" font-family="Pretendard Variable, sans-serif" font-size="10" fill="#8b95a1">실제 Compose 렌더링</text>
+
+  <!-- Arrow -->
+  <path d="M 240 100 L 280 100" stroke="#d1d6db" stroke-width="2" marker-end="url(#arrowGrey2)"/>
+
+  <!-- Compose Tree -->
+  <rect x="290" y="30" width="200" height="140" rx="14" fill="#fff" stroke="#16a34a" stroke-width="2" stroke-dasharray="6 3"/>
+  <text x="390" y="56" text-anchor="middle" font-family="Pretendard Variable, sans-serif" font-size="13" font-weight="700" fill="#16a34a">Compose UI Tree</text>
+
+  <!-- Compose nodes -->
+  <rect x="330" y="76" width="120" height="30" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="1"/>
+  <text x="390" y="96" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#16a34a">LayoutNode (root)</text>
+
+  <rect x="340" y="118" width="100" height="26" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1"/>
+  <text x="390" y="136" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#16a34a">ProductScreen()</text>
+
+  <defs>
+    <marker id="arrowGrey2" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M 0 0 L 8 3 L 0 6 Z" fill="#d1d6db"/>
+    </marker>
+  </defs>
+</svg>
+</div>
+
+<p>재활용된 ViewHolder에서 <code>composeView.setContent { ... }</code>이 호출되면, 아래와 같은 순서로 크기 측정이 이루어집니다.</p>
+
+<div class="content-box">
+    <div class="content-box-title">setContent 호출 시 측정 순서</div>
+    <ol>
+        <li><strong>ComposeView.onMeasure()</strong> — 부모(RecyclerView)로부터 MeasureSpec을 전달받아 측정 시작</li>
+        <li><strong>AndroidComposeView.onMeasure()</strong> — MeasureSpec을 Compose의 Constraints로 변환</li>
+        <li><strong>ComposeView.Content()</strong> — 새 Composable 콘텐츠가 Composition에 등록</li>
+        <li><strong>AndroidComposeView.scheduleMeasureAndLayout()</strong> — 크기 재측정 예약</li>
+    </ol>
+</div>
+
+<p>여기서 주목할 점은, 2단계에서 <code>AndroidComposeView.onMeasure()</code>가 실행될 때 아직 3단계의 <code>Content()</code>가 호출되지 않았다는 것입니다. 즉, <strong>새 콘텐츠가 적용되기 전에 크기를 먼저 측정</strong>합니다. 이 때문에 4단계에서 재측정을 예약해야 하는데, 바로 이 4단계에서 문제가 발생합니다.</p>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- Section 4: 원인 추적 -->
+<!-- ═══════════════════════════════════════════ -->
+<h2 id="section-4">원인: scheduleMeasureAndLayout()의 분기</h2>
+
+<p><code>AndroidComposeView</code>의 <code>scheduleMeasureAndLayout()</code> 함수를 살펴보겠습니다. 이 함수가 <code>requestLayout()</code>과 <code>invalidate()</code> 중 어느 것을 호출할지 결정합니다.</p>
+
+<pre><code><span class="cmt">// AndroidComposeView.android.kt</span>
+<span class="kw">private fun</span> <span class="fn">scheduleMeasureAndLayout</span>(
+    nodeToRemeasure: <span class="typ">LayoutNode</span>? = <span class="kw">null</span>
+) {
+    <span class="kw">if</span> (!isLayoutRequested && isAttachedToWindow) {
+        <span class="kw">if</span> (nodeToRemeasure != <span class="kw">null</span>) {
+            <span class="kw">var</span> node = nodeToRemeasure
+            <span class="kw">while</span> (node != <span class="kw">null</span> &&
+                node.measuredByParent == <span class="typ">UsageByParent</span>.InMeasureBlock &&
+<span class="hl">                node.<span class="fn">childSizeCanAffectParentSize</span>()</span>
+            ) {
+                node = node.parent
+            }
+<span class="hl">            <span class="kw">if</span> (node === root) {</span>
+<span class="hl">                <span class="fn">requestLayout</span>()  <span class="cmt">// ← 이 경로로 가야 높이 갱신됨</span></span>
+<span class="hl">                <span class="kw">return</span></span>
+<span class="hl">            }</span>
+        }
+        <span class="kw">if</span> (width == <span class="ann">0</span> || height == <span class="ann">0</span>) {
+            <span class="fn">requestLayout</span>()
+        } <span class="kw">else</span> {
+<span class="hl">            <span class="fn">invalidate</span>()  <span class="cmt">// ← 여기로 빠지면 높이 갱신 안 됨</span></span>
+        }
+    }
+}</code></pre>
+
+<p>while 루프는 현재 LayoutNode에서 root까지 올라가면서, <strong>자식 크기 변화가 부모 크기에 영향을 줄 수 있는지</strong>를 확인합니다. root까지 도달하면 <code>requestLayout()</code>을 호출합니다. 하지만 중간에 <code>childSizeCanAffectParentSize()</code>가 <code>false</code>를 반환하면 루프를 빠져나와 <code>invalidate()</code>만 호출합니다.</p>
+
+<h3>childSizeCanAffectParentSize()는 무엇을 검사하는가</h3>
+
+<pre><code><span class="cmt">// AndroidComposeView.android.kt</span>
+<span class="kw">private fun</span> <span class="typ">LayoutNode</span>.<span class="fn">childSizeCanAffectParentSize</span>(): <span class="typ">Boolean</span> {
+    <span class="kw">return</span> wasMeasuredWithMultipleConstraints ||
+        parent?.<span class="fn">hasFixedInnerContentConstraints</span> == <span class="kw">false</span>
+}
+
+<span class="cmt">// LayoutNode.kt</span>
+<span class="kw">internal val</span> hasFixedInnerContentConstraints: <span class="typ">Boolean</span>
+    <span class="kw">get</span>() {
+        <span class="kw">val</span> innerContentConstraints =
+            innerCoordinator.lastMeasurementConstraints
+<span class="hl">        <span class="kw">return</span> innerContentConstraints.hasFixedWidth</span>
+<span class="hl">            && innerContentConstraints.hasFixedHeight</span>
+    }</code></pre>
+
+<p><code>hasFixedInnerContentConstraints</code>는 부모 LayoutNode의 제약(Constraints)이 너비와 높이 모두 고정인지를 확인합니다. 고정 제약이란 <code>minWidth == maxWidth</code>이고 <code>minHeight == maxHeight</code>인 경우, 즉 <strong>MeasureSpec이 EXACTLY</strong>인 상황입니다.</p>
+
+<p>부모의 제약이 고정이면, 자식 크기가 바뀌어도 부모 크기에 영향을 줄 수 없으므로 <code>childSizeCanAffectParentSize()</code>는 <code>false</code>를 반환합니다. while 루프가 root에 도달하지 못하고, 결국 <code>invalidate()</code>만 호출됩니다.</p>
+
+<div class="highlight-box">
+    핵심 메커니즘: Compose는 "부모 제약이 고정이면 자식 크기 변경이 부모에 영향 없다"고 판단하여 <code>requestLayout()</code>을 생략합니다. 이 최적화가 <strong>RecyclerView + GridLayoutManager 환경에서는 오작동</strong>합니다.
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- Section 5: Grid vs Linear -->
+<!-- ═══════════════════════════════════════════ -->
+<h2 id="section-5">GridLayoutManager vs LinearLayoutManager</h2>
+
+<p>그렇다면 왜 GridLayoutManager에서만 문제가 발생할까요? 답은 <code>MeasureSpec</code>에 있습니다.</p>
+
+<table class="metrics-table">
+    <thead>
+        <tr>
+            <th>LayoutManager</th>
+            <th>Width MeasureSpec</th>
+            <th>Height MeasureSpec</th>
+            <th>문제 발생</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td class="metric-label">LinearLayoutManager</td>
+            <td>EXACTLY (match_parent)</td>
+            <td>UNSPECIFIED</td>
+            <td style="color: #16a34a; font-weight: 700;">정상</td>
+        </tr>
+        <tr>
+            <td class="metric-label">GridLayoutManager (span=1)</td>
+            <td>EXACTLY</td>
+            <td>UNSPECIFIED</td>
+            <td style="color: #16a34a; font-weight: 700;">정상</td>
+        </tr>
+        <tr>
+            <td class="metric-label">GridLayoutManager (span≥2)</td>
+            <td>EXACTLY</td>
+            <td>EXACTLY / AT_MOST</td>
+            <td style="color: #dc2626; font-weight: 700;">높이 고정</td>
+        </tr>
+    </tbody>
+</table>
+
+<p><strong>GridLayoutManager에서 spanCount가 2 이상</strong>이면, 같은 행에 여러 아이템이 배치됩니다. 이때 GridLayoutManager는 행 내 최대 높이를 기준으로 모든 아이템의 높이를 맞추기 위해, 높이 방향 MeasureSpec을 <strong>EXACTLY</strong> 또는 <strong>AT_MOST</strong>로 전달합니다.</p>
+
+<p>반면 LinearLayoutManager이거나 spanCount가 1이면, 한 줄에 하나의 아이템만 있으므로 높이 제약이 없어 <strong>UNSPECIFIED</strong>로 전달합니다.</p>
+
+<!-- Diagram: The flow -->
+<div class="diagram-wrap">
+<svg width="700" height="340" viewBox="0 0 700 340" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="700" height="340" rx="16" fill="#f9fafb"/>
+
+  <text x="350" y="28" text-anchor="middle" font-family="Pretendard Variable, sans-serif" font-size="13" font-weight="700" fill="#8b95a1">MeasureSpec에 따른 분기 경로</text>
+
+  <!-- GridLayoutManager (span≥2) path -->
+  <rect x="20" y="48" width="310" height="48" rx="10" fill="#fff" stroke="#dc2626" stroke-width="2"/>
+  <text x="175" y="68" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="12" font-weight="600" fill="#dc2626">GridLayoutManager(span≥2)</text>
+  <text x="175" y="86" text-anchor="middle" font-family="Pretendard Variable, sans-serif" font-size="10" fill="#8b95a1">Height: EXACTLY / AT_MOST</text>
+
+  <path d="M 175 96 L 175 118" stroke="#dc2626" stroke-width="1.5" marker-end="url(#arrowRed)"/>
+
+  <rect x="30" y="118" width="290" height="36" rx="8" fill="#fef2f2" stroke="#dc2626" stroke-width="1"/>
+  <text x="175" y="141" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9.5" fill="#dc2626">hasFixedInnerContentConstraints = true</text>
+
+  <path d="M 175 154 L 175 176" stroke="#dc2626" stroke-width="1.5" marker-end="url(#arrowRed)"/>
+
+  <rect x="30" y="176" width="290" height="36" rx="8" fill="#fef2f2" stroke="#dc2626" stroke-width="1"/>
+  <text x="175" y="199" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9.5" fill="#dc2626">childSizeCanAffectParentSize = false</text>
+
+  <path d="M 175 212 L 175 234" stroke="#dc2626" stroke-width="1.5" marker-end="url(#arrowRed)"/>
+
+  <rect x="55" y="234" width="240" height="42" rx="10" fill="#dc2626"/>
+  <text x="175" y="260" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="13" font-weight="700" fill="#fff">invalidate()</text>
+
+  <text x="175" y="304" text-anchor="middle" font-family="Pretendard Variable, sans-serif" font-size="12" font-weight="600" fill="#dc2626">높이 갱신 안 됨</text>
+
+  <!-- LinearLayoutManager path -->
+  <rect x="370" y="48" width="310" height="48" rx="10" fill="#fff" stroke="#16a34a" stroke-width="2"/>
+  <text x="525" y="68" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="12" font-weight="600" fill="#16a34a">LinearLayoutManager</text>
+  <text x="525" y="86" text-anchor="middle" font-family="Pretendard Variable, sans-serif" font-size="10" fill="#8b95a1">Height: UNSPECIFIED</text>
+
+  <path d="M 525 96 L 525 118" stroke="#16a34a" stroke-width="1.5" marker-end="url(#arrowGreen)"/>
+
+  <rect x="380" y="118" width="290" height="36" rx="8" fill="#f0fdf4" stroke="#16a34a" stroke-width="1"/>
+  <text x="525" y="141" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9.5" fill="#16a34a">hasFixedInnerContentConstraints = false</text>
+
+  <path d="M 525 154 L 525 176" stroke="#16a34a" stroke-width="1.5" marker-end="url(#arrowGreen)"/>
+
+  <rect x="380" y="176" width="290" height="36" rx="8" fill="#f0fdf4" stroke="#16a34a" stroke-width="1"/>
+  <text x="525" y="199" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9.5" fill="#16a34a">childSizeCanAffectParentSize = true</text>
+
+  <path d="M 525 212 L 525 234" stroke="#16a34a" stroke-width="1.5" marker-end="url(#arrowGreen)"/>
+
+  <rect x="405" y="234" width="240" height="42" rx="10" fill="#16a34a"/>
+  <text x="525" y="260" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="13" font-weight="700" fill="#fff">requestLayout()</text>
+
+  <text x="525" y="304" text-anchor="middle" font-family="Pretendard Variable, sans-serif" font-size="12" font-weight="600" fill="#16a34a">높이 정상 갱신</text>
+
+  <defs>
+    <marker id="arrowRed" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M 0 0 L 8 3 L 0 6 Z" fill="#dc2626"/>
+    </marker>
+    <marker id="arrowGreen" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M 0 0 L 8 3 L 0 6 Z" fill="#16a34a"/>
+    </marker>
+  </defs>
+</svg>
+</div>
+
+<p>MeasureSpec이 EXACTLY일 때, <code>AndroidComposeView.onMeasure()</code>에서 <code>updateRootConstraints()</code>를 통해 갱신되는 Constraints의 너비와 높이가 모두 고정값이 됩니다. 이 고정 Constraints가 <code>hasFixedInnerContentConstraints</code>를 <code>true</code>로 만들고, 결과적으로 <code>scheduleMeasureAndLayout()</code>이 <code>requestLayout()</code> 대신 <code>invalidate()</code>를 호출하게 됩니다.</p>
+
+<p>Compose의 입장에서 이 최적화는 합리적입니다. 부모가 고정 크기를 지정했다면, 자식이 아무리 크기를 바꿔도 부모 크기에 영향이 없으니 <code>requestLayout()</code>이 불필요하다고 판단한 것입니다. 하지만 RecyclerView + GridLayoutManager 환경에서는, <strong>ViewHolder가 재활용되면서 새 콘텐츠의 높이가 이전과 다를 수 있다</strong>는 상황을 고려하지 못합니다.</p>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- Section 6: 해결 -->
+<!-- ═══════════════════════════════════════════ -->
+<h2 id="section-6">해결: 한 줄의 requestLayout()</h2>
+
+<p>원인을 파악했으니 해결은 간단합니다. <code>setContent</code> 호출 후 <code>AndroidComposeView</code>에 명시적으로 <code>requestLayout()</code>을 호출하면 됩니다.</p>
+
+<p><code>ComposeView.getChildAt(0)</code>이 바로 <code>AndroidComposeView</code>입니다. ComposeView의 유일한 자식이므로 인덱스 0으로 접근할 수 있습니다.</p>
+
+<div class="compare-grid">
+    <div class="compare-card compare-before">
+        <div class="compare-card-label">Before</div>
+        <pre><code><span class="kw">fun</span> <span class="fn">bind</span>(item: <span class="typ">UIModel</span>) {
+    composeView.<span class="fn">setContent</span> {
+        <span class="fn">ProductScreen</span>(item = item)
+    }
+<span class="cmt">    // setContent만으로는 GridLayout에서</span>
+<span class="cmt">    // 높이가 갱신되지 않음</span>
+}</code></pre>
+    </div>
+    <div class="compare-card compare-after">
+        <div class="compare-card-label">After</div>
+        <pre><code><span class="kw">fun</span> <span class="fn">bind</span>(item: <span class="typ">UIModel</span>) {
+    composeView.<span class="fn">setContent</span> {
+        <span class="fn">ProductScreen</span>(item = item)
+    }
+<span class="hl">    composeView.<span class="fn">getChildAt</span>(<span class="ann">0</span>)</span>
+<span class="hl">        ?.<span class="fn">requestLayout</span>()</span>
+}</code></pre>
+    </div>
+</div>
+
+<p><code>setContent</code> 이후에 <code>requestLayout()</code>을 명시적으로 호출하면, Compose 내부의 <code>scheduleMeasureAndLayout()</code> 분기 로직과 무관하게 Android View 시스템의 표준 재측정 경로를 강제로 실행합니다. 부모인 ComposeView, 그리고 그 부모인 RecyclerView까지 크기 변경이 전파되어 높이가 정상적으로 갱신됩니다.</p>
+
+<h3>실제 적용 코드</h3>
+
+<pre><code><span class="kw">class</span> <span class="typ">SearchProductViewHolder</span>(
+    <span class="kw">private val</span> composeView: <span class="typ">ComposeView</span>,
+) : <span class="typ">RecyclerView</span>.<span class="typ">ViewHolder</span>(composeView) {
+
+    <span class="kw">fun</span> <span class="fn">bind</span>(item: <span class="typ">SectionProductListItemUIModel</span>) {
+        composeView.<span class="fn">setContent</span> {
+            <span class="fn">ProductScreen</span>(
+                item = item,
+                sectionPosition = sectionPosition,
+                productPosition = productPosition ?: <span class="typ">Int</span>.MIN_VALUE
+            )
+        }
+
+        <span class="cmt">/**</span>
+<span class="cmt">         * GridLayoutManager + ComposeView 조합으로 구현 시</span>
+<span class="cmt">         * ViewHolder 높이가 갱신되지 않는 이슈로 인해 추가</span>
+<span class="cmt">         */</span>
+<span class="hl">        composeView.<span class="fn">getChildAt</span>(<span class="ann">0</span>)?.<span class="fn">requestLayout</span>()</span>
+    }
+}</code></pre>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- Section 7: 정리 -->
+<!-- ═══════════════════════════════════════════ -->
+<h2 id="section-7">정리</h2>
+
+<p>이번 이슈를 통해 Android View 시스템과 Compose 내부 측정 메커니즘의 상호작용을 깊이 이해할 수 있었습니다.</p>
+
+<div class="summary-box">
+    <div class="summary-box-title">핵심 요약</div>
+    <ul>
+        <li><strong>증상:</strong> GridLayoutManager(span≥2) + ComposeView 조합에서 ViewHolder 재활용 시 높이가 이전 값으로 고정</li>
+        <li><strong>원인:</strong> GridLayoutManager가 전달하는 EXACTLY MeasureSpec으로 인해 Compose의 <code>scheduleMeasureAndLayout()</code>이 <code>requestLayout()</code> 대신 <code>invalidate()</code>를 호출</li>
+        <li><strong>해결:</strong> <code>setContent</code> 후 <code>composeView.getChildAt(0)?.requestLayout()</code> 한 줄 추가</li>
+    </ul>
+</div>
+
+<h3>비슷한 상황에서의 적용 가이드</h3>
+
+<p>RecyclerView + ComposeView 하이브리드 패턴을 사용하는 경우, 아래 조건이 모두 해당되면 동일한 해결 방법을 적용하는 것을 권장합니다.</p>
+
+<ul>
+    <li><strong>GridLayoutManager</strong>에서 <strong>spanCount가 2 이상</strong>인 경우</li>
+    <li>ViewHolder가 <strong>재활용</strong>되면서 다른 높이의 콘텐츠가 바인딩되는 경우</li>
+    <li>ViewHolder 내부에 <strong>ComposeView</strong>를 사용하는 경우</li>
+</ul>
+
+<p>반면 LinearLayoutManager를 사용하거나, StaggeredGridLayoutManager처럼 아이템마다 독립적인 높이를 허용하는 경우에는 이 문제가 발생하지 않습니다. MeasureSpec이 UNSPECIFIED로 전달되어 Compose의 <code>scheduleMeasureAndLayout()</code>이 <code>requestLayout()</code>을 정상 호출하기 때문입니다.</p>
+
+<p>이 문제는 View 시스템과 Compose의 하이브리드 환경에서 발생하는 과도기적 이슈입니다. 전체 화면을 Compose로 마이그레이션하면 자연스럽게 해소되지만, 마이그레이션 과정에서 RecyclerView를 유지해야 하는 상황이라면 기억해둘 만한 해결 방법입니다.</p>
+
+<div class="summary-box">
+    <div class="summary-box-title">시각화 자료</div>
+    <p>이 글의 핵심 다이어그램을 한 페이지로 정리한 시각화 문서를 제공합니다.<br>
+    <a href="composeview-height-issue.html" style="font-weight: 700;">→ ComposeView 높이 갱신 이슈 — 시각화 페이지 보기</a></p>
+</div>
+
+<hr>
+
+</article>
+
+<!-- Footnotes -->
+<div class="article">
+    <div class="footnotes">
+        <p>[1] <a href="https://issuetracker.google.com/issues/245521191">Google Issue Tracker #245521191</a> — ComposeView height not updated in RecyclerView</p>
+        <p>[2] <a href="https://issuetracker.google.com/issues/240449681">Google Issue Tracker #240449681</a> — ComposeView in RecyclerView with GridLayoutManager</p>
+    </div>
+</div>
+
+<!-- Footer -->
+<footer class="article-footer">
+    <div class="share-buttons">
+        <button class="share-btn" onclick="navigator.clipboard.writeText(location.href)">링크 복사</button>
+    </div>
+</footer>
+
+</body>
+</html>
