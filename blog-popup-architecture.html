@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>메인화면 팝업 노출 구조 개선</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ===================================================
+   Toss Tech Light Theme -- Blog Template
+   =================================================== */
+:root {
+    --grey-50: #f9fafb;
+    --grey-100: #f2f4f6;
+    --grey-200: #e5e8eb;
+    --grey-300: #d1d6db;
+    --grey-400: #b0b8c1;
+    --grey-500: #8b95a1;
+    --grey-600: #6b7684;
+    --grey-700: #4e5968;
+    --grey-800: #333d4b;
+    --grey-900: #191f28;
+
+    --toss-blue: #0064FF;
+    --toss-blue-light: rgba(0, 100, 255, 0.08);
+    --toss-blue-border: rgba(0, 100, 255, 0.2);
+
+    --bg: #ffffff;
+    --bg-elevated: var(--grey-50);
+    --bg-highlight: #ffc34236;
+    --bg-code: var(--grey-100);
+    --bg-blockquote: transparent;
+    --text-primary: var(--grey-900);
+    --text-secondary: var(--grey-700);
+    --text-tertiary: var(--grey-500);
+    --border-light: var(--grey-200);
+    --border-blockquote: var(--grey-800);
+
+    --content-width: 680px;
+    --wide-width: 780px;
+    --radius: 16px;
+    --radius-sm: 10px;
+
+    --font-body: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --font-code: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text-primary);
+    line-height: 1.8;
+    font-size: 16.5px;
+    -webkit-font-smoothing: antialiased;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+}
+
+::selection {
+    background: rgba(0, 100, 255, 0.15);
+    color: var(--grey-900);
+}
+
+a { color: var(--toss-blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.article {
+    max-width: var(--content-width);
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+.article-wide {
+    max-width: var(--wide-width);
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+/* Hero */
+.hero {
+    padding: 80px 24px 48px;
+    max-width: var(--content-width);
+    margin: 0 auto;
+}
+
+.hero-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 24px;
+    font-size: 0.875rem;
+    color: var(--text-tertiary);
+}
+
+.hero-meta .author { color: var(--text-secondary); font-weight: 600; }
+.hero-meta .dot { color: var(--grey-300); }
+
+.hero-title {
+    font-size: 2.2rem;
+    font-weight: 800;
+    line-height: 1.3;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+    letter-spacing: -0.02em;
+}
+
+.hero-subtitle {
+    font-size: 1.1rem;
+    line-height: 1.7;
+    color: var(--text-secondary);
+    max-width: 580px;
+}
+
+.hero-tags { display: flex; gap: 8px; margin-top: 20px; flex-wrap: wrap; }
+
+.hero-tag {
+    padding: 4px 12px;
+    border-radius: var(--radius-sm);
+    background: var(--toss-blue-light);
+    border: 1px solid var(--toss-blue-border);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--toss-blue);
+}
+
+/* TOC */
+.toc {
+    margin: 0 0 32px 0;
+    padding: 16px 20px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+}
+
+.toc-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+}
+
+.toc-list { list-style: none; display: flex; flex-direction: column; gap: 0; }
+
+.toc-list a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 3px 0;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    transition: color 0.2s;
+}
+
+.toc-list a:hover { color: var(--toss-blue); text-decoration: none; }
+
+.toc-num {
+    width: 24px;
+    height: 24px;
+    border-radius: 7px;
+    background: var(--grey-200);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+/* Typography */
+.article h2 {
+    font-size: 1.55rem;
+    font-weight: 800;
+    line-height: 1.35;
+    color: var(--text-primary);
+    margin: 56px 0 20px 0;
+    letter-spacing: -0.01em;
+}
+
+.article h2:first-child { margin-top: 0; }
+
+.article h3 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    line-height: 1.4;
+    color: var(--text-primary);
+    margin: 40px 0 14px 0;
+}
+
+.article p { margin: 0 0 20px 0; color: var(--text-primary); }
+.article strong { font-weight: 700; color: var(--grey-900); }
+
+/* Blockquote */
+.article blockquote {
+    margin: 28px 0;
+    padding: 0 0 0 20px;
+    border-left: 2.5px solid var(--border-blockquote);
+    font-size: 1.05rem;
+    font-weight: 600;
+    line-height: 1.7;
+    color: var(--text-primary);
+}
+
+.article blockquote p { margin: 0; }
+
+/* Highlight Box */
+.highlight-box {
+    margin: 28px 0;
+    padding: 20px 24px;
+    background: var(--bg-highlight);
+    border-radius: var(--radius);
+    font-weight: 600;
+    line-height: 1.7;
+    color: var(--text-primary);
+}
+
+/* Content Box */
+.content-box {
+    margin: 28px 0;
+    padding: 24px 28px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+}
+
+.content-box-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+}
+
+/* Code */
+.article code {
+    font-family: var(--font-code);
+    font-size: 0.88em;
+    padding: 2px 6px;
+    background: var(--bg-code);
+    border-radius: 5px;
+    color: var(--grey-800);
+}
+
+.article pre {
+    margin: 24px 0;
+    padding: 24px;
+    background: var(--grey-900);
+    border-radius: var(--radius);
+    overflow-x: auto;
+    line-height: 1.6;
+}
+
+.article pre code {
+    font-family: var(--font-code);
+    font-size: 0.85rem;
+    background: none;
+    padding: 0;
+    color: #abb2bf;
+    border-radius: 0;
+}
+
+.kw { color: #c678dd; }
+.str { color: #98c379; }
+.cmt { color: #5c6370; font-style: italic; }
+.typ { color: #e5c07b; }
+.fn { color: #61afef; }
+.ann { color: #d19a66; }
+.op { color: #56b6c2; }
+
+/* Lists */
+.article ul, .article ol { margin: 0 0 20px 0; padding-left: 24px; }
+.article li { margin-bottom: 10px; line-height: 1.7; }
+.article li::marker { color: var(--text-tertiary); }
+
+/* Checklist */
+.checklist { list-style: none; padding: 0; counter-reset: check; }
+
+.checklist li {
+    counter-increment: check;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.checklist li:last-child { border-bottom: none; }
+
+.checklist-num {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: var(--toss-blue);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: white;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+/* Images */
+.article img, .article-wide img {
+    max-width: 100%;
+    border-radius: var(--radius);
+    margin: 28px 0;
+    display: block;
+}
+
+.img-caption {
+    text-align: center;
+    font-size: 0.82rem;
+    color: var(--text-tertiary);
+    margin-top: -16px;
+    margin-bottom: 28px;
+}
+
+/* Viz Section */
+.viz-section {
+    max-width: var(--wide-width);
+    margin: 40px auto;
+    padding: 0 24px;
+}
+
+.viz-card {
+    padding: 32px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+}
+
+.viz-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--toss-blue);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 16px;
+}
+
+/* Metrics Table */
+.metrics-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0;
+    font-size: 0.9rem;
+}
+
+.metrics-table th {
+    text-align: left;
+    padding: 12px 16px;
+    background: var(--bg-elevated);
+    border-bottom: 2px solid var(--border-light);
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.metrics-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-light);
+    color: var(--text-secondary);
+}
+
+.metrics-table .metric-label { color: var(--text-primary); font-weight: 600; }
+.metrics-table .metric-good { color: #16a34a; font-weight: 700; }
+.metrics-table .metric-bad { color: #dc2626; font-weight: 600; }
+.metrics-table .metric-neutral { color: var(--text-tertiary); }
+
+.delta {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.delta-good { background: rgba(22, 163, 74, 0.1); color: #16a34a; }
+.delta-bad { background: rgba(220, 38, 38, 0.1); color: #dc2626; }
+.delta-neutral { background: var(--grey-100); color: var(--text-tertiary); }
+
+/* Summary Box */
+.summary-box {
+    margin: 36px 0;
+    padding: 24px 28px;
+    background: var(--toss-blue-light);
+    border: 1px solid var(--toss-blue-border);
+    border-radius: var(--radius);
+}
+
+.summary-box-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--toss-blue);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.summary-box p, .summary-box li { color: var(--text-primary); font-size: 0.95rem; }
+
+/* Compare Grid */
+.compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 28px 0;
+}
+
+.compare-card {
+    padding: 20px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+    background: var(--bg);
+    transition: border-color 0.2s;
+}
+
+.compare-card:hover { border-color: var(--grey-300); }
+
+.compare-card-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+}
+
+.compare-before { border-left: 3px solid var(--grey-400); }
+.compare-after { border-left: 3px solid var(--toss-blue); }
+
+/* Category Cards (3-column) */
+.category-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin: 28px 0;
+}
+
+.category-card {
+    padding: 20px;
+    border-radius: var(--radius);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-light);
+    transition: border-color 0.2s;
+}
+
+.category-card:hover { border-color: var(--grey-300); }
+
+.category-card-icon {
+    font-size: 1.4rem;
+    margin-bottom: 10px;
+    line-height: 1;
+}
+
+.category-card-title {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+}
+
+.category-card-desc {
+    font-size: 0.82rem;
+    color: var(--text-tertiary);
+    line-height: 1.5;
+}
+
+/* Separator */
+.article hr { border: none; height: 1px; background: var(--border-light); margin: 48px 0; }
+
+/* Footer */
+.article-footer {
+    margin-top: 56px;
+    padding: 32px 0;
+    text-align: center;
+    color: var(--text-tertiary);
+    font-size: 0.82rem;
+}
+
+.share-buttons { display: flex; justify-content: center; gap: 12px; margin-top: 16px; }
+
+.share-btn {
+    padding: 8px 20px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-light);
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.share-btn:hover { background: var(--grey-200); color: var(--text-primary); }
+
+/* Responsive */
+@media (max-width: 768px) {
+    .hero { padding: 48px 20px 32px; }
+    .hero-title { font-size: 1.7rem; }
+    .article, .article-wide { padding: 0 20px; }
+    .article h2 { font-size: 1.35rem; margin-top: 40px; }
+    .article h3 { font-size: 1.1rem; }
+    .compare-grid { grid-template-columns: 1fr; }
+    .category-grid { grid-template-columns: 1fr; }
+    .article pre { padding: 16px; margin-left: -8px; margin-right: -8px; border-radius: 12px; }
+}
+
+@media print {
+    body { font-size: 11pt; }
+    .hero { padding: 24px 0; }
+    .article pre { white-space: pre-wrap; }
+    .toc, .share-buttons, .article-footer { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ===================================================
+     Hero Header
+     =================================================== -->
+<header class="hero">
+    <div class="hero-meta">
+        <span class="author">keechan-kurly</span>
+        <span class="dot">&middot;</span>
+        <span>Android Developer</span>
+        <span class="dot">&middot;</span>
+        <time>2025. 01 ~ 03</time>
+    </div>
+    <h1 class="hero-title">메인화면 팝업 노출 구조 개선</h1>
+    <p class="hero-subtitle">Chain of Responsibility 패턴 도입으로 God Object를 해소하고, Lifecycle 기반 구조 설계로 크래시를 제거한 과정을 기록합니다.</p>
+    <div class="hero-tags">
+        <span class="hero-tag">Android</span>
+        <span class="hero-tag">Popup</span>
+        <span class="hero-tag">Chain of Responsibility</span>
+        <span class="hero-tag">Lifecycle</span>
+        <span class="hero-tag">KMA-4789</span>
+        <span class="hero-tag">KMA-4978</span>
+    </div>
+</header>
+
+<!-- ===================================================
+     Table of Contents
+     =================================================== -->
+<nav class="article">
+    <div class="toc">
+        <div class="toc-label">목차</div>
+        <ol class="toc-list">
+            <li><a href="#section-1"><span class="toc-num">1</span> 배경</a></li>
+            <li><a href="#section-2"><span class="toc-num">2</span> 1차 개선 -- Chain of Responsibility</a></li>
+            <li><a href="#section-3"><span class="toc-num">3</span> 문제 발생 -- Lifecycle 크래시</a></li>
+            <li><a href="#section-4"><span class="toc-num">4</span> 2차 개선 -- Lifecycle 기반 구조</a></li>
+            <li><a href="#section-5"><span class="toc-num">5</span> 3차 개선 — 테스트 커버리지</a></li>
+            <li><a href="#section-6"><span class="toc-num">6</span> 시각화</a></li>
+            <li><a href="#section-7"><span class="toc-num">7</span> Before / After</a></li>
+            <li><a href="#section-8"><span class="toc-num">8</span> 한계</a></li>
+        </ol>
+    </div>
+</nav>
+
+<!-- ===================================================
+     Article Body
+     =================================================== -->
+<article class="article">
+
+<!-- ===================================================
+     Section 1: 배경
+     =================================================== -->
+<h2 id="section-1">배경</h2>
+
+<p>컬리 앱의 메인화면에는 <strong>7개의 팝업</strong>이 순차적으로 노출됩니다. 권한 안내, 알림 권한, 멤버스 전환 동의, 마케팅 수신 동의, 바텀시트, 공지사항, 비밀번호 변경 안내 -- 이 팝업들은 이전 팝업의 결과에 따라 다음 팝업의 노출 여부가 결정되는 <strong>순차적 의존 관계</strong>를 가지고 있었습니다.</p>
+
+<p>기존 구현에서는 이 모든 로직이 <code>MainActivity</code>와 <code>MainViewModel</code> 두 클래스에 집중되어 있었습니다.</p>
+
+<div class="category-grid">
+    <div class="category-card">
+        <div class="category-card-title">순서 변경 위험</div>
+        <div class="category-card-desc">Activity(174줄) + ViewModel(191줄)을 동시에 수정해야 팝업 순서를 변경할 수 있음. 한쪽만 수정하면 동작이 깨짐.</div>
+    </div>
+    <div class="category-card">
+        <div class="category-card-title">5곳 수정 필요</div>
+        <div class="category-card-desc">새 팝업 추가 시 ViewModel의 UIEvent, check 함수, Activity의 show 함수, when 분기, 순서 로직을 모두 수정.</div>
+    </div>
+    <div class="category-card">
+        <div class="category-card-title">테스트 불가</div>
+        <div class="category-card-desc">팝업 순서 검증은 Activity와 ViewModel의 UIEvent 수집에 의존. 단위 테스트로 순서를 검증할 수 없음.</div>
+    </div>
+</div>
+
+<p>예를 들어, 기존 <code>MainViewModel</code>에서 마케팅 팝업 표시 후 딥링크를 체크하는 코드는 다음과 같았습니다.</p>
+
+<pre><code><span class="cmt">// MainViewModel.kt (기존 코드 -- 226줄 중 일부)</span>
+<span class="kw">fun</span> <span class="fn">checkMarketingPopup</span>() {
+    viewModelScope.<span class="fn">launch</span>(dispatcher.<span class="fn">io</span>()) {
+        <span class="kw">when</span> (checkMarketingPopup.<span class="fn">execute</span>()) {
+            <span class="kw">is</span> <span class="typ">CheckMarketingPopup.Result.Show</span> <span class="op">-></span> {
+                isShownMarketingPopup = <span class="ann">true</span>
+                _uiEvent.<span class="fn">emit</span>(<span class="typ">UIEvent.ShowMarketingPopup</span>)
+            }
+            <span class="kw">is</span> <span class="typ">CheckMarketingPopup.Result.Pass</span> <span class="op">-></span> {
+                _uiEvent.<span class="fn">emit</span>(<span class="typ">UIEvent.CheckDeepLink</span>)  <span class="cmt">// 다음 단계를 직접 지정</span>
+            }
+        }
+    }
+}</code></pre>
+
+<p>각 팝업 함수가 다음 팝업 함수를 직접 호출하는 구조였기 때문에, <strong>팝업 간의 순서가 코드 전체에 흩어져</strong> 있었습니다.</p>
+
+<hr>
+
+<!-- ===================================================
+     Section 2: 1차 개선 -- Chain of Responsibility
+     =================================================== -->
+<h2 id="section-2">1차 개선 -- Chain of Responsibility (#5669)</h2>
+
+<h3>요구사항과 설계</h3>
+
+<table class="metrics-table">
+    <thead>
+        <tr><th>요구사항</th><th>설계</th></tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td class="metric-label">팝업 단위 독립</td>
+            <td><code>PopupHandler</code> interface + <code>BasePopupHandler</code></td>
+        </tr>
+        <tr>
+            <td class="metric-label">순서를 한 곳에서 관리</td>
+            <td><code>MainPopupFlow</code> -- handler chaining</td>
+        </tr>
+        <tr>
+            <td class="metric-label">핸들러 간 통신</td>
+            <td><code>SideEffect</code> sealed interface</td>
+        </tr>
+        <tr>
+            <td class="metric-label">딥링크 시 조건 분기</td>
+            <td><code>NopPopupHandler</code> -- 조건에 따라 스킵</td>
+        </tr>
+        <tr>
+            <td class="metric-label">팝업 순서 검증</td>
+            <td><code>MainPopupFlowTest</code> + <code>PopupHandlerTest</code></td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>PopupHandler interface</h3>
+
+<p>각 팝업을 독립된 핸들러로 추출하기 위한 인터페이스입니다. <code>next()</code>로 체이닝하고, <code>launch()</code>로 실행합니다.</p>
+
+<pre><code><span class="kw">interface</span> <span class="typ">PopupHandler</span> {
+    <span class="kw">fun</span> <span class="fn">next</span>(block: () <span class="op">-></span> <span class="typ">PopupHandler</span>): <span class="typ">PopupHandler</span>
+    <span class="kw">fun</span> <span class="fn">next</span>(handler: <span class="typ">PopupHandler</span>): <span class="typ">PopupHandler</span>
+    <span class="kw">fun</span> <span class="fn">next</span>(isShown: <span class="typ">Boolean</span>)
+    <span class="kw">fun</span> <span class="fn">launch</span>(
+        previousPopup: <span class="typ">PopupHandler</span> = <span class="kw">this</span>,
+        isShown: <span class="typ">Boolean</span> = <span class="ann">false</span>
+    )
+    <span class="kw">fun</span> <span class="fn">bind</span>(executorService: <span class="typ">PopupExecutorService</span>): <span class="typ">PopupHandler</span>
+}</code></pre>
+
+<p><code>next(block: () -> PopupHandler)</code> 오버로드는 <strong>런타임 조건 분기</strong>를 가능하게 합니다. 딥링크 여부에 따라 <code>NopPopupHandler</code> 또는 <code>MarketingBottomSheetPopupHandler</code>를 동적으로 결정합니다.</p>
+
+<h3>MainPopupFlow -- 순서를 한 곳에서 관리</h3>
+
+<p>7개 핸들러의 실행 순서가 단 하나의 체이닝 표현식으로 정의됩니다.</p>
+
+<pre><code><span class="kw">class</span> <span class="typ">MainPopupFlow</span>(
+    <span class="kw">private val</span> isHandledDeepLink: () <span class="op">-></span> <span class="typ">Boolean</span>,
+    <span class="kw">private val</span> permissionUsageGuidePopupHandler: <span class="typ">PopupHandler</span>,
+    <span class="kw">private val</span> notificationPermissionPopupHandler: <span class="typ">PopupHandler</span>,
+    <span class="cmt">// ... 5개 핸들러 생략</span>
+    <span class="kw">private val</span> popupCompletionExecutor: <span class="typ">PopupCompletionExecutor</span>,
+    <span class="kw">private val</span> popupTaskExecutor: <span class="typ">PopupTaskExecutor</span>
+) {
+    <span class="kw">private val</span> popupHandler: <span class="typ">PopupHandler</span> <span class="kw">by</span> <span class="fn">lazy</span> {
+        permissionUsageGuidePopupHandler
+            .<span class="fn">next</span>(notificationPermissionPopupHandler)
+            .<span class="fn">next</span>(membersSubscriptionAgreePopupHandler)
+            .<span class="fn">next</span>(marketingPopupHandler)
+            .<span class="fn">next</span>(getNextHandler)  <span class="cmt">// 딥링크 조건 분기</span>
+            .<span class="fn">next</span>(noticePopupHandler)
+            .<span class="fn">next</span>(passwordChangePopupHandler)
+            .<span class="fn">bind</span>(executorService)
+    }
+
+    <span class="kw">private val</span> getNextHandler = {
+        <span class="kw">if</span> (<span class="fn">isHandledDeepLink</span>()) nopPopupHandler
+        <span class="kw">else</span> marketingBottomSheetPopupHandler
+    }
+}</code></pre>
+
+<h3>SideEffect -- 핸들러와 Activity 간 통신</h3>
+
+<p>핸들러가 Activity의 UI 동작(Snackbar, 이벤트 전송 등)을 요청할 때 사용하는 sealed interface입니다.</p>
+
+<pre><code><span class="kw">sealed interface</span> <span class="typ">SideEffect</span> {
+    <span class="kw">sealed class</span> <span class="typ">MarketingPopup</span> : <span class="typ">SideEffect</span> {
+        <span class="kw">data class</span> <span class="typ">ShowSnackbar</span>(<span class="kw">val</span> message: <span class="typ">String</span>) : <span class="typ">MarketingPopup</span>()
+        <span class="kw">data class</span> <span class="typ">SendMarketingInformationAgreement</span>(<span class="kw">val</span> isChecked: <span class="typ">Boolean</span>) : <span class="typ">MarketingPopup</span>()
+        <span class="kw">data object</span> <span class="typ">BlockViewMainBrazeEventWhileDeepLinkMoving</span> : <span class="typ">MarketingPopup</span>()
+    }
+    <span class="kw">sealed interface</span> <span class="typ">NoticePopup</span> : <span class="typ">SideEffect</span> { <span class="cmt">/* ... */</span> }
+    <span class="kw">sealed class</span> <span class="typ">PasswordPopup</span> : <span class="typ">SideEffect</span> { <span class="cmt">/* ... */</span> }
+}</code></pre>
+
+<h3>테스트 -- 순서 검증이 가능해짐</h3>
+
+<p>MockPopup과 <code>verifyOrder</code>를 통해 팝업 노출 순서를 단위 테스트로 검증할 수 있게 되었습니다.</p>
+
+<pre><code><span class="ann">@Test</span>
+<span class="kw">fun</span> <span class="fn">`메인화면 내 팝업은 아래와 같은 순서로 노출된다`</span>() {
+    every { isHandledDeepLink() } <span class="fn">returns</span> <span class="ann">false</span>
+
+    popupFlow.<span class="fn">launch</span>()
+
+    <span class="fn">verifyOrder</span> {
+        `권한 사용 안내 팝업`.<span class="fn">launch</span>(any(), any())
+        `알림 권한 요청 팝업`.<span class="fn">launch</span>(any(), any())
+        `멤버스 전환 동의 팝업`.<span class="fn">launch</span>(any(), any())
+        `마케팅 수신 동의 팝업`.<span class="fn">launch</span>(any(), any())
+        `마케팅 수신 동의 바텀 시트`.<span class="fn">launch</span>(any(), any())
+        `공지사항 팝업`.<span class="fn">launch</span>(any(), any())
+        `비밀번호 변경 안내 팝업`.<span class="fn">launch</span>(any(), any())
+    }
+}
+
+<span class="ann">@Test</span>
+<span class="kw">fun</span> <span class="fn">`딥링크가 처리된 경우 마케팅 수신 동의 바텀 시트는 노출되지 않는다`</span>() {
+    every { isHandledDeepLink() } <span class="fn">returns</span> <span class="ann">true</span>
+
+    popupFlow.<span class="fn">launch</span>()
+
+    <span class="fn">verify</span>(exactly = <span class="ann">0</span>) {
+        `마케팅 수신 동의 바텀 시트`.<span class="fn">launch</span>(any(), any())
+    }
+}</code></pre>
+
+<hr>
+
+<!-- ===================================================
+     Section 3: 문제 발생 -- Lifecycle 크래시
+     =================================================== -->
+<h2 id="section-3">문제 발생 -- Lifecycle 크래시</h2>
+
+<p>PR #5669를 배포한 후, <strong>FragmentTransaction 관련 크래시</strong>가 보고되었습니다.</p>
+
+<div class="highlight-box">
+    <code>IllegalStateException: Can not perform this action after onSaveInstanceState</code><br><br>
+    PopupHandler가 Activity의 Lifecycle을 인지하지 못한 채 FragmentTransaction을 시도하면, Activity가 <code>onSaveInstanceState</code> 이후 상태(STOPPED)일 때 트랜잭션이 실패합니다.
+</div>
+
+<p>원인을 분석하면 명확합니다.</p>
+
+<ul>
+    <li>각 핸들러의 <code>launch()</code>는 <code>coroutineScope.launch { }</code>로 비동기 실행됨</li>
+    <li>API 호출 후 DialogFragment를 <code>show()</code>하는 시점에 Activity가 이미 백그라운드로 전환되었을 수 있음</li>
+    <li>기존 구조에서는 핸들러가 Lifecycle 상태를 확인하는 메커니즘이 없었음</li>
+</ul>
+
+<p>추가로, 핸들러 내 코루틴에서 예외가 발생하면 <strong>체인이 끊어져 이후 팝업이 영원히 실행되지 않는</strong> 문제도 있었습니다.</p>
+
+<hr>
+
+<!-- ===================================================
+     Section 4: 2차 개선 -- Lifecycle 기반 구조
+     =================================================== -->
+<h2 id="section-4">2차 개선 -- Lifecycle 기반 구조 (#5778)</h2>
+
+<h3>요구사항과 설계</h3>
+
+<table class="metrics-table">
+    <thead>
+        <tr><th>요구사항</th><th>설계</th></tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td class="metric-label">Lifecycle이 필요한 작업을 안전하게 실행</td>
+            <td><code>PopupTask</code> + <code>PopupTaskExecutor</code></td>
+        </tr>
+        <tr>
+            <td class="metric-label">RESUMED 상태에서만 FragmentTransaction</td>
+            <td><code>repeatOnResumed</code> -- Channel 기반 태스크 큐</td>
+        </tr>
+        <tr>
+            <td class="metric-label">예외 발생 시 다음 핸들러로 자동 전환</td>
+            <td><code>PopupHandlerInterceptor</code> + <code>CoroutineExceptionHandler</code></td>
+        </tr>
+        <tr>
+            <td class="metric-label">팝업 플로우 완료 알림</td>
+            <td><code>PopupCompletionExecutor</code> -- SharedFlow delegate</td>
+        </tr>
+        <tr>
+            <td class="metric-label">3가지 executor 통합 관리</td>
+            <td><code>PopupExecutorService</code> -- sideEffect + completion + task</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>PopupTask -- Lifecycle 의존 작업 추상화</h3>
+
+<p>FragmentTransaction 등 Lifecycle이 필요한 작업을 <code>fun interface</code>로 추출합니다.</p>
+
+<pre><code><span class="kw">fun interface</span> <span class="typ">PopupTask</span> {
+    <span class="kw">fun</span> <span class="fn">execute</span>()
+}</code></pre>
+
+<h3>PopupTaskExecutor -- RESUMED 상태에서만 실행</h3>
+
+<p>핵심 컴포넌트입니다. <code>Channel</code>로 태스크를 큐잉하고, <code>repeatOnResumed</code>로 Activity가 RESUMED 상태일 때만 소비합니다.</p>
+
+<pre><code><span class="kw">class</span> <span class="typ">PopupTaskExecutor</span>(
+    lifecycleOwner: <span class="typ">LifecycleOwner</span>,
+    channel: <span class="typ">Channel</span>&lt;<span class="typ">PopupTask</span>&gt;
+) : <span class="typ">Channel</span>&lt;<span class="typ">PopupTask</span>&gt; <span class="kw">by</span> channel {
+
+    <span class="kw">init</span> {
+        lifecycleOwner.<span class="fn">repeatOnResumed</span> {
+            <span class="fn">receiveAsFlow</span>().<span class="fn">collect</span> {
+                it.<span class="fn">execute</span>()
+            }
+        }
+    }
+
+    <span class="kw">companion object</span> {
+        <span class="kw">fun</span> <span class="fn">new</span>(lifecycleOwner: <span class="typ">LifecycleOwner</span>): <span class="typ">PopupTaskExecutor</span> {
+            <span class="kw">return</span> <span class="typ">PopupTaskExecutor</span>(lifecycleOwner, <span class="typ">Channel</span>())
+        }
+    }
+}</code></pre>
+
+<p>이 구조에서 핸들러가 <code>submit(task)</code>를 호출하면 Channel에 태스크가 적재되고, Activity가 RESUMED 상태가 되어야 비로소 <code>execute()</code>가 호출됩니다. 백그라운드 전환 후 복귀했을 때 자연스럽게 재개됩니다.</p>
+
+<h3>PopupExecutorService -- 3가지 경로 통합</h3>
+
+<p>핸들러가 사용하는 3가지 실행 경로(SideEffect 전달, 완료 알림, 태스크 제출)를 하나의 서비스로 통합합니다.</p>
+
+<pre><code><span class="kw">data class</span> <span class="typ">PopupExecutorService</span>(
+    <span class="kw">private val</span> sideEffectExecutor: (<span class="typ">SideEffect</span>) <span class="op">-></span> <span class="typ">Unit</span>,
+    <span class="kw">private val</span> completionExecutor: () <span class="op">-></span> <span class="typ">Unit</span>,
+    <span class="kw">private val</span> taskExecutor: <span class="kw">suspend</span> (<span class="typ">PopupTask</span>) <span class="op">-></span> <span class="typ">Unit</span>
+) {
+    <span class="kw">fun</span> <span class="fn">sideEffect</span>(sideEffect: <span class="typ">SideEffect</span>) { sideEffectExecutor(sideEffect) }
+    <span class="kw">fun</span> <span class="fn">complete</span>() { completionExecutor() }
+    <span class="kw">suspend fun</span> <span class="fn">submit</span>(task: <span class="typ">PopupTask</span>) { taskExecutor(task) }
+
+    <span class="kw">companion object</span> {
+        <span class="kw">val</span> Default = <span class="typ">PopupExecutorService</span>({}, {}, {})
+    }
+}</code></pre>
+
+<h3>PopupHandlerInterceptor -- 예외 시 체인 복구</h3>
+
+<p><code>CoroutineContext.Element</code>를 활용하여 핸들러를 코루틴 컨텍스트에 포함시킵니다. <code>CoroutineExceptionHandler</code>에서 현재 핸들러를 꺼내 <code>next()</code>를 호출함으로써 예외가 발생해도 체인이 끊어지지 않습니다.</p>
+
+<pre><code><span class="kw">class</span> <span class="typ">PopupHandlerInterceptor</span>(
+    <span class="kw">private val</span> popupHandler: <span class="typ">PopupHandler</span>
+) : <span class="typ">CoroutineContext.Element</span> {
+
+    <span class="kw">override val</span> key: <span class="typ">CoroutineContext.Key</span>&lt;*&gt; = <span class="typ">Key</span>
+
+    <span class="kw">fun</span> <span class="fn">next</span>() { popupHandler.<span class="fn">next</span>(<span class="ann">false</span>) }
+
+    <span class="kw">companion object</span> Key : <span class="typ">CoroutineContext.Key</span>&lt;<span class="typ">PopupHandlerInterceptor</span>&gt;
+}</code></pre>
+
+<p>DI 모듈에서 <code>CoroutineExceptionHandler</code>를 Activity 스코프로 제공합니다.</p>
+
+<pre><code><span class="ann">@Provides</span>
+<span class="ann">@ActivityScope</span>
+<span class="kw">fun</span> <span class="fn">provideCoroutineExceptionHandler</span>(logger: <span class="typ">Logger</span>): <span class="typ">CoroutineExceptionHandler</span> {
+    <span class="kw">return</span> <span class="typ">CoroutineExceptionHandler</span> { coroutineContext, throwable <span class="op">-></span>
+        logger.<span class="fn">error</span>(throwable)
+        coroutineContext[<span class="typ">PopupHandlerInterceptor</span>]?.<span class="fn">next</span>()
+    }
+}</code></pre>
+
+<h3>핸들러에 적용된 모습</h3>
+
+<p>각 핸들러는 FragmentTransaction을 <code>PopupTask</code>로 래핑하여 <code>submit()</code>으로 전달하고, 코루틴에 <code>CoroutineExceptionHandler</code> + <code>PopupHandlerInterceptor</code>를 결합합니다.</p>
+
+<pre><code><span class="kw">class</span> <span class="typ">PermissionUsageGuidePopupHandler</span> <span class="ann">@Inject</span> <span class="kw">constructor</span>(
+    <span class="ann">@ActivityScope</span> <span class="kw">private val</span> coroutineScope: <span class="typ">CoroutineScope</span>,
+    <span class="ann">@ActivityScope</span> <span class="kw">private val</span> coroutineExceptionHandler: <span class="typ">CoroutineExceptionHandler</span>,
+    <span class="kw">private val</span> popupDispatcher: <span class="typ">PermissionUsageGuidePopupDispatcher</span>,
+    <span class="kw">private val</span> checkPermissionPopup: <span class="typ">CheckPermissionPopup</span>
+) : <span class="typ">BasePopupHandler</span>(coroutineScope) {
+
+    <span class="kw">override fun</span> <span class="fn">launch</span>(previousPopup: <span class="typ">PopupHandler</span>, isShown: <span class="typ">Boolean</span>) {
+        coroutineScope.<span class="fn">launch</span>(coroutineExceptionHandler + <span class="fn">createPopupHandlerInterceptor</span>()) {
+            <span class="kw">when</span> (checkPermissionPopup.<span class="fn">execute</span>()) {
+                <span class="kw">is</span> <span class="typ">CheckPermissionPopup.Result.Show</span> <span class="op">-></span> {
+                    <span class="kw">val</span> task = <span class="typ">PopupTask</span> {
+                        popupDispatcher.<span class="fn">open</span>(<span class="typ">BasicPopup</span> { <span class="fn">next</span>(<span class="ann">true</span>) })
+                    }
+                    <span class="fn">submit</span>(task)  <span class="cmt">// RESUMED에서만 실행됨</span>
+                }
+                <span class="kw">else</span> <span class="op">-></span> <span class="fn">next</span>(<span class="ann">false</span>)
+            }
+        }
+    }
+}</code></pre>
+
+<hr>
+
+<!-- ===================================================
+     Section 5: 3차 개선 — 테스트 커버리지 (#5853)
+     =================================================== -->
+<h2 id="section-5">3차 개선 — 테스트 커버리지 100% (#5853)</h2>
+
+<p>#5778의 Lifecycle 구조 도입 후, 각 핸들러의 UI 로직을 <code>PopupDispatcher</code>로 분리하여 테스트 가능성을 높이고 커버리지를 100%로 달성.</p>
+
+<h3>핵심 변경: Handler → Dispatcher 분리</h3>
+
+<div class="compare-grid">
+    <div class="compare-card compare-before">
+        <div class="compare-card-label">Before</div>
+        <p>핸들러 안에 UseCase 호출 + FragmentTransaction + 콜백 로직이 혼재<br>→ 테스트에서 Fragment 의존성 필요</p>
+    </div>
+    <div class="compare-card compare-after">
+        <div class="compare-card-label">After</div>
+        <p>핸들러는 조건 판단만, UI 로직은 <code>PopupDispatcher</code>로 위임<br>→ Dispatcher를 mock하여 핸들러 단독 테스트 가능</p>
+    </div>
+</div>
+
+<h3>커버리지 개선 결과</h3>
+
+<table class="metrics-table">
+    <thead>
+        <tr><th>Handler</th><th>Before</th><th>After</th></tr>
+    </thead>
+    <tbody>
+        <tr><td class="metric-label">MarketingBottomSheetPopupHandler</td><td>75%</td><td><span class="delta delta-good">100%</span></td></tr>
+        <tr><td class="metric-label">MarketingPopupHandler</td><td>28%</td><td><span class="delta delta-good">100%</span></td></tr>
+        <tr><td class="metric-label">MembersSubscriptionAgreePopupHandler</td><td>0%</td><td><span class="delta delta-good">100%</span></td></tr>
+        <tr><td class="metric-label">NoticePopupHandler</td><td>63%</td><td><span class="delta delta-good">100%</span></td></tr>
+        <tr><td class="metric-label">NotificationPermissionPopupHandler</td><td>0%</td><td><span class="delta delta-good">100%</span></td></tr>
+        <tr><td class="metric-label">PasswordPopupHandler</td><td>0%</td><td><span class="delta delta-good">100%</span></td></tr>
+        <tr><td class="metric-label">PermissionUsageGuidePopupHandler</td><td>0%</td><td><span class="delta delta-good">100%</span></td></tr>
+    </tbody>
+</table>
+
+<hr>
+
+<!-- ===================================================
+     Section 6: 시각화
+     =================================================== -->
+<h2 id="section-6">시각화</h2>
+
+<p>3개 PR의 진화 과정을 시각화로 확인할 수 있다.</p>
+
+<div style="margin: 24px 0; padding: 24px 28px; border-radius: var(--radius); border: 1px solid var(--toss-blue-border); background: var(--toss-blue-light); text-align: center;">
+    <div style="font-size: 0.95rem; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">MainPopupFlow 진화 과정 — 시각화</div>
+    <div style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 16px;">Chain of Responsibility → Lifecycle 안정화 → 테스트 커버리지 100%</div>
+    <a href="main-popup-flow-evolution.html" target="_blank" style="display: inline-block; padding: 10px 24px; border-radius: var(--radius-sm); background: var(--toss-blue); color: white; font-size: 0.88rem; font-weight: 700; text-decoration: none; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">시각화 보기 →</a>
+</div>
+
+<hr>
+
+<!-- ===================================================
+     Section 7: Before / After
+     =================================================== -->
+<h2 id="section-7">Before / After</h2>
+
+<h3>정량적 변화</h3>
+
+<table class="metrics-table">
+    <thead>
+        <tr><th>항목</th><th>Before</th><th>After (#5669 + #5778)</th><th>변화</th></tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td class="metric-label">MainActivity 팝업 코드</td>
+            <td>174줄 (7개 show 함수)</td>
+            <td>26줄 (launchPopup 1개)</td>
+            <td><span class="delta delta-good">-85%</span></td>
+        </tr>
+        <tr>
+            <td class="metric-label">MainViewModel 팝업 코드</td>
+            <td>191줄 (13개 UseCase 의존)</td>
+            <td>0줄 (팝업 책임 제거)</td>
+            <td><span class="delta delta-good">-100%</span></td>
+        </tr>
+        <tr>
+            <td class="metric-label">새 팝업 추가 시 수정 파일</td>
+            <td>5곳 (VM, Activity, UIEvent, when, 순서)</td>
+            <td>2곳 (핸들러 생성 + MainPopupFlow 체이닝)</td>
+            <td><span class="delta delta-good">-60%</span></td>
+        </tr>
+        <tr>
+            <td class="metric-label">팝업 순서 테스트</td>
+            <td>불가</td>
+            <td class="metric-good">MainPopupFlowTest + PopupHandlerTest</td>
+            <td><span class="delta delta-good">+2 suites</span></td>
+        </tr>
+        <tr>
+            <td class="metric-label">Lifecycle 크래시</td>
+            <td class="metric-bad">IllegalStateException 발생</td>
+            <td class="metric-good">repeatOnResumed로 제거</td>
+            <td><span class="delta delta-good">0건</span></td>
+        </tr>
+        <tr>
+            <td class="metric-label">예외 시 체인 중단</td>
+            <td class="metric-bad">이후 팝업 미실행</td>
+            <td class="metric-good">CoroutineExceptionHandler로 복구</td>
+            <td><span class="delta delta-good">해소</span></td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>구조 비교</h3>
+
+<div class="compare-grid">
+    <div class="compare-card compare-before">
+        <div class="compare-card-label">Before -- #5669 only</div>
+        <p><strong>Chain of Responsibility 도입</strong></p>
+        <ul>
+            <li>God Object 분리 완료</li>
+            <li>팝업 순서 테스트 가능</li>
+            <li>SideEffect로 Activity 통신</li>
+        </ul>
+        <p style="margin-top: 12px; color: var(--grey-500); font-size: 0.88rem;"><strong>잔존 문제:</strong> FragmentTransaction 타이밍 제어 불가. 예외 시 체인 끊김.</p>
+    </div>
+    <div class="compare-card compare-after">
+        <div class="compare-card-label">After -- #5669 + #5778</div>
+        <p><strong>Lifecycle 기반 안정성 추가</strong></p>
+        <ul>
+            <li>PopupTask + PopupTaskExecutor로 RESUMED 보장</li>
+            <li>PopupHandlerInterceptor로 예외 복구</li>
+            <li>PopupExecutorService로 실행 경로 통합</li>
+        </ul>
+        <p style="margin-top: 12px; color: var(--grey-500); font-size: 0.88rem;"><strong>결과:</strong> Lifecycle 크래시 0건, 체인 중단 0건.</p>
+    </div>
+</div>
+
+<hr>
+
+<!-- ===================================================
+     Section 6: 한계
+     =================================================== -->
+<h2 id="section-8">한계</h2>
+
+<ul>
+    <li><strong>PopupTaskExecutor의 Channel 무한 대기</strong> -- <code>Channel()</code>은 버퍼 없는 rendezvous channel입니다. 태스크를 send한 뒤 Activity가 RESUMED로 돌아오지 않으면(예: 프로세스 종료) 코루틴이 무한 대기합니다. timeout 메커니즘이 없습니다.</li>
+    <li><strong>PopupHandlerInterceptor의 테스트 복잡도</strong> -- <code>CoroutineContext.Element</code>로 핸들러를 컨텍스트에 주입하는 구조는, 테스트 시 커스텀 <code>CoroutineContext</code>를 구성해야 하므로 단위 테스트 설정이 다소 복잡해집니다.</li>
+</ul>
+
+<div class="summary-box">
+    <div class="summary-box-title">핵심 요약</div>
+    <ul>
+        <li><strong>1차 (#5669)</strong>: Chain of Responsibility 패턴으로 God Object(MainActivity 174줄 + MainViewModel 191줄)를 7개 독립 핸들러 + 1개 Flow 클래스로 분리. 팝업 순서 테스트 가능.</li>
+        <li><strong>2차 (#5778)</strong>: PopupTask + PopupTaskExecutor로 RESUMED 상태에서만 FragmentTransaction 실행. CoroutineExceptionHandler + PopupHandlerInterceptor로 예외 시 체인 자동 복구.</li>
+    </ul>
+</div>
+
+<hr>
+
+<!-- PR links -->
+<div class="content-box">
+    <div class="content-box-title">PR</div>
+    <ul style="list-style: none; padding: 0; margin: 0;">
+        <li style="margin-bottom: 8px;">
+            <a href="https://github.com/nicein-kurly/kurly-android/pull/5669">#5669</a> -- KMA-4789 메인화면 팝업 노출 로직 개선 <span style="color: var(--text-tertiary); font-size: 0.85rem;">(+890 / -536, 56 files)</span>
+        </li>
+        <li>
+            <a href="https://github.com/nicein-kurly/kurly-android/pull/5778">#5778</a> -- KMA-4978 MainPopupFlow 안정성 개선을 위한 Lifecycle 기반 구조 설계 <span style="color: var(--text-tertiary); font-size: 0.85rem;">(+381 / -156, 26 files)</span>
+        </li>
+    </ul>
+</div>
+
+</article>
+
+<!-- ===================================================
+     Footer
+     =================================================== -->
+<footer class="article-footer">
+    <div class="share-buttons">
+        <button class="share-btn" onclick="navigator.clipboard.writeText(location.href)">링크 복사</button>
+    </div>
+</footer>
+
+</body>
+</html>
