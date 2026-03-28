@@ -40,6 +40,14 @@
   .article-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
   .article-card:hover::before { opacity: 1; }
 
+  .article-card.card-compose { background: linear-gradient(135deg, rgba(244,114,182,0.04) 0%, var(--color-surface) 100%); border-color: rgba(244,114,182,0.12); }
+  .article-card.card-compose:hover { border-color: rgba(244,114,182,0.3); box-shadow: 0 8px 32px rgba(244,114,182,0.08); }
+  .article-card.card-compose::before { background: radial-gradient(circle at 20% 50%, rgba(244,114,182,0.06) 0%, transparent 60%); }
+
+  .article-card.card-webview { background: linear-gradient(135deg, rgba(251,146,60,0.04) 0%, var(--color-surface) 100%); border-color: rgba(251,146,60,0.12); }
+  .article-card.card-webview:hover { border-color: rgba(251,146,60,0.3); box-shadow: 0 8px 32px rgba(251,146,60,0.08); }
+  .article-card.card-webview::before { background: radial-gradient(circle at 20% 50%, rgba(251,146,60,0.06) 0%, transparent 60%); }
+
   .article-card.card-ci { background: linear-gradient(135deg, rgba(96,165,250,0.04) 0%, var(--color-surface) 100%); border-color: rgba(96,165,250,0.12); }
   .article-card.card-ci:hover { border-color: rgba(96,165,250,0.3); box-shadow: 0 8px 32px rgba(96,165,250,0.08); }
   .article-card.card-ci::before { background: radial-gradient(circle at 20% 50%, rgba(96,165,250,0.06) 0%, transparent 60%); }
@@ -54,6 +62,8 @@
 
   /* Article Number */
   .article-num { width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; font-weight: 800; color: #fff; flex-shrink: 0; }
+  .article-num.num-compose { background: linear-gradient(135deg, var(--viz-color-ai), #db2777); }
+  .article-num.num-webview { background: linear-gradient(135deg, var(--viz-color-merge), #ea580c); }
   .article-num.num-popup { background: linear-gradient(135deg, var(--viz-color-add), #16a34a); }
   .article-num.num-ci { background: linear-gradient(135deg, var(--viz-color-move), #3b82f6); }
   .article-num.num-impression { background: linear-gradient(135deg, var(--viz-color-emphasis), #7c3aed); }
@@ -62,6 +72,8 @@
   .article-content { display: flex; flex-direction: column; gap: 8px; }
   .article-tags { display: flex; gap: 6px; flex-wrap: wrap; }
   .article-tag { font-size: 0.6rem; font-weight: 600; padding: 3px 10px; border-radius: 9999px; letter-spacing: 0.06em; text-transform: uppercase; }
+  .article-tag.tag-compose { color: var(--viz-color-ai); background: rgba(244,114,182,0.1); border: 1px solid rgba(244,114,182,0.2); }
+  .article-tag.tag-webview { color: var(--viz-color-merge); background: rgba(251,146,60,0.1); border: 1px solid rgba(251,146,60,0.2); }
   .article-tag.tag-popup { color: var(--viz-color-add); background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.2); }
   .article-tag.tag-ci { color: var(--viz-color-move); background: rgba(96,165,250,0.1); border: 1px solid rgba(96,165,250,0.2); }
   .article-tag.tag-impression { color: var(--viz-color-emphasis); background: rgba(167,139,250,0.1); border: 1px solid rgba(167,139,250,0.2); }
@@ -75,6 +87,8 @@
 
   .article-stats { display: flex; gap: 12px; margin-top: 8px; }
   .article-stat { padding: 6px 12px; border-radius: 10px; font-size: 0.68rem; font-weight: 600; border: 1px solid; }
+  .article-stat.stat-compose { border-color: rgba(244,114,182,0.15); color: var(--viz-color-ai); background: rgba(244,114,182,0.04); }
+  .article-stat.stat-webview { border-color: rgba(251,146,60,0.15); color: var(--viz-color-merge); background: rgba(251,146,60,0.04); }
   .article-stat.stat-popup { border-color: rgba(74,222,128,0.15); color: var(--viz-color-add); background: rgba(74,222,128,0.04); }
   .article-stat.stat-ci { border-color: rgba(96,165,250,0.15); color: var(--viz-color-move); background: rgba(96,165,250,0.04); }
   .article-stat.stat-impression { border-color: rgba(167,139,250,0.15); color: var(--viz-color-emphasis); background: rgba(167,139,250,0.04); }
@@ -132,9 +146,31 @@
     <span class="article-arrow">→</span>
   </a>
 
+  <!-- WebView Texture Crash (2026 Q1) -->
+  <a href="blog-webview-texture-crash.html" class="article-card card-webview">
+    <div class="article-num num-webview">02</div>
+    <div class="article-content">
+      <div class="article-tags">
+        <span class="article-tag tag-webview">WebView</span>
+        <span class="article-tag tag-webview">GPU</span>
+        <span class="article-tag tag-common">Postmortem</span>
+      </div>
+      <div class="article-title">1px이 앱을 죽였다 — 저사양 단말 WebView 크래시의 원인과 대응</div>
+      <div class="article-desc">GPU maxTextureSize가 64의 배수가 아닌 저사양 단말에서 LAYER_SIZE 올림으로 텍스처 한계를 초과하는 경계 문제 추적 및 LAYER_TYPE_NONE 우회 적용</div>
+      <div class="article-stats">
+        <span class="article-stat stat-webview">PR #6950 · 하드웨어 레이어 방어코드</span>
+      </div>
+      <div class="article-meta">
+        <span class="article-meta-item">📅 2026 Q1</span>
+        <span class="article-meta-item">📊 LAYER_SIZE 올림 계산 다이어그램</span>
+      </div>
+    </div>
+    <span class="article-arrow">→</span>
+  </a>
+
   <!-- Popup Architecture (2025 Q1) -->
   <a href="blog-popup-architecture.html" class="article-card card-popup">
-    <div class="article-num num-popup">02</div>
+    <div class="article-num num-popup">03</div>
     <div class="article-content">
       <div class="article-tags">
         <span class="article-tag tag-popup">Chain of Responsibility</span>
@@ -158,7 +194,7 @@
 
   <!-- Impression Event Architecture (2024 Q1) -->
   <a href="blog-impression-architecture.html" class="article-card card-impression">
-    <div class="article-num num-impression">03</div>
+    <div class="article-num num-impression">04</div>
     <div class="article-content">
       <div class="article-tags">
         <span class="article-tag tag-impression">아키텍처</span>
@@ -175,6 +211,29 @@
         <span class="article-meta-item">📅 2024 Q1</span>
         <span class="article-meta-item">📊 PAT-025 + PAT-018 시퀀스 다이어그램</span>
         <span class="article-meta-item">📦 100+ 파일</span>
+      </div>
+    </div>
+    <span class="article-arrow">→</span>
+  </a>
+
+  <!-- ComposeView Height Issue (2024 Q1) -->
+  <a href="blog-composeview-height-issue.html" class="article-card card-compose">
+    <div class="article-num num-compose">05</div>
+    <div class="article-content">
+      <div class="article-tags">
+        <span class="article-tag tag-compose">Compose</span>
+        <span class="article-tag tag-compose">RecyclerView</span>
+        <span class="article-tag tag-common">Deep Dive</span>
+      </div>
+      <div class="article-title">RecyclerView 안의 ComposeView, 높이가 왜 안 바뀌지?</div>
+      <div class="article-desc">GridLayoutManager + ComposeView 조합에서 ViewHolder 재활용 시 높이가 갱신되지 않는 문제를 Compose 소스 코드 레벨까지 추적하고, 한 줄로 해결한 과정</div>
+      <div class="article-stats">
+        <span class="article-stat stat-compose">PR #4211 · requestLayout() 한 줄 수정</span>
+      </div>
+      <div class="article-meta">
+        <span class="article-meta-item">📅 2024 Q1</span>
+        <span class="article-meta-item">📊 측정 플로우 다이어그램</span>
+        <span class="article-meta-item">🔍 Compose 소스 분석</span>
       </div>
     </div>
     <span class="article-arrow">→</span>
