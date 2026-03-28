@@ -1,0 +1,1578 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CI 빌드 성능 최적화</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════
+   Toss Tech Light Theme — Blog Template
+   Reference: toss.tech/article/will-ai-replace-developers
+   ═══════════════════════════════════════════════ */
+:root {
+    /* Adaptive Grays (Toss Design System) */
+    --grey-50: #f9fafb;
+    --grey-100: #f2f4f6;
+    --grey-200: #e5e8eb;
+    --grey-300: #d1d6db;
+    --grey-400: #b0b8c1;
+    --grey-500: #8b95a1;
+    --grey-600: #6b7684;
+    --grey-700: #4e5968;
+    --grey-800: #333d4b;
+    --grey-900: #191f28;
+
+    /* Brand */
+    --toss-blue: #0064FF;
+    --toss-blue-light: rgba(0, 100, 255, 0.08);
+    --toss-blue-border: rgba(0, 100, 255, 0.2);
+
+    /* Semantic */
+    --bg: #ffffff;
+    --bg-elevated: var(--grey-50);
+    --bg-highlight: #ffc34236;
+    --bg-code: var(--grey-100);
+    --bg-blockquote: transparent;
+    --text-primary: var(--grey-900);
+    --text-secondary: var(--grey-700);
+    --text-tertiary: var(--grey-500);
+    --border-light: var(--grey-200);
+    --border-blockquote: var(--grey-800);
+
+    /* Layout */
+    --content-width: 680px;
+    --wide-width: 780px;
+    --radius: 16px;
+    --radius-sm: 10px;
+
+    /* Typography */
+    --font-body: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --font-code: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+}
+
+/* Reset */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text-primary);
+    line-height: 1.8;
+    font-size: 16.5px;
+    -webkit-font-smoothing: antialiased;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+}
+
+::selection {
+    background: rgba(0, 100, 255, 0.15);
+    color: var(--grey-900);
+}
+
+a { color: var(--toss-blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ═══════════════════════════════════════════════
+   Layout
+   ═══════════════════════════════════════════════ */
+.article {
+    max-width: var(--content-width);
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+.article-wide {
+    max-width: var(--wide-width);
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+/* ═══════════════════════════════════════════════
+   Hero Header
+   ═══════════════════════════════════════════════ */
+.hero {
+    padding: 80px 24px 48px;
+    max-width: var(--content-width);
+    margin: 0 auto;
+}
+
+.hero-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 24px;
+    font-size: 0.875rem;
+    color: var(--text-tertiary);
+}
+
+.hero-meta .author {
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.hero-meta .dot {
+    color: var(--grey-300);
+}
+
+.hero-title {
+    font-size: 2.2rem;
+    font-weight: 800;
+    line-height: 1.3;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+    letter-spacing: -0.02em;
+}
+
+.hero-subtitle {
+    font-size: 1.1rem;
+    line-height: 1.7;
+    color: var(--text-secondary);
+    max-width: 580px;
+}
+
+.hero-tags {
+    display: flex;
+    gap: 8px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+}
+
+.hero-tag {
+    padding: 4px 12px;
+    border-radius: var(--radius-sm);
+    background: var(--toss-blue-light);
+    border: 1px solid var(--toss-blue-border);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--toss-blue);
+}
+
+/* ═══════════════════════════════════════════════
+   Typography
+   ═══════════════════════════════════════════════ */
+.article h2 {
+    font-size: 1.55rem;
+    font-weight: 800;
+    line-height: 1.35;
+    color: var(--text-primary);
+    margin: 56px 0 20px 0;
+    letter-spacing: -0.01em;
+}
+
+.article h2:first-child {
+    margin-top: 0;
+}
+
+.article h3 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    line-height: 1.4;
+    color: var(--text-primary);
+    margin: 40px 0 14px 0;
+}
+
+.article p {
+    margin: 0 0 20px 0;
+    color: var(--text-primary);
+}
+
+.article strong {
+    font-weight: 700;
+    color: var(--grey-900);
+}
+
+/* ═══════════════════════════════════════════════
+   Blockquote (Left border style)
+   ═══════════════════════════════════════════════ */
+.article blockquote {
+    margin: 28px 0;
+    padding: 0 0 0 20px;
+    border-left: 2.5px solid var(--border-blockquote);
+    font-size: 1.05rem;
+    font-weight: 600;
+    line-height: 1.7;
+    color: var(--text-primary);
+}
+
+.article blockquote p {
+    margin: 0;
+}
+
+/* ═══════════════════════════════════════════════
+   Highlight Box (Yellow)
+   ═══════════════════════════════════════════════ */
+.highlight-box {
+    margin: 28px 0;
+    padding: 20px 24px;
+    background: var(--bg-highlight);
+    border-radius: var(--radius);
+    font-weight: 600;
+    line-height: 1.7;
+    color: var(--text-primary);
+}
+
+/* ═══════════════════════════════════════════════
+   Content Box (Gray rounded)
+   ═══════════════════════════════════════════════ */
+.content-box {
+    margin: 28px 0;
+    padding: 24px 28px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+}
+
+.content-box-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+}
+
+/* ═══════════════════════════════════════════════
+   Code Blocks
+   ═══════════════════════════════════════════════ */
+.article code {
+    font-family: var(--font-code);
+    font-size: 0.88em;
+    padding: 2px 6px;
+    background: var(--bg-code);
+    border-radius: 5px;
+    color: var(--grey-800);
+}
+
+.article pre {
+    margin: 24px 0;
+    padding: 24px;
+    background: var(--grey-900);
+    border-radius: var(--radius);
+    overflow-x: auto;
+    line-height: 1.6;
+}
+
+.article pre code {
+    font-family: var(--font-code);
+    font-size: 0.85rem;
+    background: none;
+    padding: 0;
+    color: #abb2bf;
+    border-radius: 0;
+}
+
+/* Syntax highlighting (One Dark) */
+.kw { color: #c678dd; }       /* keyword */
+.str { color: #98c379; }      /* string */
+.cmt { color: #5c6370; font-style: italic; } /* comment */
+.typ { color: #e5c07b; }      /* type/class */
+.fn { color: #61afef; }       /* function */
+.ann { color: #d19a66; }      /* annotation/number */
+.op { color: #56b6c2; }       /* operator */
+
+/* ═══════════════════════════════════════════════
+   Lists
+   ═══════════════════════════════════════════════ */
+.article ul, .article ol {
+    margin: 0 0 20px 0;
+    padding-left: 24px;
+}
+
+.article li {
+    margin-bottom: 10px;
+    line-height: 1.7;
+}
+
+.article li::marker {
+    color: var(--text-tertiary);
+}
+
+/* Checklist style */
+.checklist {
+    list-style: none;
+    padding: 0;
+    counter-reset: check;
+}
+
+.checklist li {
+    counter-increment: check;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.checklist li:last-child {
+    border-bottom: none;
+}
+
+.checklist-num {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: var(--toss-blue);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: white;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+/* ═══════════════════════════════════════════════
+   Images
+   ═══════════════════════════════════════════════ */
+.article img, .article-wide img {
+    max-width: 100%;
+    border-radius: var(--radius);
+    margin: 28px 0;
+    display: block;
+}
+
+.img-caption {
+    text-align: center;
+    font-size: 0.82rem;
+    color: var(--text-tertiary);
+    margin-top: -16px;
+    margin-bottom: 28px;
+}
+
+/* ═══════════════════════════════════════════════
+   Visualization Section (wider)
+   ═══════════════════════════════════════════════ */
+.viz-section {
+    max-width: var(--wide-width);
+    margin: 40px auto;
+    padding: 0 24px;
+}
+
+.viz-card {
+    padding: 32px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+}
+
+.viz-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--toss-blue);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 16px;
+}
+
+/* ═══════════════════════════════════════════════
+   Metrics Table
+   ═══════════════════════════════════════════════ */
+.metrics-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0;
+    font-size: 0.9rem;
+}
+
+.metrics-table th {
+    text-align: left;
+    padding: 12px 16px;
+    background: var(--bg-elevated);
+    border-bottom: 2px solid var(--border-light);
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.metrics-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-light);
+    color: var(--text-secondary);
+}
+
+.metrics-table .metric-label {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.metrics-table .metric-good {
+    color: #16a34a;
+    font-weight: 700;
+}
+
+.metrics-table .metric-bad {
+    color: #dc2626;
+    font-weight: 600;
+}
+
+.metrics-table .metric-neutral {
+    color: var(--text-tertiary);
+}
+
+/* Delta badges */
+.delta {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.delta-good {
+    background: rgba(22, 163, 74, 0.1);
+    color: #16a34a;
+}
+
+.delta-bad {
+    background: rgba(220, 38, 38, 0.1);
+    color: #dc2626;
+}
+
+.delta-neutral {
+    background: var(--grey-100);
+    color: var(--text-tertiary);
+}
+
+/* ═══════════════════════════════════════════════
+   Summary / Key Takeaway Box
+   ═══════════════════════════════════════════════ */
+.summary-box {
+    margin: 36px 0;
+    padding: 24px 28px;
+    background: var(--toss-blue-light);
+    border: 1px solid var(--toss-blue-border);
+    border-radius: var(--radius);
+}
+
+.summary-box-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--toss-blue);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.summary-box p, .summary-box li {
+    color: var(--text-primary);
+    font-size: 0.95rem;
+}
+
+/* ═══════════════════════════════════════════════
+   Comparison Cards (Inline)
+   ═══════════════════════════════════════════════ */
+.compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 28px 0;
+}
+
+.compare-card {
+    padding: 20px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+    background: var(--bg);
+    transition: border-color 0.2s;
+}
+
+.compare-card:hover {
+    border-color: var(--grey-300);
+}
+
+.compare-card-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+}
+
+.compare-before {
+    border-left: 3px solid var(--grey-400);
+}
+
+.compare-after {
+    border-left: 3px solid var(--toss-blue);
+}
+
+/* ═══════════════════════════════════════════════
+   Separator
+   ═══════════════════════════════════════════════ */
+.article hr {
+    border: none;
+    height: 1px;
+    background: var(--border-light);
+    margin: 48px 0;
+}
+
+/* ═══════════════════════════════════════════════
+   Footnotes
+   ═══════════════════════════════════════════════ */
+.footnotes {
+    margin-top: 56px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border-light);
+    font-size: 0.82rem;
+    color: var(--text-tertiary);
+    line-height: 1.8;
+}
+
+.footnotes a {
+    color: var(--text-tertiary);
+    text-decoration: underline;
+}
+
+.footnote-ref {
+    font-size: 0.75em;
+    vertical-align: super;
+    color: var(--toss-blue);
+    cursor: pointer;
+    font-weight: 600;
+}
+
+/* ═══════════════════════════════════════════════
+   Footer
+   ═══════════════════════════════════════════════ */
+.article-footer {
+    margin-top: 56px;
+    padding: 32px 0;
+    text-align: center;
+    color: var(--text-tertiary);
+    font-size: 0.82rem;
+}
+
+.share-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.share-btn {
+    padding: 8px 20px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-light);
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.share-btn:hover {
+    background: var(--grey-200);
+    color: var(--text-primary);
+}
+
+/* ═══════════════════════════════════════════════
+   Pipeline Flow (monospace content-box)
+   ═══════════════════════════════════════════════ */
+.pipeline-flow {
+    font-family: var(--font-code);
+    font-size: 0.82rem;
+    line-height: 1.7;
+    white-space: pre;
+    color: var(--text-primary);
+}
+
+/* ═══════════════════════════════════════════════
+   Responsive
+   ═══════════════════════════════════════════════ */
+@media (max-width: 768px) {
+    .hero { padding: 48px 20px 32px; }
+    .hero-title { font-size: 1.7rem; }
+    .article, .article-wide { padding: 0 20px; }
+    .article h2 { font-size: 1.35rem; margin-top: 40px; }
+    .article h3 { font-size: 1.1rem; }
+    .compare-grid { grid-template-columns: 1fr; }
+    .article pre { padding: 16px; margin-left: -8px; margin-right: -8px; border-radius: 12px; }
+    .pipeline-flow { font-size: 0.72rem; overflow-x: auto; }
+}
+
+/* ═══════════════════════════════════════════════
+   Print
+   ═══════════════════════════════════════════════ */
+@media print {
+    body { font-size: 11pt; }
+    .hero { padding: 24px 0; }
+    .article pre { white-space: pre-wrap; }
+    .share-buttons, .article-footer { display: none; }
+}
+</style>
+<style>
+/* ═══════════════════════════════════════════════
+   Inline Visualizations
+   ═══════════════════════════════════════════════ */
+.viz-inline {
+    margin: 28px 0;
+    padding: 24px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+}
+
+.viz-inline-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--toss-blue);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 16px;
+}
+
+/* ── Viz 1: Bottleneck Cards ── */
+.bottleneck-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+}
+
+.bottleneck-card {
+    padding: 20px 16px;
+    background: var(--bg);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    text-align: center;
+    transition: border-color 0.2s;
+}
+
+.bottleneck-card:hover {
+    border-color: var(--grey-300);
+}
+
+.bottleneck-icon {
+    font-size: 1.6rem;
+    margin-bottom: 8px;
+}
+
+.bottleneck-title {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.bottleneck-desc {
+    font-size: 0.78rem;
+    color: var(--text-tertiary);
+    line-height: 1.5;
+}
+
+/* ── Viz 3: Classification Flow (Diagram) ── */
+.classify-diagram {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    padding: 8px 0;
+}
+
+.classify-node {
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-align: center;
+    position: relative;
+}
+
+.classify-node-phase {
+    background: var(--toss-blue-light);
+    border: 1.5px solid var(--toss-blue-border);
+    color: var(--toss-blue);
+    min-width: 240px;
+}
+
+.classify-node-question {
+    background: var(--bg);
+    border: 1.5px solid var(--grey-300);
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 0.8rem;
+    padding: 8px 16px;
+    border-radius: 8px;
+    transform: rotate(0deg);
+}
+
+.classify-connector {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 24px;
+    color: var(--grey-400);
+    font-size: 0.8rem;
+}
+
+.classify-branch-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    width: 100%;
+    max-width: 480px;
+}
+
+.classify-branch-yes {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    font-size: 0.78rem;
+    color: var(--text-tertiary);
+}
+
+.classify-branch-no {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+    color: var(--text-tertiary);
+}
+
+.classify-result {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.classify-result-red {
+    background: rgba(220, 38, 38, 0.08);
+    border: 1.5px solid rgba(220, 38, 38, 0.2);
+    color: #dc2626;
+}
+
+.classify-result-yellow {
+    background: rgba(234, 179, 8, 0.08);
+    border: 1.5px solid rgba(234, 179, 8, 0.25);
+    color: #b45309;
+}
+
+.classify-result-green {
+    background: rgba(22, 163, 74, 0.08);
+    border: 1.5px solid rgba(22, 163, 74, 0.2);
+    color: #16a34a;
+}
+
+.classify-result-grey {
+    background: var(--grey-100);
+    border: 1.5px solid var(--grey-200);
+    color: var(--grey-600);
+}
+
+.classify-divider {
+    width: 1.5px;
+    height: 16px;
+    background: var(--grey-300);
+}
+
+.flow-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 10px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.flow-badge-red {
+    background: rgba(220, 38, 38, 0.1);
+    color: #dc2626;
+}
+
+.flow-badge-yellow {
+    background: rgba(234, 179, 8, 0.12);
+    color: #b45309;
+}
+
+.flow-badge-black {
+    background: var(--grey-100);
+    color: var(--grey-700);
+}
+
+.flow-badge-green {
+    background: rgba(22, 163, 74, 0.1);
+    color: #16a34a;
+}
+
+.flow-divider {
+    width: 2px;
+    height: 16px;
+    background: var(--grey-300);
+    margin: 4px 0 4px 24px;
+    border-radius: 1px;
+}
+
+.flow-etc {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--border-light);
+}
+
+/* ── Viz 4: Pipeline Steps ── */
+.pipeline-steps {
+    display: flex;
+    align-items: flex-start;
+    gap: 0;
+    overflow-x: auto;
+    padding-bottom: 4px;
+}
+
+.pipeline-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 100px;
+    flex: 1;
+    text-align: center;
+}
+
+.pipeline-node-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: var(--bg);
+    border: 1.5px solid var(--border-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    margin-bottom: 6px;
+    transition: border-color 0.2s;
+}
+
+.pipeline-node:hover .pipeline-node-icon {
+    border-color: var(--toss-blue);
+}
+
+.pipeline-node-text {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    max-width: 90px;
+}
+
+.pipeline-connector {
+    display: flex;
+    align-items: center;
+    padding-top: 10px;
+    color: var(--grey-400);
+    font-size: 0.7rem;
+    letter-spacing: 1px;
+    flex-shrink: 0;
+}
+
+/* ── Viz 5: Full Pipeline Diagram ── */
+.full-pipeline {
+    padding: 24px 28px;
+    background: var(--bg);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-light);
+    font-size: 0.82rem;
+    line-height: 1.6;
+}
+
+.fp-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 0;
+}
+
+.fp-row-indent {
+    padding-left: 24px;
+}
+
+.fp-row-indent2 {
+    padding-left: 48px;
+}
+
+.fp-line {
+    display: flex;
+    align-items: center;
+    padding: 0 0 0 24px;
+    color: var(--grey-400);
+    font-size: 0.75rem;
+    height: 18px;
+}
+
+.fp-line-indent {
+    padding-left: 48px;
+}
+
+.fp-pr {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 8px;
+    border-radius: 5px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.fp-pr-blue {
+    background: rgba(0, 100, 255, 0.1);
+    color: var(--toss-blue);
+}
+
+.fp-pr-green {
+    background: rgba(22, 163, 74, 0.1);
+    color: #16a34a;
+}
+
+.fp-pr-purple {
+    background: rgba(139, 92, 246, 0.1);
+    color: #7c3aed;
+}
+
+.fp-text {
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+}
+
+.fp-result {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 8px;
+    border-radius: 5px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.fp-result-skip {
+    background: var(--grey-100);
+    color: var(--grey-600);
+}
+
+.fp-result-red {
+    background: rgba(220, 38, 38, 0.1);
+    color: #dc2626;
+}
+
+.fp-result-yellow {
+    background: rgba(234, 179, 8, 0.12);
+    color: #b45309;
+}
+
+.fp-result-green {
+    background: rgba(22, 163, 74, 0.1);
+    color: #16a34a;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+    .bottleneck-grid {
+        grid-template-columns: 1fr;
+    }
+    .pipeline-steps {
+        gap: 0;
+    }
+    .pipeline-node {
+        min-width: 72px;
+    }
+    .pipeline-node-text {
+        font-size: 0.65rem;
+        max-width: 72px;
+    }
+    .pipeline-node-icon {
+        width: 36px;
+        height: 36px;
+        font-size: 1rem;
+    }
+    .full-pipeline {
+        font-size: 0.75rem;
+        padding: 16px 16px;
+        overflow-x: auto;
+    }
+    .fp-row-indent { padding-left: 16px; }
+    .fp-row-indent2 { padding-left: 32px; }
+    .fp-line { padding-left: 16px; }
+    .fp-line-indent { padding-left: 32px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     Hero Header
+     ═══════════════════════════════════════════ -->
+<header class="hero">
+    <div class="hero-meta">
+        <span class="author">keechan-kurly</span>
+        <span class="dot">&middot;</span>
+        <span>Android Developer</span>
+        <span class="dot">&middot;</span>
+        <time>2026년 3월</time>
+    </div>
+    <h1 class="hero-title">CI 빌드 성능 최적화</h1>
+    <p class="hero-subtitle">불필요한 빌드 스킵, 실패 유형 자동 분류, Gemini API 컴파일 에러 자동 수정</p>
+    <div class="hero-tags">
+        <span class="hero-tag">CI/CD</span>
+        <span class="hero-tag">GitHub Actions</span>
+        <span class="hero-tag">Gemini API</span>
+        <span class="hero-tag">KMA-7360</span>
+        <span class="hero-tag">KMA-7401</span>
+        <span class="hero-tag">KMA-7432</span>
+    </div>
+</header>
+
+<!-- ═══════════════════════════════════════════
+     Article Body
+     ═══════════════════════════════════════════ -->
+<article class="article">
+
+    <!-- ─── 문제 요약 (First visual element < 500 chars) ─── -->
+    <div class="content-box">
+        <div class="content-box-title">3가지 병목</div>
+        <ul style="margin: 0; padding-left: 20px;">
+            <li><strong>불필요한 빌드</strong> &mdash; 테스트 코드만 수정해도 전체 빌드 + 테스트가 실행됨</li>
+            <li><strong>실패 원인 파악 어려움</strong> &mdash; 컴파일 에러 / 테스트 실패 / 인프라 문제 구분 없이 동일한 실패 알림</li>
+            <li><strong>컴파일 에러 수동 수정 반복</strong> &mdash; 프로덕션 코드 변경 시 테스트의 생성자/파라미터/import를 수동으로 맞춰야 함</li>
+        </ul>
+    </div>
+
+    <h2 id="section-1">문제</h2>
+
+    <p>PR 기반 CI 파이프라인에서 반복적으로 관찰된 비효율 3가지.</p>
+
+    <!-- Viz 1: Problem Overview -->
+    <div class="viz-inline">
+        <div class="viz-inline-label">Problem Overview</div>
+        <div class="bottleneck-grid">
+            <div class="bottleneck-card">
+                <div class="bottleneck-icon">&#x1F504;</div>
+                <div class="bottleneck-title">불필요한 빌드</div>
+                <div class="bottleneck-desc">테스트만 수정해도 전체 빌드 실행</div>
+            </div>
+            <div class="bottleneck-card">
+                <div class="bottleneck-icon">&#x2753;</div>
+                <div class="bottleneck-title">원인 파악 불가</div>
+                <div class="bottleneck-desc">컴파일 에러? 테스트 실패? 인프라 문제?</div>
+            </div>
+            <div class="bottleneck-card">
+                <div class="bottleneck-icon">&#x1F527;</div>
+                <div class="bottleneck-title">수동 수정 반복</div>
+                <div class="bottleneck-desc">깨진 테스트 컴파일을 매번 수동으로</div>
+            </div>
+        </div>
+    </div>
+
+    <ul>
+        <li><strong>불필요한 빌드</strong>: <code>src/test/</code> 또는 <code>src/androidTest/</code> 경로만 변경된 PR에도 전체 릴리즈 빌드가 트리거됨. 빌드 리소스와 대기 시간이 낭비됨.</li>
+        <li><strong>실패 원인 파악 어려움</strong>: CI 실패 시 Slack에 동일한 형태의 실패 알림만 전달됨. 컴파일 에러인지, 테스트 로직 실패인지, OOM 같은 인프라 문제인지 구분하려면 직접 로그를 열어봐야 함.</li>
+        <li><strong>컴파일 에러 수동 수정 반복</strong>: 프로덕션 코드에서 생성자 파라미터를 추가하거나 클래스명을 변경하면, 해당 코드를 참조하는 테스트 파일이 컴파일 에러를 발생시킴. 개발자가 직접 import, 생성자, 파라미터를 맞춰야 하는 단순 반복 작업.</li>
+    </ul>
+
+    <p>이 3가지를 각각 별도 PR로 해결했다.</p>
+
+    <hr>
+
+    <!-- ═══════════════════════════════════════════
+         Section 2: 워크플로우 실행 정책 개선
+         ═══════════════════════════════════════════ -->
+    <h2 id="section-2">워크플로우 실행 정책 개선 (#7235)</h2>
+
+    <p><code>build_for_develop.yml</code>에 <code>check-changes</code> job을 추가하여, 테스트 코드만 변경된 PR에서는 릴리즈 빌드를 스킵하도록 변경.</p>
+
+    <h3>핵심 변경</h3>
+
+    <ul>
+        <li><code>check-changes</code> job: PR 변경 파일 목록에서 <code>src/test/</code>, <code>src/androidTest/</code> 경로를 제외한 파일이 있는지 확인</li>
+        <li><code>should_build</code> output으로 다음 <code>release-build</code> job을 조건부 실행</li>
+        <li><code>concurrency</code> 설정을 <code>release-build</code> job 레벨로 이동 &mdash; 프로덕션 코드 변경 시에만 이전 빌드를 취소하고, 테스트 코드 변경 시에는 불필요한 취소를 방지</li>
+    </ul>
+
+    <h3>check-changes job</h3>
+
+    <pre><code><span class="cmt"># build_for_develop.yml</span>
+<span class="typ">check-changes</span>:
+  <span class="kw">name</span>: <span class="str">"Check changed files"</span>
+  <span class="kw">runs-on</span>: ubuntu-latest
+  <span class="kw">outputs</span>:
+    <span class="fn">should_build</span>: ${{ steps.check.outputs.should_build }}
+  <span class="kw">steps</span>:
+    - <span class="kw">uses</span>: actions/checkout@v4
+      <span class="kw">with</span>:
+        <span class="fn">fetch-depth</span>: <span class="ann">0</span>
+    - <span class="kw">id</span>: check
+      <span class="kw">run</span>: |
+        <span class="kw">if</span> [ <span class="str">"${{ github.event.action }}"</span> = <span class="str">"synchronize"</span> ] && \
+           git cat-file -e ${{ github.event.before }} 2>/dev/null; <span class="kw">then</span>
+          <span class="cmt"># 일반 push: 최신 push의 변경 파일만 확인</span>
+          CHANGED=$(git diff --name-only \
+            ${{ github.event.before }} ${{ github.event.after }})
+        <span class="kw">else</span>
+          <span class="cmt"># PR 생성, reopen, force push: base 브랜치 대비 전체 diff</span>
+          CHANGED=$(git diff --name-only \
+            origin/${{ github.event.pull_request.base.ref }}...HEAD)
+        <span class="kw">fi</span>
+
+        NON_TEST=$(echo <span class="str">"$CHANGED"</span> \
+          | grep -v <span class="str">'^.*/src/test/.*'</span> \
+          | grep -v <span class="str">'^.*/src/androidTest/.*'</span> || true)
+
+        <span class="kw">if</span> [ -z <span class="str">"$NON_TEST"</span> ]; <span class="kw">then</span>
+          echo <span class="str">"should_build=false"</span> >> $GITHUB_OUTPUT
+        <span class="kw">else</span>
+          echo <span class="str">"should_build=true"</span> >> $GITHUB_OUTPUT
+        <span class="kw">fi</span></code></pre>
+
+    <h3>release-build job 조건부 실행</h3>
+
+    <pre><code><span class="typ">release-build</span>:
+  <span class="kw">needs</span>: check-changes
+  <span class="kw">if</span>: needs.check-changes.outputs.should_build == <span class="str">'true'</span>
+
+  <span class="cmt"># concurrency를 job 레벨로 이동</span>
+  <span class="kw">concurrency</span>:
+    <span class="fn">group</span>: debug_build-${{ github.head_ref }}
+    <span class="fn">cancel-in-progress</span>: <span class="ann">true</span></code></pre>
+
+    <div class="highlight-box">
+        <code>synchronize</code> 이벤트에서 <code>github.event.before</code> 커밋이 존재하면 incremental diff, 없으면 (force push 등) base 대비 전체 diff를 사용한다.
+    </div>
+
+    <!-- Viz 2: Workflow Before/After -->
+    <div class="compare-grid">
+        <div class="compare-card compare-before" style="border-style: dashed;">
+            <div class="compare-card-label">Before</div>
+            <p style="margin: 0; font-size: 0.9rem; color: var(--text-secondary); line-height: 1.6;">모든 PR &rarr; 빌드 + 테스트 실행</p>
+        </div>
+        <div class="compare-card compare-after">
+            <div class="compare-card-label">After</div>
+            <p style="margin: 0; font-size: 0.9rem; color: var(--text-secondary); line-height: 1.6;">
+                <strong>check-changes</strong><br>
+                테스트만 변경? &rarr; <span style="color: var(--grey-500);">스킵</span><br>
+                프로덕션 변경? &rarr; <span style="color: var(--toss-blue); font-weight: 600;">빌드</span>
+            </p>
+        </div>
+    </div>
+
+    <hr>
+
+    <!-- ═══════════════════════════════════════════
+         Section 3: 실패 유형 자동 분류
+         ═══════════════════════════════════════════ -->
+    <h2 id="section-3">실패 유형 자동 분류 (#7271)</h2>
+
+    <p><code>unit_test_on_pr.yml</code>을 2-Phase 구조로 재설계하여, 실패 원인을 자동으로 분류하고 PR 코멘트 + Slack 알림에 반영.</p>
+
+    <h3>2-Phase 실행 전략</h3>
+
+    <div class="compare-grid">
+        <div class="compare-card compare-before">
+            <div class="compare-card-label">Before</div>
+            <p style="margin: 0;"><code>testStoreRelease</code> 단일 실행<br>실패 시 동일한 에러 메시지</p>
+        </div>
+        <div class="compare-card compare-after">
+            <div class="compare-card-label">After</div>
+            <p style="margin: 0;"><strong>Phase 1</strong>: 변경 모듈만 컴파일 체크<br><strong>Phase 2</strong>: 컴파일 성공 시 전체 테스트</p>
+        </div>
+    </div>
+
+    <h3>Phase 1: 변경 모듈 컴파일 체크</h3>
+
+    <p>PR 변경 파일에서 모듈 경로를 추출하고, 모듈별 빌드 타입(Android vs 순수 Kotlin)에 따라 컴파일 태스크를 결정.</p>
+
+    <pre><code><span class="cmt"># PR 변경 파일에서 모듈 경로 추출</span>
+MODULE_PATHS=$(echo <span class="str">"$CHANGED_FILES"</span> \
+  | grep -oP <span class="str">'^.+(?=/src/)'</span> \
+  | sort -u) || true
+
+<span class="cmt"># 모듈별 컴파일 태스크 결정</span>
+<span class="kw">while</span> IFS= read -r MODULE_PATH; <span class="kw">do</span>
+    GRADLE_MODULE=$(echo <span class="str">"$MODULE_PATH"</span> | sed <span class="str">'s|/|:|g; s/^/:/'</span>)
+    BUILD_FILE=<span class="str">"${MODULE_PATH}/build.gradle.kts"</span>
+
+    <span class="kw">if</span> grep -qE <span class="str">'com\.kurly\.android|com\.android'</span> <span class="str">"$BUILD_FILE"</span>; <span class="kw">then</span>
+        TASKS+=(<span class="str">"${GRADLE_MODULE}:compileStoreReleaseUnitTestKotlin"</span>)
+    <span class="kw">else</span>
+        TASKS+=(<span class="str">"${GRADLE_MODULE}:compileTestKotlin"</span>)
+    <span class="kw">fi</span>
+<span class="kw">done</span> <<< <span class="str">"$MODULE_PATHS"</span>
+
+<span class="cmt"># 병렬 컴파일</span>
+./gradlew <span class="str">"${TASKS[@]}"</span> --parallel --no-daemon 2>&1 | tee /tmp/compile-output.log</code></pre>
+
+    <h3>3단 분류 로직</h3>
+
+    <p>Gradle 로그 출력에서 패턴 매칭으로 실패 유형을 결정.</p>
+
+    <table class="metrics-table">
+        <thead>
+            <tr>
+                <th>유형</th>
+                <th>패턴</th>
+                <th>의미</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="metric-label">COMPILE_ERROR</td>
+                <td><code>grep "^e: "</code></td>
+                <td>Kotlin 컴파일 에러 (생성자, import, 타입 불일치)</td>
+            </tr>
+            <tr>
+                <td class="metric-label">TEST_FAILURE</td>
+                <td><code>grep -E " > .+ FAILED$"</code></td>
+                <td>테스트 로직 실패 (assertion, expected vs actual)</td>
+            </tr>
+            <tr>
+                <td class="metric-label">BUILD_ERROR</td>
+                <td>위 두 패턴 불일치</td>
+                <td>인프라 문제 (OOM, 플러그인 오류 등)</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- Viz 3: Failure Classification — 로그 분석 → 3가지 분류 -->
+    <div class="viz-inline">
+        <div class="viz-inline-label">CI 실패 시 자동 분류</div>
+        <p style="text-align: center; font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 16px;">Gradle 로그를 grep 패턴으로 분석하여 실패 원인을 3가지로 분류한다</p>
+        <div style="display: flex; gap: 12px;">
+            <!-- Type 1: COMPILE_ERROR -->
+            <div style="flex: 1; padding: 16px; border-radius: 12px; border-top: 3px solid #dc2626; border: 1px solid rgba(220,38,38,0.15); border-top: 3px solid #dc2626; background: rgba(220,38,38,0.02);">
+                <div style="font-size: 0.9rem; margin-bottom: 8px;">🔴</div>
+                <div style="font-size: 0.82rem; font-weight: 700; color: #dc2626; margin-bottom: 6px;">COMPILE_ERROR</div>
+                <div style="font-family: var(--font-code); font-size: 0.7rem; color: var(--text-tertiary); padding: 4px 8px; background: var(--grey-100); border-radius: 5px; margin-bottom: 8px; display: inline-block;">grep "^e: "</div>
+                <div style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.5;">프로덕션 코드 변경이 테스트 컴파일을 깨뜨림</div>
+                <div style="font-size: 0.72rem; color: #dc2626; margin-top: 8px; font-weight: 600;">→ Gemini 자동 수정</div>
+            </div>
+            <!-- Type 2: TEST_FAILURE -->
+            <div style="flex: 1; padding: 16px; border-radius: 12px; border: 1px solid rgba(234,179,8,0.2); border-top: 3px solid #d97706; background: rgba(234,179,8,0.02);">
+                <div style="font-size: 0.9rem; margin-bottom: 8px;">🟡</div>
+                <div style="font-size: 0.82rem; font-weight: 700; color: #b45309; margin-bottom: 6px;">TEST_FAILURE</div>
+                <div style="font-family: var(--font-code); font-size: 0.7rem; color: var(--text-tertiary); padding: 4px 8px; background: var(--grey-100); border-radius: 5px; margin-bottom: 8px; display: inline-block;">grep " > .+ FAILED$"</div>
+                <div style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.5;">테스트 로직이나 기대값이 틀림</div>
+                <div style="font-size: 0.72rem; color: #b45309; margin-top: 8px; font-weight: 600;">→ 개발자가 직접 수정</div>
+            </div>
+            <!-- Type 3: BUILD_ERROR -->
+            <div style="flex: 1; padding: 16px; border-radius: 12px; border: 1px solid var(--grey-200); border-top: 3px solid var(--grey-500); background: var(--grey-50);">
+                <div style="font-size: 0.9rem; margin-bottom: 8px;">⚫</div>
+                <div style="font-size: 0.82rem; font-weight: 700; color: var(--grey-600); margin-bottom: 6px;">BUILD_ERROR</div>
+                <div style="font-family: var(--font-code); font-size: 0.7rem; color: var(--text-tertiary); padding: 4px 8px; background: var(--grey-100); border-radius: 5px; margin-bottom: 8px; display: inline-block;">기타 (OOM, 플러그인 등)</div>
+                <div style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.5;">빌드 인프라 자체의 문제</div>
+                <div style="font-size: 0.72rem; color: var(--grey-500); margin-top: 8px; font-weight: 600;">→ 인프라 팀 확인</div>
+            </div>
+        </div>
+    </div>
+
+    <h3>분류 스텝 (Classify test failure)</h3>
+
+    <pre><code><span class="cmt"># 컴파일 에러가 테스트 실행 중 발생했을 수 있으므로 재확인</span>
+<span class="kw">if</span> grep -q <span class="str">"^e: "</span> /tmp/test-output.log; <span class="kw">then</span>
+    echo <span class="str">"FAILURE_TYPE=COMPILE_ERROR"</span> >> $GITHUB_ENV
+    grep <span class="str">"^e: "</span> /tmp/test-output.log \
+      | sed <span class="str">"s|e: file://||;s|e: ||;s|${WORKSPACE}||"</span> \
+      | head -<span class="ann">20</span> > /tmp/error-details.txt
+<span class="kw">elif</span> grep -qE <span class="str">" > .+ FAILED$"</span> /tmp/test-output.log; <span class="kw">then</span>
+    echo <span class="str">"FAILURE_TYPE=TEST_FAILURE"</span> >> $GITHUB_ENV
+<span class="kw">else</span>
+    echo <span class="str">"FAILURE_TYPE=BUILD_ERROR"</span> >> $GITHUB_ENV
+    tail -<span class="ann">50</span> /tmp/test-output.log > /tmp/error-details.txt
+<span class="kw">fi</span></code></pre>
+
+    <h3>PR 코멘트 자동 등록</h3>
+
+    <p>분류 결과에 따라 PR에 코멘트를 자동 등록. 에러 목록과 조치 가이드를 포함.</p>
+
+    <ul>
+        <li><strong>COMPILE_ERROR</strong>: "프로덕션 코드 변경으로 테스트 코드의 컴파일을 실패했습니다" + 에러 목록</li>
+        <li><strong>TEST_FAILURE</strong>: "테스트 케이스 검증을 실패했습니다" + 실패한 테스트 목록</li>
+        <li><strong>BUILD_ERROR</strong>: "빌드 인프라 오류가 발생했습니다" + 마지막 50줄 로그</li>
+    </ul>
+
+    <h3>Slack 스레드 멘션</h3>
+
+    <p>Slack <code>#build_android</code> 채널에 실패 유형별 색상 코드로 메시지를 전송하고, 스레드 댓글로 PR 작성자를 멘션. 이메일 기반으로 Slack User ID를 조회하여 <code>&lt;@USER_ID&gt;</code> 형태로 멘션.</p>
+
+    <h3>로컬 테스트 스크립트</h3>
+
+    <p>분류 로직의 정확성을 검증하기 위해 <code>.github/test-classifier/</code>에 로컬 테스트 환경을 구성.</p>
+
+    <pre><code><span class="cmt"># 테스트 실행</span>
+$ .github/test-classifier/test_classifier.sh
+
+<span class="cmt"># fixtures/ 디렉토리의 가짜 Gradle 로그로 분류 로직 검증</span>
+<span class="cmt"># - compile-error.log   → COMPILE_ERROR (4건)</span>
+<span class="cmt"># - test-failure.log    → TEST_FAILURE  (2건)</span>
+<span class="cmt"># - success.log         → BUILD_ERROR   (분류 불필요)</span>
+<span class="cmt"># - mixed-error.log     → BUILD_ERROR   (인프라 문제)</span></code></pre>
+
+    <div class="summary-box">
+        <div class="summary-box-title">NOTE</div>
+        <p>분류 패턴(<code>^e:</code>, <code>> .+ FAILED$</code>)은 <code>unit_test_on_pr.yml</code>의 Classify 스텝과 <code>test_classifier.sh</code>의 <code>classify()</code> 함수에 동기화되어야 한다. 코드 내 주석으로 이 의존성을 명시해 둠.</p>
+    </div>
+
+    <hr>
+
+    <!-- ═══════════════════════════════════════════
+         Section 4: Gemini API 컴파일 에러 자동 수정
+         ═══════════════════════════════════════════ -->
+    <h2 id="section-4">Gemini API 컴파일 에러 자동 수정 (#7326)</h2>
+
+    <p><code>COMPILE_ERROR</code>로 분류된 경우, Gemini API를 호출하여 테스트 코드의 컴파일 에러를 자동으로 수정하고 PR에 push.</p>
+
+    <h3>트리거 조건</h3>
+
+    <ul>
+        <li><code>FAILURE_TYPE == 'COMPILE_ERROR'</code></li>
+        <li><code>SKIP_AUTO_FIX != 'true'</code> (무한 루프 방지)</li>
+    </ul>
+
+    <h3>전체 흐름</h3>
+
+    <ul class="checklist">
+        <li><span class="checklist-num">1</span><span><strong>에러 파일 추출</strong> &mdash; <code>/tmp/error-details.txt</code>에서 에러가 발생한 <code>.kt</code>/<code>.java</code> 파일 경로를 추출 (최대 10개)</span></li>
+        <li><span class="checklist-num">2</span><span><strong>PR 브랜치 소스 읽기</strong> &mdash; PR 브랜치로 checkout하여 에러 파일의 현재 소스를 읽음. PR diff도 함께 수집하여 "프로덕션에서 뭐가 변경됐는지" 컨텍스트 제공</span></li>
+        <li><span class="checklist-num">3</span><span><strong>Gemini API 호출</strong> &mdash; 에러 목록 + 소스 파일 + PR diff를 프롬프트에 포함하여 <code>gemini-2.5-flash</code> 호출</span></li>
+        <li><span class="checklist-num">4</span><span><strong>search/replace JSON 반환</strong> &mdash; 전체 파일이 아닌, 수정이 필요한 부분만 <code>{"search": "...", "replace": "..."}</code> 쌍으로 반환</span></li>
+        <li><span class="checklist-num">5</span><span><strong>적용 &amp; push</strong> &mdash; Python 스크립트로 search/replace 적용 후 <code>[auto-fix]</code> 커밋 메시지로 push</span></li>
+    </ul>
+
+    <!-- Viz 4: Auto-Fix 트리거 분기 + Pipeline -->
+    <div class="viz-inline">
+        <div class="viz-inline-label">Auto-Fix Pipeline</div>
+        <!-- 트리거 분기 -->
+        <div style="display: flex; gap: 12px; margin-bottom: 20px; align-items: stretch;">
+            <div style="flex: 1; padding: 14px 16px; border-radius: 10px; border: 1.5px solid rgba(220,38,38,0.2); background: rgba(220,38,38,0.04);">
+                <div style="font-size: 0.72rem; font-weight: 700; color: #dc2626; margin-bottom: 6px;">🔴 COMPILE_ERROR</div>
+                <div style="font-size: 0.8rem; color: var(--text-primary); font-weight: 600;">→ Gemini 자동 수정 실행</div>
+                <div style="font-size: 0.72rem; color: var(--text-tertiary); margin-top: 4px;">프로덕션 코드 변경으로 인한 테스트 컴파일 에러</div>
+            </div>
+            <div style="flex: 1; padding: 14px 16px; border-radius: 10px; border: 1.5px solid var(--grey-200); background: var(--grey-50); opacity: 0.7;">
+                <div style="font-size: 0.72rem; font-weight: 700; color: var(--grey-500); margin-bottom: 6px;">🟡 TEST_FAILURE</div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;">→ 자동 수정 안 함</div>
+                <div style="font-size: 0.72rem; color: var(--text-tertiary); margin-top: 4px;">테스트 로직/기대값 문제는 개발자가 직접 판단해야 함</div>
+            </div>
+        </div>
+        <!-- 파이프라인 스텝 -->
+        <div class="pipeline-steps">
+            <div class="pipeline-node">
+                <div class="pipeline-node-icon">🔴</div>
+                <div class="pipeline-node-text">컴파일 에러 감지</div>
+            </div>
+            <div class="pipeline-connector">→</div>
+            <div class="pipeline-node">
+                <div class="pipeline-node-icon">📄</div>
+                <div class="pipeline-node-text">소스 파일 수집</div>
+            </div>
+            <div class="pipeline-connector">→</div>
+            <div class="pipeline-node">
+                <div class="pipeline-node-icon">🤖</div>
+                <div class="pipeline-node-text">Gemini API 호출</div>
+            </div>
+            <div class="pipeline-connector">→</div>
+            <div class="pipeline-node">
+                <div class="pipeline-node-icon">✏️</div>
+                <div class="pipeline-node-text">search/replace 적용</div>
+            </div>
+            <div class="pipeline-connector">→</div>
+            <div class="pipeline-node">
+                <div class="pipeline-node-icon">📤</div>
+                <div class="pipeline-node-text">commit &amp; push</div>
+            </div>
+        </div>
+    </div>
+
+    <h3>핵심 설계 결정: search/replace 방식</h3>
+
+    <div class="highlight-box">
+        LLM에게 전체 파일을 반환하게 하면 출력 토큰 제한으로 파일이 잘리는(truncation) 문제가 발생한다. search/replace 쌍만 반환하면 출력량이 최소화되고, 파일 손실 위험이 없다.
+    </div>
+
+    <h3>프롬프트 구조</h3>
+
+    <pre><code><span class="cmt"># gemini-auto-fix.sh 프롬프트 핵심 구조</span>
+
+<span class="str">"""
+You are a Kotlin/Android compile error fixer.
+Your ONLY job is to fix compile errors with minimal, surgical changes.
+
+## Rules
+1. Fix ONLY the compile errors listed — nothing else.
+2. Do NOT refactor, rename, or improve code.
+3. Each replacement must be an EXACT substring match.
+4. Include enough surrounding context in "search" to make it unique.
+5. "replace" should be "" (empty string) for deletions.
+
+## Compile Errors
+${ERRORS}
+
+## Recent Production Code Changes (context)
+${PR_DIFF}
+
+## Source Files With Errors
+${SOURCE_CONTEXT}
+
+## Output Format
+[{
+  "file": "path/to/Test.kt",
+  "replacements": [
+    { "search": "oldParam = oldParam,\n", "replace": "" },
+    { "search": "import com.example.OldClass",
+      "replace": "import com.example.NewClass" }
+  ]
+}]
+"""</span></code></pre>
+
+    <h3>응답 파싱 및 적용</h3>
+
+    <pre><code><span class="cmt"># Gemini API 호출 설정</span>
+REQUEST_BODY=$(jq -n \
+  --arg text <span class="str">"$PROMPT"</span> \
+  <span class="str">'{
+    contents: [{ parts: [{ text: $text }] }],
+    generationConfig: {
+      responseMimeType: "application/json",
+      temperature: 0.1
+    }
+  }'</span>)
+
+<span class="cmt"># 응답 파싱: candidates[0].content.parts[0].text</span>
+FIXES_TEXT=$(echo <span class="str">"$RESPONSE_BODY"</span> \
+  | jq -r <span class="str">'.candidates[0].content.parts[0].text // empty'</span>)
+
+<span class="cmt"># JSON 유효성 검증 + 파일 존재 여부 필터</span>
+VALID_FIXES=$(echo <span class="str">"$FIXES_TEXT"</span> \
+  | jq <span class="str">'[.[] | select(.file != null and .replacements != null
+    and (.replacements | length) > 0)]'</span>)</code></pre>
+
+    <h3>Search/Replace 적용 (Python)</h3>
+
+    <pre><code><span class="cmt"># 워크플로우에 임베딩된 Python 스크립트</span>
+<span class="kw">import</span> json, os
+
+fixes = json.load(<span class="fn">open</span>(<span class="str">'/tmp/gemini-fixes.json'</span>))
+applied = <span class="ann">0</span>
+
+<span class="kw">for</span> fix <span class="kw">in</span> fixes:
+    <span class="kw">if not</span> os.path.<span class="fn">exists</span>(fix[<span class="str">'file'</span>]):
+        <span class="kw">continue</span>
+    <span class="kw">with</span> <span class="fn">open</span>(fix[<span class="str">'file'</span>]) <span class="kw">as</span> f:
+        content = f.<span class="fn">read</span>()
+    <span class="kw">for</span> r <span class="kw">in</span> fix[<span class="str">'replacements'</span>]:
+        <span class="kw">if</span> r[<span class="str">'search'</span>] <span class="kw">in</span> content:
+            content = content.<span class="fn">replace</span>(r[<span class="str">'search'</span>], r[<span class="str">'replace'</span>])
+            applied += <span class="ann">1</span></code></pre>
+
+    <h3>무한 루프 방지</h3>
+
+    <p>Gemini가 수정한 코드를 push하면 <code>synchronize</code> 이벤트로 CI가 다시 트리거됨. 무한 루프를 방지하기 위해 워크플로우 초기에 마지막 커밋 메시지를 확인.</p>
+
+    <pre><code><span class="cmt"># [auto-fix] 커밋 무한 루프 방지</span>
+LAST_MSG=$(curl -s \
+  -H <span class="str">"Authorization: token ${{ secrets.PULL_REQUEST_TOKEN }}"</span> \
+  <span class="str">"${{ github.api_url }}/repos/.../commits/${{ github.event.pull_request.head.sha }}"</span> \
+  | jq -r <span class="str">'.commit.message // ""'</span>)
+
+<span class="kw">if</span> [[ <span class="str">"$LAST_MSG"</span> == *<span class="str">"[auto-fix]"</span>* ]]; <span class="kw">then</span>
+    echo <span class="str">"SKIP_AUTO_FIX=true"</span> >> $GITHUB_ENV
+<span class="kw">fi</span></code></pre>
+
+    <h3>PR 코멘트</h3>
+
+    <p>자동 수정이 적용되면 기존 COMPILE_ERROR 코멘트 대신 별도 형태로 표시.</p>
+
+    <div class="compare-grid">
+        <div class="compare-card compare-before">
+            <div class="compare-card-label">자동 수정 없음</div>
+            <p style="margin: 0;">COMPILE_ERROR<br>생성자, 파라미터, import 업데이트 필요</p>
+        </div>
+        <div class="compare-card compare-after">
+            <div class="compare-card-label">자동 수정 적용됨</div>
+            <p style="margin: 0;">컴파일 에러 &rarr; 자동 수정 시도<br>Gemini API를 통해 자동 수정을 시도하고 PR에 push</p>
+        </div>
+    </div>
+
+    <hr>
+
+    <!-- ═══════════════════════════════════════════
+         Section 5: 전체 파이프라인 흐름
+         ═══════════════════════════════════════════ -->
+    <h2 id="section-5">전체 파이프라인 흐름</h2>
+
+    <p>3개 PR이 연결되는 전체 파이프라인 흐름을 인터랙티브 시각화로 확인할 수 있다. 각 단계별 Before/After 비교와 애니메이션이 포함되어 있다.</p>
+
+    <div style="margin: 24px 0; padding: 24px 28px; border-radius: var(--radius); border: 1px solid var(--toss-blue-border); background: var(--toss-blue-light); text-align: center;">
+        <div style="font-size: 0.95rem; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">CI 지능형 파이프라인 — 인터랙티브 시각화</div>
+        <div style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 16px;">변경 분석 게이트 → 실패 분류 + 알림 → Gemini 자동 수정</div>
+        <a href="ci-build-optimization-pipeline.html" target="_blank" style="display: inline-block; padding: 10px 24px; border-radius: var(--radius-sm); background: var(--toss-blue); color: white; font-size: 0.88rem; font-weight: 700; text-decoration: none; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">시각화 보기 →</a>
+    </div>
+
+    <hr>
+
+    <!-- ═══════════════════════════════════════════
+         Section 6: 한계
+         ═══════════════════════════════════════════ -->
+    <h2 id="section-6">한계</h2>
+
+    <ul>
+        <li><strong>Gemini 자동 수정 성공률</strong>: 생성자 파라미터 추가, import 변경 같은 단순 케이스에서는 잘 동작하지만, 복잡한 리팩토링(클래스 구조 변경, 제네릭 타입 변경 등)은 수동 수정이 필요함.</li>
+        <li><strong>분류 패턴의 Gradle 의존성</strong>: <code>^e:</code>와 <code>> .+ FAILED$</code> 패턴은 현재 Gradle 출력 형식에 의존. Gradle 버전 업데이트 시 출력 형식이 변경되면 분류가 깨질 수 있음. <code>test_classifier.sh</code> fixtures로 사전 검증 가능.</li>
+        <li><strong>간접 의존성 미감지</strong>: <code>check-changes</code>의 파일 경로 기반 판단은 모듈 간 간접 의존성을 고려하지 않음. 예: 모듈 A의 테스트만 수정했지만, A의 인터페이스가 B에 영향을 주는 경우는 감지 불가.</li>
+    </ul>
+
+    <hr>
+
+    <!-- ═══════════════════════════════════════════
+         PR Links
+         ═══════════════════════════════════════════ -->
+    <h2 id="section-7">관련 PR</h2>
+
+    <table class="metrics-table">
+        <thead>
+            <tr>
+                <th>Ticket</th>
+                <th>PR</th>
+                <th>내용</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="metric-label">KMA-7360</td>
+                <td><a href="https://github.com/thefarmersfront/kurly-android/pull/7235">#7235</a></td>
+                <td>워크플로우 실행 정책 개선 (check-changes, concurrency 이동)</td>
+            </tr>
+            <tr>
+                <td class="metric-label">KMA-7401</td>
+                <td><a href="https://github.com/thefarmersfront/kurly-android/pull/7271">#7271</a></td>
+                <td>실패 유형 자동 분류 (2-Phase, 3단 분류, PR 코멘트, Slack 멘션)</td>
+            </tr>
+            <tr>
+                <td class="metric-label">KMA-7432</td>
+                <td><a href="https://github.com/thefarmersfront/kurly-android/pull/7326">#7326</a></td>
+                <td>Gemini API 컴파일 에러 자동 수정 (search/replace, 무한 루프 방지)</td>
+            </tr>
+        </tbody>
+    </table>
+
+</article>
+
+<!-- ═══════════════════════════════════════════
+     Footer
+     ═══════════════════════════════════════════ -->
+<footer class="article-footer">
+    <div class="share-buttons">
+        <button class="share-btn" onclick="navigator.clipboard.writeText(location.href)">링크 복사</button>
+    </div>
+</footer>
+
+</body>
+</html>
