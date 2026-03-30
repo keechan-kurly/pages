@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>산재된 Compose 컴포넌트, 단일 공유 레이어로 통합하기</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════
+   Toss Tech Light Theme — Blog Template
+   ═══════════════════════════════════════════════ */
+:root {
+    --grey-50: #f9fafb;
+    --grey-100: #f2f4f6;
+    --grey-200: #e5e8eb;
+    --grey-300: #d1d6db;
+    --grey-400: #b0b8c1;
+    --grey-500: #8b95a1;
+    --grey-600: #6b7684;
+    --grey-700: #4e5968;
+    --grey-800: #333d4b;
+    --grey-900: #191f28;
+
+    --toss-blue: #0064FF;
+    --toss-blue-light: rgba(0, 100, 255, 0.08);
+    --toss-blue-border: rgba(0, 100, 255, 0.2);
+
+    --bg: #ffffff;
+    --bg-elevated: var(--grey-50);
+    --bg-highlight: #ffc34236;
+    --bg-code: var(--grey-100);
+    --text-primary: var(--grey-900);
+    --text-secondary: var(--grey-700);
+    --text-tertiary: var(--grey-500);
+    --border-light: var(--grey-200);
+    --border-blockquote: var(--grey-800);
+
+    --content-width: 680px;
+    --wide-width: 780px;
+    --radius: 16px;
+    --radius-sm: 10px;
+
+    --font-body: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --font-code: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text-primary);
+    line-height: 1.8;
+    font-size: 16.5px;
+    -webkit-font-smoothing: antialiased;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+}
+
+::selection { background: rgba(0, 100, 255, 0.15); color: var(--grey-900); }
+a { color: var(--toss-blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.article { max-width: var(--content-width); margin: 0 auto; padding: 0 24px; }
+.article-wide { max-width: var(--wide-width); margin: 0 auto; padding: 0 24px; }
+
+/* Hero */
+.hero { padding: 80px 24px 48px; max-width: var(--content-width); margin: 0 auto; }
+.hero-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 24px; font-size: 0.875rem; color: var(--text-tertiary); }
+.hero-meta .author { color: var(--text-secondary); font-weight: 600; }
+.hero-meta .dot { color: var(--grey-300); }
+.hero-title { font-size: 2.2rem; font-weight: 800; line-height: 1.3; color: var(--text-primary); margin-bottom: 16px; letter-spacing: -0.02em; }
+.hero-subtitle { font-size: 1.1rem; line-height: 1.7; color: var(--text-secondary); max-width: 580px; }
+.hero-tags { display: flex; gap: 8px; margin-top: 20px; flex-wrap: wrap; }
+.hero-tag { padding: 4px 12px; border-radius: var(--radius-sm); background: var(--toss-blue-light); border: 1px solid var(--toss-blue-border); font-size: 0.8rem; font-weight: 600; color: var(--toss-blue); }
+
+/* TOC */
+.toc { margin: 0 0 48px 0; padding: 24px 28px; background: var(--bg-elevated); border-radius: var(--radius); border: 1px solid var(--border-light); }
+.toc-label { font-size: 0.75rem; font-weight: 700; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px; }
+.toc-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.toc-list a { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 0.92rem; color: var(--text-secondary); transition: color 0.2s; }
+.toc-list a:hover { color: var(--toss-blue); text-decoration: none; }
+.toc-num { width: 24px; height: 24px; border-radius: 7px; background: var(--grey-200); display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; color: var(--text-secondary); flex-shrink: 0; }
+
+/* Typography */
+.article h2 { font-size: 1.55rem; font-weight: 800; line-height: 1.35; color: var(--text-primary); margin: 56px 0 20px 0; letter-spacing: -0.01em; }
+.article h2:first-child { margin-top: 0; }
+.article h3 { font-size: 1.2rem; font-weight: 700; line-height: 1.4; color: var(--text-primary); margin: 40px 0 14px 0; }
+.article p { margin: 0 0 20px 0; color: var(--text-primary); }
+.article strong { font-weight: 700; color: var(--grey-900); }
+
+/* Blockquote */
+.article blockquote { margin: 28px 0; padding: 0 0 0 20px; border-left: 2.5px solid var(--border-blockquote); font-size: 1.05rem; font-weight: 600; line-height: 1.7; color: var(--text-primary); }
+.article blockquote p { margin: 0; }
+
+/* Highlight Box */
+.highlight-box { margin: 28px 0; padding: 20px 24px; background: var(--bg-highlight); border-radius: var(--radius); font-weight: 600; line-height: 1.7; color: var(--text-primary); }
+
+/* Content Box */
+.content-box { margin: 28px 0; padding: 24px 28px; background: var(--bg-elevated); border-radius: var(--radius); border: 1px solid var(--border-light); }
+.content-box-title { font-size: 0.95rem; font-weight: 700; color: var(--text-primary); margin-bottom: 12px; }
+
+/* Code */
+.article code { font-family: var(--font-code); font-size: 0.88em; padding: 2px 6px; background: var(--bg-code); border-radius: 5px; color: var(--grey-800); }
+.article pre { margin: 24px 0; padding: 24px; background: var(--grey-900); border-radius: var(--radius); overflow-x: auto; line-height: 1.6; }
+.article pre code { font-family: var(--font-code); font-size: 0.85rem; background: none; padding: 0; color: #abb2bf; border-radius: 0; }
+
+.kw { color: #c678dd; }
+.str { color: #98c379; }
+.cmt { color: #5c6370; font-style: italic; }
+.typ { color: #e5c07b; }
+.fn { color: #61afef; }
+.ann { color: #d19a66; }
+.op { color: #56b6c2; }
+
+/* Lists */
+.article ul, .article ol { margin: 0 0 20px 0; padding-left: 24px; }
+.article li { margin-bottom: 10px; line-height: 1.7; }
+.article li::marker { color: var(--text-tertiary); }
+
+/* Metrics Table */
+.metrics-table { width: 100%; border-collapse: collapse; margin: 24px 0; font-size: 0.9rem; }
+.metrics-table th { text-align: left; padding: 12px 16px; background: var(--bg-elevated); border-bottom: 2px solid var(--border-light); font-weight: 700; font-size: 0.8rem; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.04em; }
+.metrics-table td { padding: 12px 16px; border-bottom: 1px solid var(--border-light); color: var(--text-secondary); }
+.metrics-table .metric-label { color: var(--text-primary); font-weight: 600; }
+.metrics-table .metric-good { color: #16a34a; font-weight: 700; }
+.delta { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 6px; font-size: 0.78rem; font-weight: 700; }
+.delta-good { background: rgba(22, 163, 74, 0.1); color: #16a34a; }
+
+/* Summary Box */
+.summary-box { margin: 36px 0; padding: 24px 28px; background: var(--toss-blue-light); border: 1px solid var(--toss-blue-border); border-radius: var(--radius); }
+.summary-box-title { font-size: 0.82rem; font-weight: 700; color: var(--toss-blue); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.06em; }
+.summary-box p, .summary-box li { color: var(--text-primary); font-size: 0.95rem; }
+
+/* Compare Grid */
+.compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 28px 0; }
+.compare-card { padding: 20px; border-radius: var(--radius); border: 1px solid var(--border-light); background: var(--bg); }
+.compare-card-label { font-size: 0.72rem; font-weight: 700; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+.compare-before { border-left: 3px solid var(--grey-400); }
+.compare-after { border-left: 3px solid var(--toss-blue); }
+
+/* Separator */
+.article hr { border: none; height: 1px; background: var(--border-light); margin: 48px 0; }
+
+/* Footnotes */
+.footnotes { margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--border-light); font-size: 0.82rem; color: var(--text-tertiary); line-height: 1.8; }
+.footnotes a { color: var(--text-tertiary); text-decoration: underline; }
+.footnote-ref { font-size: 0.75em; vertical-align: super; color: var(--toss-blue); cursor: pointer; font-weight: 600; }
+
+/* Footer */
+.article-footer { margin-top: 56px; padding: 32px 0; text-align: center; color: var(--text-tertiary); font-size: 0.82rem; }
+.share-buttons { display: flex; justify-content: center; gap: 12px; margin-top: 16px; }
+.share-btn { padding: 8px 20px; border-radius: var(--radius-sm); background: var(--bg-elevated); border: 1px solid var(--border-light); font-size: 0.82rem; font-weight: 600; color: var(--text-secondary); cursor: pointer; transition: all 0.2s; }
+.share-btn:hover { background: var(--grey-200); color: var(--text-primary); }
+
+@media (max-width: 768px) {
+    .hero { padding: 48px 20px 32px; }
+    .hero-title { font-size: 1.7rem; }
+    .article, .article-wide { padding: 0 20px; }
+    .article h2 { font-size: 1.35rem; margin-top: 40px; }
+    .article h3 { font-size: 1.1rem; }
+    .compare-grid { grid-template-columns: 1fr; }
+    .article pre { padding: 16px; margin-left: -8px; margin-right: -8px; border-radius: 12px; }
+}
+
+@media print {
+    body { font-size: 11pt; }
+    .hero { padding: 24px 0; }
+    .article pre { white-space: pre-wrap; }
+    .toc, .share-buttons, .article-footer { display: none; }
+}
+</style>
+</head>
+<body>
+
+<header class="hero">
+    <div class="hero-meta">
+        <span class="author">홍기찬</span>
+        <span class="dot">&middot;</span>
+        <span>Android Developer</span>
+        <span class="dot">&middot;</span>
+        <time>2026. 3. 30</time>
+    </div>
+    <h1 class="hero-title">산재된 Compose 컴포넌트,<br>단일 공유 레이어로 통합하기</h1>
+    <p class="hero-subtitle">각 피처가 독자적으로 구현하던 상태 화면·상품 이미지·클릭 핸들러를 <code>:features:core:ui</code> 공유 레이어로 통합하여 818줄을 제거한 과정.</p>
+    <div class="hero-tags">
+        <span class="hero-tag">Jetpack Compose</span>
+        <span class="hero-tag">Refactoring</span>
+        <span class="hero-tag">Multi-Module</span>
+    </div>
+</header>
+
+<nav class="article">
+    <div class="toc">
+        <div class="toc-label">목차</div>
+        <ol class="toc-list">
+            <li><a href="#section-1"><span class="toc-num">1</span> 같은 코드를 다섯 번 복사하고 있었다</a></li>
+            <li><a href="#section-2"><span class="toc-num">2</span> Before: 각자도생의 피처 모듈</a></li>
+            <li><a href="#section-3"><span class="toc-num">3</span> 전략: 3-Phase 정비</a></li>
+            <li><a href="#section-4"><span class="toc-num">4</span> Phase 1 — 상태 화면 통합</a></li>
+            <li><a href="#section-5"><span class="toc-num">5</span> Phase 2 — 상품 컴포넌트 병합</a></li>
+            <li><a href="#section-6"><span class="toc-num">6</span> Phase 3 — API 표준화</a></li>
+            <li><a href="#section-7"><span class="toc-num">7</span> 한계와 남은 과제</a></li>
+            <li><a href="#section-8"><span class="toc-num">8</span> Takeaways</a></li>
+        </ol>
+    </div>
+</nav>
+
+<article class="article">
+
+<!-- ═══════════════════════════════════════════
+     Section 1: Opening
+     ═══════════════════════════════════════════ -->
+<h2 id="section-1">같은 코드를 다섯 번 복사하고 있었다</h2>
+
+<p>새 피처 모듈에 에러 화면을 추가하려고 기존 코드를 참고했다. MyKurly에 51줄짜리 <code>MyKurlyErrorScreen</code>이 있었고, Brand에도 50줄짜리 <code>BrandErrorScreen</code>이 있었다. Pick에는 57줄, Alternative에도 50줄. 네 개 파일을 열어봤더니 <strong>거의 동일한 코드</strong>였다. <code>KurlyEmptyState</code>를 <code>Box</code>로 감싸고 배경색을 설정하고 정렬을 맞추는 패턴이 반복되고 있었다.</p>
+
+<p>에러 화면만이 아니었다. 상품 이미지 컴포넌트가 <code>compose-core</code>, <code>search</code>, <code>widget</code> 세 모듈에 각각 다른 이름으로 존재했다. <code>noRippleClickable</code>이라는 유틸 함수는 MyKurly 패키지에 갇혀 있어서 다른 피처에서는 접근조차 할 수 없었다.</p>
+
+<blockquote><p>피처가 늘어날수록 중복이 선형으로 증가하는 구조였다.</p></blockquote>
+
+<p>이 글은 43개 파일을 변경하고 <strong>818줄을 순삭제</strong>하면서, 산재된 UI 코드를 <code>:features:core:ui</code> 공유 레이어로 통합한 과정을 정리한다. Compose 기반 멀티모듈 프로젝트에서 비슷한 중복을 겪고 있다면 참고가 될 것이다.</p>
+
+<hr>
+
+<!-- ═══════════════════════════════════════════
+     Section 2: Before State
+     ═══════════════════════════════════════════ -->
+<h2 id="section-2">Before: 각자도생의 피처 모듈</h2>
+
+<p>정비 전 상태를 세 가지 영역으로 나눌 수 있다.</p>
+
+<h3>1. 상태 화면: 피처마다 50줄씩 복사</h3>
+
+<p>에러·빈 화면·로딩 화면이 각 피처 모듈에 독립적으로 존재했다. 코드 구조는 거의 같지만 미세한 차이가 있었다.</p>
+
+<div class="compare-grid">
+    <div class="compare-card compare-before">
+        <div class="compare-card-label">MyKurlyErrorScreen.kt</div>
+        <p><code>BiasAlignment(0f, -0.22f)</code> 사용<br>배경색: <code>Background1</code><br>51줄</p>
+    </div>
+    <div class="compare-card compare-before">
+        <div class="compare-card-label">PickListErrorScreen.kt</div>
+        <p><code>Alignment.Center</code> 사용<br>배경색: 없음<br>57줄</p>
+    </div>
+</div>
+
+<p>같은 역할의 화면인데 정렬 방식이 다르고, 배경색 적용 여부도 달랐다. 디자인 시스템이 업데이트되면 <strong>다섯 곳을 찾아 다니며</strong> 하나씩 수정해야 했다.</p>
+
+<h3>2. 상품 컴포넌트: 세 모듈에 산재</h3>
+
+<p>상품 이미지, 스티커, 장바구니 숏컷 버튼이 서로 다른 모듈에 각각 구현되어 있었다.</p>
+
+<pre><code><span class="cmt">// compose-core/product/Product.kt — 474줄</span>
+<span class="kw">fun</span> <span class="fn">VerticalProductImage</span>(...) { ... }
+<span class="kw">fun</span> <span class="fn">VerticalProductItemInfo</span>(
+    name: <span class="typ">String</span>,
+    shortCutText: <span class="typ">String</span>?,
+    shortCutIcon: <span class="typ">Int</span>?,
+    deliveryType: <span class="typ">String</span>?,
+    discountedPrice: <span class="typ">Int</span>?,
+    discountRate: <span class="typ">Int</span>,
+    salesPrice: <span class="typ">Int</span>?,
+    finalPrice: <span class="typ">Int</span>,
+    reviewCount: <span class="typ">String</span>?,
+    ranking: <span class="typ">Int</span>? = <span class="kw">null</span>,
+    isMultiplePrice: <span class="typ">Boolean</span> = <span class="kw">false</span>,
+    onClickShortCut: (() <span class="op">-></span> <span class="typ">Unit</span>)? = <span class="kw">null</span>,
+) { ... }
+
+<span class="cmt">// search/composable/Composable.kt — 269줄 중 대부분</span>
+<span class="kw">fun</span> <span class="fn">ProductImage</span>(...) { ... }     <span class="cmt">// 다른 시그니처</span>
+<span class="kw">fun</span> <span class="fn">ProductShortcut</span>(...) { ... }  <span class="cmt">// 또 다른 시그니처</span>
+
+<span class="cmt">// compose-core/product/Sticker.kt — 168줄</span>
+<span class="kw">fun</span> <span class="fn">Sticker</span>(...) { ... }           <span class="cmt">// 또 따로</span></code></pre>
+
+<p><code>VerticalProductItemInfo</code>는 파라미터가 <strong>13개</strong>였다. 상품명, 가격, 할인율, 리뷰, 랭킹, 숏컷 버튼까지 하나의 Composable이 모두 처리하고 있었다. search 모듈의 <code>ProductImage</code>는 <code>compose-core</code>의 <code>VerticalProductImage</code>와 역할은 같지만 파라미터 설계가 달랐다.</p>
+
+<h3>3. 피처 전용 유틸: 접근 불가</h3>
+
+<p>MyKurly에 정의된 <code>noRippleClickable</code> 확장 함수를 다른 피처에서 쓰려면 <strong>모듈 의존성을 추가하거나 복사</strong>하는 수밖에 없었다. 실제로 이름이 모호한 <code>ThumbnailImage</code>라는 Composable이 widget 모듈에 이미 존재했지만, 이름만으로는 상품 이미지 컴포넌트라는 사실을 알기 어려웠다.</p>
+
+<hr>
+
+<!-- ═══════════════════════════════════════════
+     Section 3: Strategy
+     ═══════════════════════════════════════════ -->
+<h2 id="section-3">전략: 3-Phase 정비</h2>
+
+<p><code>:features:core:ui</code> 모듈은 이미 두 개의 하위 모듈로 구성되어 있었다.</p>
+
+<div class="content-box">
+    <div class="content-box-title">:features:core:ui 모듈 구조</div>
+    <p>
+        <strong>template</strong> — 화면 단위 레이아웃 (ErrorScreen, LoadingScreen 등)<br>
+        <strong>widget</strong> — 재사용 가능한 개별 컴포넌트 (ProductImage, ShortCutButton 등)
+    </p>
+</div>
+
+<p>template과 widget이라는 두 레이어의 역할 구분이 명확했기 때문에, 정비 범위를 이 구조에 맞춰 세 단계로 나눴다.</p>
+
+<ul>
+    <li><strong>Phase 1</strong> (KMA-7414): 피처별 상태 화면을 <code>template</code> 레이어에 공통화</li>
+    <li><strong>Phase 2</strong> (KMA-7415): 산재된 상품 컴포넌트를 <code>widget</code> 레이어로 병합</li>
+    <li><strong>Phase 3</strong> (KMA-7416): 호출부 마이그레이션 완료 + 구 코드 삭제</li>
+</ul>
+
+<p>Phase 1과 2는 <strong>새 컴포넌트를 만들되 기존 코드를 건드리지 않는</strong> 방식으로 진행했다. 기존 코드와 새 코드가 공존하는 구간을 의도적으로 두어, 중간에 빌드가 깨지지 않도록 했다. Phase 3에서 호출부를 일괄 교체한 뒤 구 코드를 삭제했다.</p>
+
+<hr>
+
+<!-- ═══════════════════════════════════════════
+     Section 4: Phase 1
+     ═══════════════════════════════════════════ -->
+<h2 id="section-4">Phase 1 — 상태 화면 통합</h2>
+
+<p>에러 화면, 빈 화면, 로딩 화면 세 가지 공통 템플릿을 만들었다. 핵심 설계 원칙은 <strong>컴포넌트 슬롯</strong>이다. 피처별로 미세하게 다른 부분(분석 이벤트, 추가 UI 등)은 <code>content</code> 람다로 주입받는다.</p>
+
+<pre><code><span class="ann">@Composable</span>
+<span class="kw">fun</span> <span class="fn">ErrorScreen</span>(
+    modifier: <span class="typ">Modifier</span> = <span class="typ">Modifier</span>,
+    onRetryClick: () <span class="op">-></span> <span class="typ">Unit</span>,
+) {
+    <span class="fn">Box</span>(
+        modifier = modifier
+            .<span class="fn">background</span>(<span class="typ">BackgroundColorTokens</span>.Background1.<span class="fn">toColor</span>()),
+        contentAlignment = <span class="typ">Alignment</span>.Center,
+    ) {
+        <span class="fn">KurlyEmptyState</span>(
+            title = <span class="fn">stringResource</span>(R.string.error_title),
+            content = <span class="fn">stringResource</span>(R.string.error_content),
+            buttonText = <span class="fn">stringResource</span>(R.string.error_retry),
+            onClickButton = onRetryClick,
+        )
+    }
+}</code></pre>
+
+<p>호출부는 이렇게 단순해졌다.</p>
+
+<div class="compare-grid">
+    <div class="compare-card compare-before">
+        <div class="compare-card-label">Before — MyKurlyScreen.kt</div>
+<pre style="margin:12px 0 0;padding:16px;font-size:0.82rem;"><code><span class="kw">when</span> (uiState) {
+    <span class="kw">is</span> <span class="typ">Error</span> <span class="op">-></span>
+        <span class="fn">MyKurlyErrorScreen</span>(
+            modifier = <span class="typ">Modifier</span>.<span class="fn">fillMaxSize</span>(),
+            onClick = { <span class="cmt">/* retry */</span> },
+        )</code></pre>
+    </div>
+    <div class="compare-card compare-after">
+        <div class="compare-card-label">After — MyKurlyScreen.kt</div>
+<pre style="margin:12px 0 0;padding:16px;font-size:0.82rem;"><code><span class="kw">when</span> (uiState) {
+    <span class="kw">is</span> <span class="typ">Error</span> <span class="op">-></span>
+        <span class="fn">ErrorScreen</span>(
+            modifier = <span class="typ">Modifier</span>.<span class="fn">fillMaxSize</span>(),
+            onRetryClick = { <span class="cmt">/* retry */</span> },
+        )</code></pre>
+    </div>
+</div>
+
+<p>표면적으로는 함수 이름만 바뀐 것처럼 보이지만, 핵심은 <strong>소스가 한 곳으로 수렴</strong>했다는 점이다. 이전에는 <code>MyKurlyErrorScreen</code>, <code>BrandErrorScreen</code>, <code>PickListErrorScreen</code> 각각이 정렬·배경·문구를 독자적으로 결정했다. 이제는 <code>ErrorScreen</code> 하나가 이 결정을 내리고, 4개 피처(MyKurly, Brand, Pick, Alternative)가 그것을 그대로 사용한다.</p>
+
+<p>이 과정에서 <strong>4개 파일(210줄)을 삭제</strong>하고 <strong>3개 템플릿(126줄)으로 대체</strong>했다. <code>LoadingScreen</code>은 기존에도 존재했지만 <code>fillMaxSize</code>가 하드코딩되어 있어서, <code>backgroundColor</code> 파라미터를 추가하고 사이징은 호출부가 결정하도록 개선했다.</p>
+
+<hr>
+
+<!-- ═══════════════════════════════════════════
+     Section 5: Phase 2
+     ═══════════════════════════════════════════ -->
+<h2 id="section-5">Phase 2 — 상품 컴포넌트 병합</h2>
+
+<p>가장 복잡한 단계였다. <code>compose-core/product/</code> 패키지(642줄)와 <code>search/.../Composable.kt</code>(269줄)에 산재된 상품 관련 Composable을 <code>widget</code> 패키지로 모았다.</p>
+
+<h3>ProductImage: 두 구현을 하나로</h3>
+
+<p><code>compose-core</code>의 <code>VerticalProductImage</code>와 <code>search</code>의 <code>ProductImage</code>는 둘 다 상품 이미지를 보여주는 역할이었지만, search 쪽이 <code>aspectRatio</code>와 <code>additionalView</code> 슬롯을 지원해서 더 유연했다. 두 구현의 요구사항을 합쳐 widget 쪽 <code>ProductImage</code>로 통합했다.</p>
+
+<pre><code><span class="ann">@Composable</span>
+<span class="kw">fun</span> <span class="fn">ProductImage</span>(
+    imageUrl: <span class="typ">String</span>,
+    modifier: <span class="typ">Modifier</span> = <span class="typ">Modifier</span>,
+    stickers: <span class="typ">List</span>&lt;<span class="typ">StickerData</span>&gt; = <span class="fn">emptyList</span>(),
+    isBuyPossible: <span class="typ">Boolean</span> = <span class="kw">true</span>,
+    notPurchaseMessage: <span class="typ">String</span>? = <span class="kw">null</span>,
+)</code></pre>
+
+<p>기존 <code>VerticalProductImage</code>와 비교하면 달라진 점이 두 가지다.</p>
+
+<ul>
+    <li><strong>사이즈를 <code>modifier</code>로 외부 주입.</strong> 기존에는 <code>112x145dp</code>가 함수 내부에 하드코딩되어 있었다. 이제 호출부가 <code>Modifier.size(width = 112.dp, height = 145.dp)</code>로 명시한다.</li>
+    <li><strong>스티커 타입을 도메인 모델에서 분리.</strong> <code>List&lt;Sticker&gt;</code>(도메인) 대신 <code>List&lt;StickerData&gt;</code>(UI 전용 모델)를 받는다. 변환은 확장 함수 한 줄로 처리한다.</li>
+</ul>
+
+<h3>StickerDataMapper: 도메인-UI 경계</h3>
+
+<pre><code><span class="kw">fun</span> <span class="typ">List</span>&lt;<span class="typ">Sticker</span>&gt;.<span class="fn">toStickerData</span>(): <span class="typ">List</span>&lt;<span class="typ">StickerData</span>&gt; =
+    <span class="fn">map</span> { sticker <span class="op">-></span>
+        <span class="typ">StickerData</span>(
+            type = <span class="typ">StickerType</span>.<span class="fn">fromDomain</span>(sticker.type),
+            content = sticker.content,
+        )
+    }</code></pre>
+
+<p>31줄짜리 작은 파일이지만, 이 확장 함수가 없으면 widget 모듈이 도메인 스티커 타입에 직접 의존하게 된다. UI 레이어의 <code>StickerData</code>가 도메인 <code>Sticker</code>를 몰라도 되도록 경계를 분리하는 역할이다.</p>
+
+<h3>13개 파라미터 → 컴포지션 분리</h3>
+
+<p>가장 큰 구조적 변화는 <code>VerticalProductItemInfo</code>(13개 파라미터)를 세 컴포넌트로 분리한 것이다.</p>
+
+<div class="compare-grid">
+    <div class="compare-card compare-before">
+        <div class="compare-card-label">Before — 하나의 Composable</div>
+        <p><code>VerticalProductItemInfo</code><br>13개 파라미터<br>이미지·가격·리뷰·랭킹·숏컷 모두 처리</p>
+    </div>
+    <div class="compare-card compare-after">
+        <div class="compare-card-label">After — 세 컴포넌트 조합</div>
+        <p><code>ProductInfo</code> — 이름, 배송, 가격, 리뷰, 랭킹<br>
+        <code>ShortCutButton</code> — 장바구니 버튼<br>
+        <code>PriceInfoData</code> — 가격 정보 데이터 클래스</p>
+    </div>
+</div>
+
+<p>호출부에서의 변화를 보면 의도가 더 명확해진다.</p>
+
+<pre><code><span class="cmt">// After: 역할별로 분리된 컴포넌트 조합</span>
+<span class="fn">Column</span>(verticalArrangement = <span class="typ">Arrangement</span>.<span class="fn">spacedBy</span>(<span class="ann">2</span>.dp)) {
+    <span class="fn">ProductInfo</span>(
+        name = name,
+        deliveryType = <span class="kw">null</span>,
+        priceData = <span class="typ">PriceInfoData</span>(
+            discountedPrice = discountedPrice,
+            discountRate = discountRate,
+            finalPrice = <span class="fn">getFinalPrice</span>(),
+            isMultiplePrice = isMultiplePrice,
+        ),
+        reviewCount = <span class="kw">null</span>,
+        ranking = rankingNumber,
+    )
+
+    <span class="fn">Spacer</span>(modifier = <span class="typ">Modifier</span>.<span class="fn">weight</span>(<span class="ann">1</span>f))
+
+    <span class="fn">ShortCutButton</span>(
+        text = shortCutType.text,
+        modifier = <span class="typ">Modifier</span>.<span class="fn">fillMaxWidth</span>(),
+        leadingIcon = shortCutType.icon?.<span class="kw">let</span> {
+            <span class="typ">ImageVector</span>.<span class="fn">vectorResource</span>(it)
+        },
+        onClick = { <span class="cmt">/* analytics + action */</span> },
+    )
+}</code></pre>
+
+<p><code>PriceInfoData</code>로 가격 관련 4개 파라미터를 묶었다. 숏컷 버튼은 별도 컴포넌트로 분리되어, 버튼이 필요 없는 화면에서는 아예 호출하지 않으면 된다. 이전에는 <code>onClickShortCut = null</code>을 넘겨 내부 분기를 타야 했다.</p>
+
+<p>이 Phase에서 <code>compose-core/product/</code> 패키지 전체(642줄)와 <code>search/.../Composable.kt</code>(269줄)를 삭제하고, widget 패키지에 3개 파일(145줄)을 추가했다.</p>
+
+<hr>
+
+<!-- ═══════════════════════════════════════════
+     Section 6: Phase 3
+     ═══════════════════════════════════════════ -->
+<h2 id="section-6">Phase 3 — API 표준화</h2>
+
+<p>Phase 1, 2에서 새 컴포넌트를 만들었으니 Phase 3에서는 <strong>호출부 14곳을 일괄 마이그레이션</strong>하고 구 코드를 삭제했다.</p>
+
+<h3>noRippleClickable → clickableSingleWithNoRipple</h3>
+
+<p>MyKurly의 <code>Util.kt</code>에만 존재하던 <code>noRippleClickable</code>을 <code>compose-core/extension/</code>의 공유 확장 함수 <code>clickableSingleWithNoRipple</code>로 교체했다.</p>
+
+<pre><code><span class="cmt">// Before: MyKurly 전용 유틸</span>
+<span class="kw">import</span> com.kurly.features.mykurly.compose.util.noRippleClickable
+modifier.<span class="fn">noRippleClickable</span>(onClick = onToolTipClick)
+
+<span class="cmt">// After: 공유 확장 함수</span>
+<span class="kw">import</span> com.kurly.compose_core.extension.clickableSingleWithNoRipple
+modifier.<span class="fn">clickableSingleWithNoRipple</span>(onClick = onToolTipClick)</code></pre>
+
+<p>이름이 길어졌지만, 역할이 더 명확해졌다. <code>clickableSingle</code>은 중복 클릭 방지를 포함하고, <code>WithNoRipple</code>은 리플 효과 제거를 명시한다. <code>noRippleClickable</code>이라는 이름은 "리플을 없앤다"는 사실은 알려주지만 중복 클릭 방지 여부는 암시하지 않았다.</p>
+
+<h3>ThumbnailImage → ProductImage 리네이밍</h3>
+
+<p>widget 모듈에 이미 존재하던 <code>ThumbnailImage</code>를 <code>ProductImage</code>로 이름을 변경했다. 썸네일이라는 이름은 이 컴포넌트가 상품 이미지 + 스티커 오버레이 + 판매불가 딤 처리까지 담당한다는 사실을 드러내지 못했다.</p>
+
+<p>리네이밍과 함께 <code>template/product/</code> 하위의 <code>ProductCard</code>, <code>ProductHorizontalListItem</code>, <code>ProductVerticalListItem</code> 세 곳의 import를 일괄 변경했다.</p>
+
+<hr>
+
+<!-- ═══════════════════════════════════════════
+     Section 7: Limitations
+     ═══════════════════════════════════════════ -->
+<h2 id="section-7">한계와 남은 과제</h2>
+
+<p>이번 정비로 해결하지 못한 부분도 있다.</p>
+
+<ul>
+    <li><strong><code>compose-core</code> 모듈의 완전 제거는 아직이다.</strong> <code>product/</code> 패키지는 삭제했지만, <code>compose-core</code>에는 <code>category</code>, <code>analytics</code> 등 아직 다른 코드가 남아 있다. 장기적으로 이 모듈의 역할을 <code>features:core:ui</code>로 완전히 이관해야 한다.</li>
+    <li><strong>search 모듈의 ViewHolder 코드는 점진적 전환 중이다.</strong> <code>Composable.kt</code>(269줄)에서 상품 관련 코드는 삭제했지만, ViewHolder에서 Compose 컴포넌트를 호출하는 구조 자체는 RecyclerView → LazyColumn 전환이 완료될 때까지 유지된다.</li>
+    <li><strong>widget 컴포넌트의 테스트 커버리지가 없다.</strong> 이번 PR은 기존 동작의 위치 이동에 집중했기 때문에 Preview 함수로만 시각적 검증을 했다. 향후 스냅샷 테스트 도입을 고려하고 있다.</li>
+</ul>
+
+<hr>
+
+<!-- ═══════════════════════════════════════════
+     Section 8: Takeaways
+     ═══════════════════════════════════════════ -->
+<h2 id="section-8">Takeaways</h2>
+
+<table class="metrics-table">
+    <thead>
+        <tr><th>항목</th><th>Before</th><th>After</th><th>변화</th></tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td class="metric-label">상태 화면 파일 수</td>
+            <td>5개 (피처당 1개)</td>
+            <td>3개 (공유 템플릿)</td>
+            <td><span class="delta delta-good">-40%</span></td>
+        </tr>
+        <tr>
+            <td class="metric-label">상품 컴포넌트 소스</td>
+            <td>3개 모듈 산재</td>
+            <td>widget 1개 패키지</td>
+            <td><span class="delta delta-good">단일 소스</span></td>
+        </tr>
+        <tr>
+            <td class="metric-label">총 라인 변화</td>
+            <td>—</td>
+            <td>+468 / -1,286</td>
+            <td><span class="delta delta-good">-818줄</span></td>
+        </tr>
+        <tr>
+            <td class="metric-label">VerticalProductItemInfo 파라미터</td>
+            <td>13개</td>
+            <td>ProductInfo 5개 + PriceInfoData 4개</td>
+            <td><span class="delta delta-good">관심사 분리</span></td>
+        </tr>
+        <tr>
+            <td class="metric-label">피처 전용 유틸 (noRippleClickable)</td>
+            <td>1개 모듈에 격리</td>
+            <td>공유 확장 함수</td>
+            <td><span class="delta delta-good">접근성 확보</span></td>
+        </tr>
+    </tbody>
+</table>
+
+<div class="summary-box">
+    <div class="summary-box-title">핵심 교훈</div>
+    <ul>
+        <li><strong>template과 widget을 구분하라.</strong> 화면 단위 레이아웃(template)과 개별 컴포넌트(widget)를 분리하면, "이 코드는 어디에 둬야 하지?"라는 질문에 답하기 쉬워진다.</li>
+        <li><strong>파라미터 폭발은 컴포지션으로 해결하라.</strong> 13개 파라미터의 단일 Composable보다, 역할별로 분리된 3개 컴포넌트를 <code>Column</code>으로 조합하는 것이 더 유연하고 읽기 쉽다.</li>
+        <li><strong>구 코드 삭제는 마지막에 한다.</strong> 새 컴포넌트를 먼저 만들고, 호출부를 점진적으로 교체한 뒤, 마지막 Phase에서 일괄 삭제하면 중간에 빌드가 깨지지 않는다.</li>
+    </ul>
+</div>
+
+<div class="summary-box">
+    <div class="summary-box-title">시각화 자료</div>
+    <p>이 글의 핵심 변경 사항을 Before/After 다이어그램으로 정리한 시각화 문서를 제공합니다.<br>
+    <a href="ui-system-cleanup.html">→ 시각화 페이지 보기</a></p>
+</div>
+
+</article>
+
+<div class="article">
+    <div class="footnotes">
+        <p>[1] PR: <a href="https://github.com/thefarmersfront/kurly-android/pull/7315">thefarmersfront/kurly-android#7315</a> — KMA-7413 UI 시스템(:features:core:ui) 모듈 정비</p>
+        <p>[2] Sub-tickets: KMA-7414 (상태 화면 통합), KMA-7415 (상품 컴포넌트 병합), KMA-7416 (호출부 마이그레이션 + 삭제)</p>
+    </div>
+</div>
+
+<footer class="article-footer">
+    <div class="share-buttons">
+        <button class="share-btn" onclick="navigator.clipboard.writeText(location.href)">링크 복사</button>
+    </div>
+</footer>
+
+</body>
+</html>

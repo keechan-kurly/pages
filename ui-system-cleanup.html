@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KMA-7413 UI 시스템 모듈 정비</title>
+<style>
+  /* ── Slate Dark Theme Tokens (RULE-C09) ── */
+  :root {
+    --color-bg: #0a0e1a;
+    --color-surface: #1e293b;
+    --color-surface-inner: #334155;
+    --color-surface-hover: #253348;
+    --color-border: rgba(148, 163, 184, 0.15);
+    --color-border-strong: rgba(148, 163, 184, 0.3);
+    --color-on-surface: #f1f5f9;
+    --color-on-surface-body: #94a3b8;
+    --color-on-surface-muted: #64748b;
+
+    /* Semantic colors (RULE-C01, dark-adjusted) */
+    --viz-color-add: #4ade80;
+    --viz-color-remove: #6b7280;
+    --viz-color-move: #60a5fa;
+    --viz-color-emphasis: #a78bfa;
+    --viz-color-merge: #fb923c;
+
+    /* Category accent colors */
+    --cat1-color: #f472b6;
+    --cat1-dark: #be185d;
+    --cat2-color: #60a5fa;
+    --cat2-dark: #1d4ed8;
+    --cat3-color: #a78bfa;
+    --cat3-dark: #6d28d9;
+  }
+
+  /* ── Reset & Base ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--color-bg);
+    color: var(--color-on-surface);
+    min-height: 100vh;
+    padding: 48px 24px;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  /* ── Hero Header (EVAL-0004) ── */
+  .hero {
+    text-align: center;
+    margin-bottom: 56px;
+    position: relative;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -60px; left: 50%;
+    transform: translateX(-50%);
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(96,165,250,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero::after {
+    content: '';
+    position: absolute;
+    top: -30px; left: 40%;
+    transform: translateX(-50%);
+    width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(167,139,250,0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    border-radius: 9999px;
+    background: linear-gradient(135deg, rgba(96,165,250,0.15) 0%, rgba(167,139,250,0.15) 100%);
+    border: 1px solid rgba(96,165,250,0.25);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--viz-color-move);
+    letter-spacing: 0.02em;
+    margin-bottom: 20px;
+    position: relative;
+  }
+  .hero h1 {
+    font-size: 2.2rem;
+    font-weight: 800;
+    line-height: 1.3;
+    background: linear-gradient(135deg, var(--color-on-surface) 0%, var(--viz-color-move) 50%, var(--viz-color-emphasis) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    position: relative;
+  }
+  .hero h1 .accent {
+    background: linear-gradient(135deg, var(--viz-color-move) 0%, var(--viz-color-emphasis) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero-desc {
+    font-size: 0.95rem;
+    color: var(--color-on-surface-muted);
+    max-width: 580px;
+    margin: 12px auto 0;
+    line-height: 1.6;
+    position: relative;
+  }
+
+  /* ── Stats Bar ── */
+  .stats-bar {
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+    margin-top: 28px;
+    position: relative;
+  }
+  .stat-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: var(--color-on-surface-body);
+  }
+  .stat-value {
+    font-weight: 700;
+    font-size: 1.1rem;
+  }
+  .stat-value.add { color: var(--viz-color-add); }
+  .stat-value.remove { color: var(--viz-color-merge); }
+  .stat-value.files { color: var(--viz-color-move); }
+
+  /* ── Section Label (pill) ── */
+  .section-label {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 14px;
+    border-radius: 9999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 24px;
+  }
+
+  /* ── Category Card (EVAL-0005: gradient tinting) ── */
+  .category {
+    margin-bottom: 48px;
+    padding: 28px;
+    border-radius: 20px;
+    border: 1px solid var(--color-border);
+    transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+  }
+  .category:hover {
+    transform: translateY(-2px);
+    border-color: var(--color-border-strong);
+  }
+  .category.cat1 {
+    background: linear-gradient(135deg, rgba(244,114,182,0.06) 0%, rgba(190,24,93,0.06) 100%);
+    border-color: rgba(244,114,182,0.15);
+  }
+  .category.cat1:hover { border-color: rgba(244,114,182,0.3); }
+  .category.cat2 {
+    background: linear-gradient(135deg, rgba(96,165,250,0.06) 0%, rgba(29,78,216,0.06) 100%);
+    border-color: rgba(96,165,250,0.15);
+  }
+  .category.cat2:hover { border-color: rgba(96,165,250,0.3); }
+  .category.cat3 {
+    background: linear-gradient(135deg, rgba(167,139,250,0.06) 0%, rgba(109,40,217,0.06) 100%);
+    border-color: rgba(167,139,250,0.15);
+  }
+  .category.cat3:hover { border-color: rgba(167,139,250,0.3); }
+
+  /* ── Category Header ── */
+  .category-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 8px;
+  }
+  .category-number {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    font-weight: 800;
+    color: #fff;
+    flex-shrink: 0;
+  }
+  .cat1 .category-number { background: linear-gradient(135deg, var(--cat1-color), var(--cat1-dark)); }
+  .cat2 .category-number { background: linear-gradient(135deg, var(--cat2-color), var(--cat2-dark)); }
+  .cat3 .category-number { background: linear-gradient(135deg, var(--cat3-color), var(--cat3-dark)); }
+
+  .category-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+  .category-subtitle {
+    font-size: 0.82rem;
+    color: var(--color-on-surface-muted);
+    margin-top: 2px;
+  }
+
+  /* ── Category Insight (EVAL-0002: visual hierarchy promotion) ── */
+  .category-insight {
+    font-size: 0.85rem;
+    color: var(--color-on-surface-body);
+    margin-bottom: 20px;
+    padding: 10px 16px;
+    border-radius: 12px;
+    background: rgba(148, 163, 184, 0.06);
+    border-left: 3px solid;
+    line-height: 1.5;
+  }
+  .cat1 .category-insight { border-left-color: var(--cat1-color); }
+  .cat2 .category-insight { border-left-color: var(--cat2-color); }
+  .cat3 .category-insight { border-left-color: var(--cat3-color); }
+
+  /* ── Before/After Grid (RULE-L01: anchor alignment) ── */
+  .ba-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .ba-col { display: flex; flex-direction: column; }
+  .ba-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 10px;
+    padding: 4px 12px;
+    border-radius: 9999px;
+    display: inline-block;
+    width: fit-content;
+  }
+  .ba-label.before {
+    background: rgba(148, 163, 184, 0.1);
+    color: var(--color-on-surface-muted);
+    border: 1px solid rgba(148, 163, 184, 0.15);
+  }
+  .ba-label.after {
+    background: rgba(74, 222, 128, 0.1);
+    color: var(--viz-color-add);
+    border: 1px solid rgba(74, 222, 128, 0.2);
+  }
+
+  /* ── Code Blocks ── */
+  .code-block {
+    background: var(--color-surface-inner);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+  }
+  .code-block.after-block {
+    border-color: rgba(74, 222, 128, 0.15);
+    border-left: 3px solid var(--viz-color-add);
+  }
+
+  /* ── Code Rows ── */
+  .code-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 12px;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', Consolas, monospace;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    min-height: 36px;
+    transition: 0.2s ease;
+  }
+  .code-row:hover { border-color: var(--color-border-strong); }
+
+  /* Concern row (Before: developer had to know this) */
+  .code-row.concern {
+    border-left: 3px solid var(--viz-color-merge);
+    color: var(--color-on-surface-body);
+    border-style: dashed;
+    border-left-style: solid;
+    opacity: 0.8;
+  }
+  /* Old/removed */
+  .code-row.old {
+    color: var(--color-on-surface-muted);
+    text-decoration: line-through;
+    border-left: 3px solid var(--viz-color-remove);
+    opacity: 0.7;
+  }
+  /* New/added */
+  .code-row.new {
+    border-left: 3px solid var(--viz-color-add);
+    color: var(--viz-color-add);
+  }
+  /* Merged */
+  .code-row.merged {
+    border-left: 3px solid var(--viz-color-merge);
+    color: var(--viz-color-merge);
+  }
+  /* Neutral (handled by framework) */
+  .code-row.neutral {
+    border-left: 3px dashed var(--color-border);
+    color: var(--color-on-surface-muted);
+    border-style: dashed;
+    border-left-style: dashed;
+    opacity: 0.6;
+  }
+  /* Highlight */
+  .code-row.highlight {
+    border: 2px solid var(--viz-color-emphasis);
+    background: rgba(167, 139, 250, 0.08);
+  }
+
+  .code-icon {
+    font-size: 0.7rem;
+    min-width: 16px;
+    text-align: center;
+  }
+  .code-meta {
+    font-size: 0.65rem;
+    color: var(--color-on-surface-muted);
+    margin-left: auto;
+    white-space: nowrap;
+  }
+
+  /* ── Arrow between Before/After ── */
+  .ba-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: var(--color-on-surface-muted);
+    padding-top: 28px;
+  }
+
+  /* ── Change Summary ── */
+  .summary-section {
+    margin-top: 48px;
+    padding: 28px;
+    background: var(--color-surface);
+    border-radius: 20px;
+    border: 1px solid var(--color-border);
+  }
+  .summary-title {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--color-on-surface-muted);
+    margin-bottom: 20px;
+  }
+  .summary-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .summary-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: var(--color-on-surface-body);
+  }
+  .summary-badge {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3px 10px;
+    border-radius: 9999px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    min-width: 64px;
+  }
+  .summary-badge.merge {
+    background: rgba(251, 146, 60, 0.12);
+    color: var(--viz-color-merge);
+    border: 1px solid rgba(251, 146, 60, 0.25);
+  }
+  .summary-badge.remove {
+    background: rgba(148, 163, 184, 0.1);
+    color: var(--color-on-surface-muted);
+    border: 1px solid var(--color-border);
+  }
+  .summary-badge.add {
+    background: rgba(74, 222, 128, 0.12);
+    color: var(--viz-color-add);
+    border: 1px solid rgba(74, 222, 128, 0.25);
+  }
+  .summary-badge.move {
+    background: rgba(96, 165, 250, 0.12);
+    color: var(--viz-color-move);
+    border: 1px solid rgba(96, 165, 250, 0.25);
+  }
+
+  /* ── Rationale (collapsible) ── */
+  .rationale {
+    margin-top: 48px;
+    border-top: 1px solid var(--color-border);
+    padding-top: 24px;
+  }
+  .rationale summary {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--color-on-surface-muted);
+    cursor: pointer;
+    padding: 8px 0;
+  }
+  .rationale-content {
+    padding: 16px 0;
+    font-size: 0.78rem;
+    line-height: 1.6;
+    color: var(--color-on-surface-body);
+  }
+  .rationale-content h4 {
+    color: var(--color-on-surface);
+    margin: 16px 0 8px;
+    font-size: 0.82rem;
+  }
+  .rationale-content h4:first-child { margin-top: 0; }
+  .rationale-content ul { padding-left: 20px; margin: 4px 0; }
+  .rationale-content li { margin-bottom: 4px; }
+  .rationale-content code {
+    background: var(--color-surface-inner);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.72rem;
+  }
+  .badge-inline {
+    display: inline-flex;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    margin-right: 4px;
+  }
+  .badge-inline.l2 { background: rgba(96,165,250,0.15); color: var(--viz-color-move); }
+  .badge-inline.l3 { background: rgba(167,139,250,0.15); color: var(--viz-color-emphasis); }
+  .badge-inline.l4 { background: rgba(251,146,60,0.15); color: var(--viz-color-merge); }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- ── Hero Header ── -->
+  <header class="hero">
+    <div class="hero-badge">KMA-7413 · UI 시스템 정비</div>
+    <h1>산재된 Compose 컴포넌트,<br><span class="accent">단일 공유 레이어로 통합하기</span></h1>
+    <p class="hero-desc">
+      각 피처가 독자적으로 구현하던 상태 화면·상품 이미지·클릭 핸들러를<br>
+      <code>:features:core:ui</code> 공유 레이어로 통합하여 중복을 제거하고 일관성을 확보합니다.
+    </p>
+    <div class="stats-bar">
+      <div class="stat-item"><span class="stat-value files">43</span> 파일 변경</div>
+      <div class="stat-item"><span class="stat-value add">+468</span> 추가</div>
+      <div class="stat-item"><span class="stat-value remove">−1,286</span> 삭제</div>
+    </div>
+  </header>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- Category 1: 상태 화면 통합                      -->
+  <!-- ══════════════════════════════════════════════ -->
+  <div class="category cat1">
+    <div class="category-header">
+      <div class="category-number">1</div>
+      <div>
+        <div class="category-title">중복 화면 통합</div>
+        <div class="category-subtitle">4개 피처의 개별 에러/빈 화면 → 공유 템플릿 3종</div>
+      </div>
+    </div>
+
+    <div class="category-insight">
+      피처마다 50줄씩 거의 동일한 에러·빈·로딩 화면을 복사해 구현하던 패턴을 제거합니다.
+      새 피처 추가 시 더 이상 에러 화면을 직접 만들 필요가 없습니다.
+    </div>
+
+    <div class="ba-grid">
+      <div class="ba-col">
+        <span class="ba-label before">Before</span>
+        <div class="code-block">
+          <div class="code-row concern"><span class="code-icon">📄</span> MyKurlyErrorScreen.kt <span class="code-meta">51줄</span></div>
+          <div class="code-row concern"><span class="code-icon">📄</span> BrandErrorScreen.kt <span class="code-meta">~50줄</span></div>
+          <div class="code-row concern"><span class="code-icon">📄</span> PickListErrorScreen.kt <span class="code-meta">57줄</span></div>
+          <div class="code-row concern"><span class="code-icon">📄</span> AlternativeEmptyScreen.kt <span class="code-meta">50줄</span></div>
+          <div class="code-row concern"><span class="code-icon">📄</span> BrandLoadingScreen.kt <span class="code-meta">52줄</span></div>
+          <div style="font-size:0.75rem; color:var(--color-on-surface-muted); margin-top:6px; padding:0 4px;">
+            각 피처가 KurlyEmptyState를 직접 감싸서 구현 — 동일 패턴 5곳 반복
+          </div>
+        </div>
+      </div>
+
+      <div class="ba-col">
+        <span class="ba-label after">After</span>
+        <div class="code-block after-block">
+          <div class="code-row new"><span class="code-icon">✦</span> template/ErrorScreen.kt <span class="code-meta">59줄</span></div>
+          <div class="code-row new"><span class="code-icon">✦</span> template/EmptyStateScreen.kt <span class="code-meta">60줄</span></div>
+          <div class="code-row highlight"><span class="code-icon">↑</span> template/LoadingScreen.kt <span class="code-meta">개선</span></div>
+          <div class="code-row neutral"><span class="code-icon">─</span> 개별 화면 파일 삭제됨</div>
+          <div style="font-size:0.75rem; color:var(--viz-color-add); margin-top:6px; padding:0 4px;">
+            호출부는 <code style="background:rgba(74,222,128,0.1); padding:2px 6px; border-radius:4px;">ErrorScreen(onRetryClick = ...)</code> 한 줄로 대체
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- Category 2: 상품 컴포넌트 병합                   -->
+  <!-- ══════════════════════════════════════════════ -->
+  <div class="category cat2">
+    <div class="category-header">
+      <div class="category-number">2</div>
+      <div>
+        <div class="category-title">상품 컴포넌트 병합</div>
+        <div class="category-subtitle">3개 모듈에 산재된 구현 → widget 패키지 단일 소스</div>
+      </div>
+    </div>
+
+    <div class="category-insight">
+      compose-core, search, widget에 각각 존재하던 ProductImage·Sticker·Shortcut을
+      <code>:features:core:ui:widget</code> 한 곳으로 병합합니다. compose-core/product 패키지(642줄) 전체를 삭제합니다.
+    </div>
+
+    <div class="ba-grid">
+      <div class="ba-col">
+        <span class="ba-label before">Before — 3개 모듈 산재</span>
+        <div class="code-block">
+          <div class="code-row concern"><span class="code-icon">📦</span> compose-core/product/Product.kt <span class="code-meta">474줄</span></div>
+          <div class="code-row concern"><span class="code-icon">📦</span> compose-core/product/Sticker.kt <span class="code-meta">168줄</span></div>
+          <div class="code-row concern"><span class="code-icon">📦</span> search/composable/Composable.kt <span class="code-meta">269줄 중 대부분</span></div>
+          <div style="font-size:0.75rem; color:var(--color-on-surface-muted); margin-top:6px; padding:0 4px;">
+            VerticalProductImage, ProductImage(search), ProductShortcut, Sticker가 각기 다른 모듈에 존재
+          </div>
+        </div>
+      </div>
+
+      <div class="ba-col">
+        <span class="ba-label after">After — widget 단일 패키지</span>
+        <div class="code-block after-block">
+          <div class="code-row merged"><span class="code-icon">⊕</span> widget/image/ProductImage.kt <span class="code-meta">병합 + 확장</span></div>
+          <div class="code-row new"><span class="code-icon">✦</span> widget/button/ProductShortcut.kt <span class="code-meta">78줄</span></div>
+          <div class="code-row new"><span class="code-icon">✦</span> widget/data/StickerDataMapper.kt <span class="code-meta">31줄</span></div>
+          <div class="code-row neutral"><span class="code-icon">─</span> compose-core/product/ 패키지 삭제</div>
+          <div style="font-size:0.75rem; color:var(--viz-color-add); margin-top:6px; padding:0 4px;">
+            ThumbnailImage → ProductImage 리네임 + <code style="background:rgba(74,222,128,0.1); padding:2px 6px; border-radius:4px;">aspectRatio</code>, <code style="background:rgba(74,222,128,0.1); padding:2px 6px; border-radius:4px;">additionalView</code> 파라미터 추가
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- Category 3: API 표준화                          -->
+  <!-- ══════════════════════════════════════════════ -->
+  <div class="category cat3">
+    <div class="category-header">
+      <div class="category-number">3</div>
+      <div>
+        <div class="category-title">API 표준화</div>
+        <div class="category-subtitle">피처 전용 유틸 → 공유 확장함수로 정규화</div>
+      </div>
+    </div>
+
+    <div class="category-insight">
+      MyKurly에만 존재하던 <code>noRippleClickable</code>을 공유 확장함수 <code>clickableSingleWithNoRipple</code>로 교체하고,
+      이름이 모호했던 <code>ThumbnailImage</code>를 <code>ProductImage</code>로 통일합니다.
+    </div>
+
+    <div class="ba-grid">
+      <div class="ba-col">
+        <span class="ba-label before">Before</span>
+        <div class="code-block">
+          <div class="code-row old"><span class="code-icon">✕</span> noRippleClickable <span class="code-meta">mykurly/util/Util.kt</span></div>
+          <div class="code-row old"><span class="code-icon">✕</span> ThumbnailImage <span class="code-meta">이름과 역할 불일치</span></div>
+          <div style="font-size:0.75rem; color:var(--color-on-surface-muted); margin-top:6px; padding:0 4px;">
+            피처 전용 유틸 → 다른 피처에서 접근 불가, 이름이 역할을 설명하지 못함
+          </div>
+        </div>
+      </div>
+
+      <div class="ba-col">
+        <span class="ba-label after">After</span>
+        <div class="code-block after-block">
+          <div class="code-row new"><span class="code-icon">→</span> clickableSingleWithNoRipple <span class="code-meta">compose-core/extension/</span></div>
+          <div class="code-row new"><span class="code-icon">→</span> ProductImage <span class="code-meta">widget/image/</span></div>
+          <div style="font-size:0.75rem; color:var(--viz-color-add); margin-top:6px; padding:0 4px;">
+            6곳 호출부 일괄 마이그레이션 완료 (Menu, TicketButton, AvailableTicketItemContainer 등)
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- Change Summary                                 -->
+  <!-- ══════════════════════════════════════════════ -->
+  <div class="summary-section">
+    <div class="summary-title">Change Summary</div>
+    <ul class="summary-list">
+      <li class="summary-item">
+        <span class="summary-badge merge">통합</span>
+        <span>5개 에러/빈/로딩 화면 → <strong>3개 공통 템플릿</strong> (ErrorScreen, EmptyStateScreen, LoadingScreen)</span>
+      </li>
+      <li class="summary-item">
+        <span class="summary-badge merge">병합</span>
+        <span>3개 모듈의 ProductImage/Sticker/Shortcut → <strong>widget 패키지 1곳</strong>으로 통합</span>
+      </li>
+      <li class="summary-item">
+        <span class="summary-badge remove">삭제</span>
+        <span>compose-core/product 패키지 <strong>전체 삭제</strong> (Product.kt 474줄 + Sticker.kt 168줄)</span>
+      </li>
+      <li class="summary-item">
+        <span class="summary-badge move">표준화</span>
+        <span>noRippleClickable → clickableSingleWithNoRipple, ThumbnailImage → ProductImage 리네임</span>
+      </li>
+      <li class="summary-item">
+        <span class="summary-badge add">마이그레이션</span>
+        <span>호출부 <strong>14곳</strong> (상태 화면 4 + 상품 컴포넌트 4 + 클릭 핸들러 6) 일괄 변경</span>
+      </li>
+    </ul>
+  </div>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- Cognitive Rationale                             -->
+  <!-- ══════════════════════════════════════════════ -->
+  <details class="rationale">
+    <summary>Cognitive Rationale — 이 시각화의 설계 근거</summary>
+    <div class="rationale-content">
+      <h4>Pattern</h4>
+      <p><strong>PAT-009 (categorized_before_after)</strong> — 3가지 독립적 정비 작업이 하나의 PR에 포함됨.
+      각 카테고리의 변경 유형이 동일(산재 → 통합)하므로 code-row 기반 Before/After가 적합.</p>
+
+      <h4>Applied Rules</h4>
+      <ul>
+        <li><code>RULE-L01</code> — Before/After 앵커 정렬: 양쪽 코드 블록의 대상 파일이 동일 위계에 배치 ← PRC-001</li>
+        <li><code>RULE-L02</code> — 동시 강조 ≤ 2: 각 카테고리 내 Before/After 2패널만 동시 표시 ← WM-001</li>
+        <li><code>RULE-C01</code> — 변경 유형별 색상: concern(주황), old(회색+취소선), new(초록), merged(주황), neutral(점선) ← PRC-003</li>
+        <li><code>RULE-C09</code> — Slate 다크 테마: Deep Navy 배경 + Slate 카드 ← AES-001 (처리 유창성)</li>
+        <li><code>RULE-T01</code> — 화면당 한 문장: category-insight에 1~2문장 변경 의도 요약 ← IP-001</li>
+        <li><code>RULE-CMP03</code> — 변경 안내: concern 행으로 Before의 문제점을 사전 예고 ← ATT-003</li>
+        <li><code>RULE-C06</code> — 다크 테마 대비: Before 텍스트에 <code>--color-on-surface-body</code>(#94a3b8) 사용 ← WCAG 2.1 AA</li>
+      </ul>
+
+      <h4>Self-Evaluation</h4>
+      <ul>
+        <li><strong>cognitive_load:</strong> 2/5 — 카테고리 3개, 각 카테고리 내 변경점 2~5개</li>
+        <li><strong>change_visibility:</strong> 5/5 — concern/neutral 대비 + 색상 코딩 + category-insight + 그래디언트 틴팅</li>
+        <li><strong>anchor_stability:</strong> 5/5 — Before/After 동일 grid 배치, 파일→파일 대응</li>
+        <li><strong>text_economy:</strong> 5/5 — category-insight 1~2문장, code-row 내 핵심만</li>
+      </ul>
+
+      <h4>Evidence Trail</h4>
+      <ul>
+        <li><span class="badge-inline l2">L2</span> PRC-001 — 전주의적 속성 인코딩: 색상·형태로 코드 변경 유형 즉시 구분 (Healey & Enns, 2012)</li>
+        <li><span class="badge-inline l2">L2</span> WM-001 — Miller's 4±1 법칙: 카테고리 3개는 작업기억 용량 내 (Cowan, 2010)</li>
+        <li><span class="badge-inline l2">L2</span> ATT-003 — 변화 맹시 방지: concern 행이 Before의 문제를 사전 표시 (Rensink et al., 1997)</li>
+        <li><span class="badge-inline l3">L3</span> IP-001 — 이중 부호화: 시각(색상/레이아웃) + 언어(insight 텍스트) 동시 전달 (Paivio, 1986)</li>
+        <li><span class="badge-inline l4">L4</span> AES-001 — 처리 유창성: Slate 다크 테마로 시각적 피로 감소 (Reber et al., 2004)</li>
+      </ul>
+    </div>
+  </details>
+
+</div>
+</body>
+</html>
