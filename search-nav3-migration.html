@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KMA-7359 검색 탭 Navigation3 마이그레이션</title>
+<style>
+  @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+
+  :root {
+    /* Slate Dark Theme (RULE-C09) */
+    --color-bg: #0a0e1a;
+    --color-surface: #1e293b;
+    --color-surface-hover: #253348;
+    --color-surface-inner: #334155;
+    --color-border: rgba(148, 163, 184, 0.15);
+    --color-border-strong: rgba(148, 163, 184, 0.25);
+    --color-on-surface: #f1f5f9;
+    --color-on-surface-body: #94a3b8;
+    --color-on-surface-muted: #64748b;
+
+    /* Semantic Colors — dark-adapted (RULE-C01, RULE-C09) */
+    --viz-color-add: #4ade80;
+    --viz-color-remove: #6b7280;
+    --viz-color-move: #60a5fa;
+    --viz-color-emphasis: #a78bfa;
+    --viz-color-merge: #fb923c;
+
+    /* Category accent colors */
+    --cat1-accent: #fb923c;
+    --cat1-accent-dark: #ea580c;
+    --cat2-accent: #60a5fa;
+    --cat2-accent-dark: #2563eb;
+    --cat3-accent: #a78bfa;
+    --cat3-accent-dark: #7c3aed;
+
+    /* Shape & Spacing */
+    --radius-card: 20px;
+    --radius-inner: 12px;
+    --radius-pill: 9999px;
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 48px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    background: var(--color-bg);
+    color: var(--color-on-surface);
+    min-height: 100vh;
+    padding: var(--spacing-xl) var(--spacing-lg);
+  }
+
+  .container { max-width: 1100px; margin: 0 auto; }
+
+  /* ── Hero Header (EVAL-0004) ── */
+  .hero {
+    text-align: center;
+    margin-bottom: var(--spacing-xl);
+    position: relative;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -60px; left: 50%;
+    transform: translateX(-50%);
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(96, 165, 250, 0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero::after {
+    content: '';
+    position: absolute;
+    top: -40px; right: 20%;
+    width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(167, 139, 250, 0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    border-radius: var(--radius-pill);
+    background: linear-gradient(135deg, rgba(96, 165, 250, 0.15), rgba(167, 139, 250, 0.15));
+    border: 1px solid rgba(96, 165, 250, 0.25);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--viz-color-move);
+    letter-spacing: 0.05em;
+    margin-bottom: var(--spacing-md);
+  }
+  .hero h1 {
+    font-size: 2.2rem;
+    font-weight: 800;
+    line-height: 1.3;
+    background: linear-gradient(135deg, var(--color-on-surface), var(--viz-color-move), var(--viz-color-emphasis));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: var(--spacing-sm);
+  }
+  .hero h1 .accent {
+    background: linear-gradient(135deg, var(--viz-color-move), var(--viz-color-emphasis));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero-desc {
+    font-size: 0.95rem;
+    color: var(--color-on-surface-muted);
+    max-width: 580px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+
+  /* ── Key Changes ── */
+  .key-changes {
+    margin-bottom: var(--spacing-xl);
+    padding: 28px;
+    background: var(--color-surface);
+    border-radius: var(--radius-card);
+    border: 1px solid var(--color-border);
+    transition: border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .key-changes:hover { border-color: var(--color-border-strong); }
+  .key-changes-label {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--color-on-surface-muted);
+    padding: 4px 12px;
+    border-radius: var(--radius-pill);
+    background: rgba(148, 163, 184, 0.08);
+    border: 1px solid var(--color-border);
+    margin-bottom: var(--spacing-md);
+  }
+  .key-changes ol { padding-left: 1.2rem; display: flex; flex-direction: column; gap: 8px; }
+  .key-changes li { font-size: 0.88rem; line-height: 1.6; color: var(--color-on-surface-body); }
+  .key-changes li strong { font-weight: 700; }
+  .key-changes li strong.cat1 { color: var(--cat1-accent); }
+  .key-changes li strong.cat2 { color: var(--cat2-accent); }
+  .key-changes li strong.cat3 { color: var(--cat3-accent); }
+
+  /* ── Category Card ── */
+  .category {
+    margin-bottom: var(--spacing-xl);
+    padding: 28px;
+    border-radius: var(--radius-card);
+    border: 1px solid var(--color-border);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .category:hover {
+    transform: translateY(-2px);
+    border-color: var(--color-border-strong);
+  }
+  .category.cat1 {
+    background: linear-gradient(135deg, rgba(251, 146, 60, 0.06) 0%, rgba(234, 88, 12, 0.04) 100%);
+    border-color: rgba(251, 146, 60, 0.15);
+  }
+  .category.cat1:hover { border-color: rgba(251, 146, 60, 0.3); }
+  .category.cat2 {
+    background: linear-gradient(135deg, rgba(96, 165, 250, 0.06) 0%, rgba(37, 99, 235, 0.04) 100%);
+    border-color: rgba(96, 165, 250, 0.15);
+  }
+  .category.cat2:hover { border-color: rgba(96, 165, 250, 0.3); }
+  .category.cat3 {
+    background: linear-gradient(135deg, rgba(167, 139, 250, 0.06) 0%, rgba(124, 58, 237, 0.04) 100%);
+    border-color: rgba(167, 139, 250, 0.15);
+  }
+  .category.cat3:hover { border-color: rgba(167, 139, 250, 0.3); }
+
+  .category-header { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+  .category-number {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.85rem; font-weight: 800; color: #fff; flex-shrink: 0;
+  }
+  .category-number.cat1 { background: linear-gradient(135deg, var(--cat1-accent), var(--cat1-accent-dark)); }
+  .category-number.cat2 { background: linear-gradient(135deg, var(--cat2-accent), var(--cat2-accent-dark)); }
+  .category-number.cat3 { background: linear-gradient(135deg, var(--cat3-accent), var(--cat3-accent-dark)); }
+  .category-title { font-size: 1.1rem; font-weight: 700; }
+  .category-desc {
+    font-size: 0.78rem;
+    color: var(--color-on-surface-muted);
+    margin-left: auto;
+    white-space: nowrap;
+  }
+
+  .category-insight {
+    font-size: 0.85rem;
+    color: var(--color-on-surface-body);
+    margin-bottom: var(--spacing-md);
+    padding-left: 48px;
+    line-height: 1.5;
+  }
+  .category-insight .from { color: var(--color-on-surface-muted); }
+  .category-insight .arrow { color: var(--color-on-surface-muted); margin: 0 4px; }
+  .category-insight .to { font-weight: 600; }
+  .category-insight.cat1 .to { color: var(--cat1-accent); }
+  .category-insight.cat2 .to { color: var(--cat2-accent); }
+  .category-insight.cat3 .to { color: var(--cat3-accent); }
+
+  /* ── Before/After Grid ── */
+  .ba-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md); }
+  .ba-col { display: flex; flex-direction: column; }
+  .ba-label {
+    display: inline-block;
+    width: fit-content;
+    font-size: 0.6rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.12em;
+    padding: 4px 12px;
+    border-radius: var(--radius-pill);
+    margin-bottom: var(--spacing-sm);
+  }
+  .ba-label.before {
+    background: rgba(148, 163, 184, 0.08);
+    color: var(--color-on-surface-muted);
+    border: 1px solid var(--color-border);
+  }
+  .ba-label.after {
+    background: rgba(74, 222, 128, 0.1);
+    color: var(--viz-color-add);
+    border: 1px solid rgba(74, 222, 128, 0.2);
+  }
+
+  .code-block {
+    background: var(--color-surface-inner);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-inner);
+    padding: var(--spacing-md);
+    display: flex; flex-direction: column; gap: 8px;
+    flex: 1;
+  }
+  .code-block.after-block {
+    background: var(--color-surface-inner);
+    border-left: 3px solid;
+  }
+  .code-block.after-block.cat1 { border-left-color: var(--cat1-accent); }
+  .code-block.after-block.cat2 { border-left-color: var(--cat2-accent); }
+  .code-block.after-block.cat3 { border-left-color: var(--cat3-accent); }
+
+  /* ── Code Rows ── */
+  .code-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', Consolas, monospace;
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid var(--color-border);
+    min-height: 38px;
+    line-height: 1.4;
+  }
+  .code-row.old {
+    color: var(--color-on-surface-body);
+    opacity: 0.7;
+    border-left: 3px solid var(--color-on-surface-muted);
+    text-decoration: line-through;
+    text-decoration-color: var(--color-on-surface-muted);
+  }
+  .code-row.concern {
+    color: var(--color-on-surface-body);
+    border: 1px dashed rgba(148, 163, 184, 0.3);
+    background: rgba(251, 146, 60, 0.04);
+  }
+  .code-row.neutral {
+    color: var(--color-on-surface-muted);
+    border: 1px dashed rgba(148, 163, 184, 0.15);
+    font-style: italic;
+    opacity: 0.6;
+  }
+  .code-row.new { border-left: 3px solid var(--viz-color-add); color: var(--viz-color-add); }
+  .code-row.merged { border-left: 3px solid var(--viz-color-merge); color: var(--viz-color-merge); }
+  .code-row.moved { border-left: 3px solid var(--viz-color-move); color: var(--viz-color-move); }
+  .code-row.highlight {
+    border: 2px solid var(--viz-color-emphasis);
+    background: rgba(167, 139, 250, 0.06);
+    box-shadow: 0 0 0 2px rgba(167, 139, 250, 0.15);
+  }
+
+  .code-icon { font-size: 0.7rem; font-weight: 700; min-width: 16px; flex-shrink: 0; }
+  .code-meta { font-size: 0.65rem; color: var(--color-on-surface-muted); margin-left: auto; white-space: nowrap; }
+
+  .concern-text {
+    font-size: 0.75rem;
+    color: var(--cat1-accent);
+    opacity: 0.8;
+    margin-top: 4px;
+    padding: 0 4px;
+    line-height: 1.4;
+  }
+  .flow-note {
+    font-size: 0.75rem;
+    color: var(--color-on-surface-muted);
+    margin-top: 4px;
+    padding: 0 4px;
+    line-height: 1.4;
+  }
+
+  /* connector arrow */
+  .connector { display: flex; align-items: center; gap: 4px; margin: 4px 0; padding-left: 12px; }
+  .connector-line { width: 20px; height: 1px; background: var(--color-on-surface-muted); }
+  .connector-arrow { color: var(--color-on-surface-muted); font-size: 0.7rem; }
+
+  /* ── Summary ── */
+  .summary-section {
+    margin-top: var(--spacing-xl);
+    padding: 28px;
+    background: var(--color-surface);
+    border-radius: var(--radius-card);
+    border: 1px solid var(--color-border);
+  }
+  .summary-label {
+    display: inline-block;
+    font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--color-on-surface-muted);
+    padding: 4px 12px;
+    border-radius: var(--radius-pill);
+    background: rgba(148, 163, 184, 0.08);
+    border: 1px solid var(--color-border);
+    margin-bottom: var(--spacing-md);
+  }
+  .summary-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  .summary-item { display: flex; align-items: flex-start; gap: 12px; font-size: 0.85rem; line-height: 1.6; color: var(--color-on-surface-body); }
+  .summary-badge {
+    flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 3px 10px;
+    border-radius: var(--radius-pill);
+    font-size: 0.6rem; font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    min-width: 64px;
+  }
+  .summary-badge.merge { background: rgba(251, 146, 60, 0.12); color: var(--viz-color-merge); border: 1px solid rgba(251, 146, 60, 0.25); }
+  .summary-badge.move { background: rgba(96, 165, 250, 0.12); color: var(--viz-color-move); border: 1px solid rgba(96, 165, 250, 0.25); }
+  .summary-badge.add { background: rgba(74, 222, 128, 0.12); color: var(--viz-color-add); border: 1px solid rgba(74, 222, 128, 0.25); }
+  .summary-badge.remove { background: rgba(107, 114, 128, 0.12); color: var(--color-on-surface-muted); border: 1px solid var(--color-border); }
+
+  /* ── Rationale ── */
+  .rationale {
+    margin-top: var(--spacing-xl);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    background: var(--color-surface);
+  }
+  .rationale summary {
+    font-size: 0.72rem; font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-on-surface-muted);
+    padding: 20px 28px;
+    cursor: pointer; user-select: none;
+    list-style: none;
+    display: flex; align-items: center; gap: var(--spacing-sm);
+  }
+  .rationale summary::before { content: '▸'; transition: transform 0.15s; }
+  .rationale[open] summary::before { transform: rotate(90deg); }
+  .rationale-body { padding: 0 28px 28px; display: flex; flex-direction: column; gap: var(--spacing-lg); }
+  .rationale-block-label {
+    font-size: 0.6rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.1em; color: var(--color-on-surface-muted);
+    margin-bottom: var(--spacing-xs);
+  }
+  .rationale-text { font-size: 0.82rem; color: var(--color-on-surface-body); line-height: 1.6; }
+  .rationale-rules-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  .rationale-rules-list li {
+    font-size: 0.78rem; padding: 8px 12px;
+    background: var(--color-surface-inner);
+    border-radius: 8px;
+    border: 1px solid var(--color-border);
+    color: var(--color-on-surface-body);
+  }
+  .rule-id { font-family: 'SF Mono', Consolas, monospace; font-size: 0.65rem; font-weight: 700; color: var(--viz-color-move); margin-right: 6px; }
+  .principle-ref { font-family: 'SF Mono', Consolas, monospace; font-size: 0.58rem; color: var(--color-on-surface-muted); margin-left: 4px; }
+
+  .eval-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--spacing-sm); }
+  .eval-cell {
+    text-align: center; padding: 12px;
+    background: var(--color-surface-inner);
+    border-radius: var(--radius-inner);
+    border: 1px solid var(--color-border);
+  }
+  .eval-score { font-size: 1.1rem; font-weight: 700; color: var(--viz-color-move); }
+  .eval-label { font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-on-surface-muted); margin-top: 2px; }
+
+  .evidence-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+  .evidence-list li { font-size: 0.72rem; color: var(--color-on-surface-muted); line-height: 1.5; padding-left: 14px; position: relative; }
+  .evidence-list li::before { content: '·'; position: absolute; left: 0; font-weight: 700; }
+  .evidence-level {
+    font-family: 'SF Mono', Consolas, monospace;
+    font-size: 0.58rem; font-weight: 700;
+    padding: 1px 5px; border-radius: 4px; margin-right: 4px;
+  }
+  .evidence-level.l1 { background: rgba(74, 222, 128, 0.15); color: var(--viz-color-add); }
+  .evidence-level.l2 { background: rgba(96, 165, 250, 0.15); color: var(--viz-color-move); }
+  .evidence-level.l3 { background: rgba(251, 146, 60, 0.15); color: var(--viz-color-merge); }
+
+  /* ── Navigation Flow Animation ── */
+  .anim-section {
+    margin-bottom: var(--spacing-xl);
+    padding: 28px;
+    background: var(--color-surface);
+    border-radius: var(--radius-card);
+    border: 1px solid var(--color-border);
+  }
+  .anim-label {
+    display: inline-block;
+    font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.12em; color: var(--color-on-surface-muted);
+    padding: 4px 12px; border-radius: var(--radius-pill);
+    background: rgba(96, 165, 250, 0.08);
+    border: 1px solid rgba(96, 165, 250, 0.15);
+    margin-bottom: var(--spacing-lg);
+  }
+  .anim-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .anim-col-label {
+    display: inline-block; width: fit-content;
+    font-size: 0.6rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.12em; padding: 4px 12px;
+    border-radius: var(--radius-pill); margin-bottom: 12px;
+  }
+  .anim-col-label.before { background: rgba(148,163,184,0.08); color: var(--color-on-surface-muted); border: 1px solid var(--color-border); }
+  .anim-col-label.after { background: rgba(74,222,128,0.1); color: var(--viz-color-add); border: 1px solid rgba(74,222,128,0.2); }
+
+  /* Activity frame */
+  .act-frame {
+    border: 2px solid var(--color-border-strong);
+    border-radius: 14px;
+    padding: 12px;
+    background: rgba(15,23,42,0.3);
+    position: relative;
+    min-height: 340px;
+  }
+  .act-title {
+    position: absolute; top: -9px; left: 16px;
+    font-family: 'SF Mono', Consolas, monospace;
+    font-size: 0.6rem; font-weight: 700;
+    background: var(--color-surface);
+    padding: 0 8px;
+    color: var(--color-on-surface-muted);
+  }
+
+  /* Fragment boxes */
+  .frag-box {
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-family: 'SF Mono', Consolas, monospace;
+    font-size: 0.7rem;
+    font-weight: 600;
+    position: relative;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+  }
+  .frag-box .frag-label {
+    display: block;
+    margin-bottom: 4px;
+    line-height: 1.3;
+  }
+  .frag-box .frag-sub {
+    font-size: 0.58rem;
+    font-weight: 400;
+    opacity: 0.7;
+    display: block;
+  }
+
+  /* Before side fragments */
+  .b-frame-layout {
+    border: 1px dashed rgba(148,163,184,0.3);
+    border-radius: 10px;
+    padding: 8px;
+    margin-top: 10px;
+    min-height: 200px;
+    position: relative;
+    background: rgba(15,23,42,0.2);
+  }
+  .b-frame-title {
+    position: absolute; top: -8px; left: 10px;
+    font-family: 'SF Mono', Consolas, monospace;
+    font-size: 0.55rem; color: var(--color-on-surface-muted);
+    background: var(--color-surface);
+    padding: 0 6px;
+  }
+  .b-frag {
+    border: 1px solid var(--color-border);
+    background: var(--color-surface-inner);
+    color: var(--color-on-surface-body);
+    min-height: 60px;
+    display: flex; flex-direction: column; justify-content: center;
+    margin-top: 6px;
+  }
+  .b-frag.active-frag {
+    border-color: var(--viz-color-move);
+    background: rgba(96,165,250,0.08);
+    color: var(--color-on-surface);
+    box-shadow: 0 0 12px rgba(96,165,250,0.15);
+  }
+  .b-frag.gone {
+    opacity: 0;
+    transform: translateX(-100%);
+    max-height: 0;
+    padding: 0 14px;
+    margin: 0;
+    border: none;
+  }
+  .b-frag.enter-right {
+    animation: slideInRight 0.45s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+  .b-frag.exit-left {
+    animation: slideOutLeft 0.45s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+  @keyframes slideInRight {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+  @keyframes slideOutLeft {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(-100%); opacity: 0; }
+  }
+  @keyframes slideInLeft {
+    from { transform: translateX(-100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+  @keyframes slideOutRight {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(100%); opacity: 0; }
+  }
+
+  /* After side - NavDisplay */
+  .a-navdisplay {
+    border: 2px solid var(--viz-color-move);
+    border-radius: 10px;
+    padding: 8px;
+    margin-top: 10px;
+    min-height: 200px;
+    position: relative;
+    background: rgba(96,165,250,0.03);
+  }
+  .a-navdisplay-title {
+    position: absolute; top: -9px; left: 10px;
+    font-family: 'SF Mono', Consolas, monospace;
+    font-size: 0.58rem; font-weight: 700;
+    color: var(--viz-color-move);
+    background: var(--color-surface);
+    padding: 0 6px;
+  }
+  .a-frag {
+    border: 1px solid rgba(74,222,128,0.3);
+    background: rgba(74,222,128,0.06);
+    color: var(--viz-color-add);
+    min-height: 60px;
+    display: flex; flex-direction: column; justify-content: center;
+    margin-top: 6px;
+  }
+  .a-frag.active-frag {
+    border-color: var(--viz-color-add);
+    box-shadow: 0 0 12px rgba(74,222,128,0.15);
+  }
+
+  /* API call annotation */
+  .api-call {
+    margin-top: 10px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-family: 'SF Mono', Consolas, monospace;
+    font-size: 0.62rem;
+    line-height: 1.5;
+    background: rgba(15,23,42,0.5);
+    border: 1px solid var(--color-border);
+    color: var(--color-on-surface-muted);
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 0.3s, transform 0.3s;
+  }
+  .api-call.visible { opacity: 1; transform: translateY(0); }
+  .api-call .api-keyword { color: var(--viz-color-move); font-weight: 600; }
+  .api-call .api-added { color: var(--viz-color-add); }
+  .api-call .api-removed { color: var(--viz-color-merge); }
+
+  /* backStack bar */
+  .bs-bar {
+    display: flex; align-items: center; gap: 4px;
+    margin-top: 10px; flex-wrap: wrap;
+  }
+  .bs-label {
+    font-family: 'SF Mono', Consolas, monospace;
+    font-size: 0.58rem; color: var(--color-on-surface-muted); margin-right: 2px;
+  }
+  .bs-chip {
+    padding: 3px 8px; border-radius: 6px;
+    font-family: 'SF Mono', Consolas, monospace;
+    font-size: 0.58rem; font-weight: 600;
+    transition: all 0.4s;
+  }
+  .bs-chip.input { background: rgba(96,165,250,0.12); color: var(--viz-color-move); border: 1px solid rgba(96,165,250,0.25); }
+  .bs-chip.result { background: rgba(74,222,128,0.12); color: var(--viz-color-add); border: 1px solid rgba(74,222,128,0.25); }
+  .bs-chip.popping { opacity: 0.3; text-decoration: line-through; transform: scale(0.9); }
+  .bs-bracket { font-family: 'SF Mono', Consolas, monospace; font-size: 0.65rem; color: var(--color-on-surface-muted); }
+
+  /* Step indicator */
+  .step-bar {
+    display: flex; align-items: center; gap: 0;
+    margin-top: 20px;
+    background: var(--color-surface-inner);
+    border-radius: 8px; padding: 4px;
+    border: 1px solid var(--color-border);
+  }
+  .step-pill {
+    flex: 1; text-align: center;
+    padding: 6px 8px;
+    font-size: 0.65rem; font-weight: 600;
+    color: var(--color-on-surface-muted);
+    border-radius: 6px;
+    transition: all 0.3s;
+    cursor: pointer;
+  }
+  .step-pill.active {
+    background: var(--viz-color-move);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(96,165,250,0.3);
+  }
+  .step-pill:hover:not(.active) { background: rgba(148,163,184,0.08); }
+
+
+  @media (max-width: 768px) {
+    .ba-grid { grid-template-columns: 1fr; }
+    .eval-grid { grid-template-columns: repeat(2, 1fr); }
+    .hero h1 { font-size: 1.6rem; }
+    .category-insight { padding-left: 0; }
+    .category-desc { display: none; }
+    .nav-flow-body { flex-direction: column; align-items: center; }
+    .flow-panel { width: 100%; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- ═══ Hero ═══ -->
+<header class="hero">
+  <div class="hero-badge">KMA-7359 · 검색 탭 마이그레이션</div>
+  <h1>Fragment 트랜잭션에서<br><span class="accent">Navigation3 선언적 라우팅</span>으로</h1>
+  <p class="hero-desc">상속 기반으로 분산된 검색 네비게이션을 NavDisplay 하나로 통합하여, 화면 전환 로직의 소유권을 명확히 한다</p>
+</header>
+
+<!-- ═══ Key Changes ═══ -->
+<div class="key-changes">
+  <div class="key-changes-label">3가지 핵심 변경</div>
+  <ol>
+    <li><strong class="cat1">상속 구조 제거</strong> — SearchFragment + SearchInputFragment 2계층 상속을 단일 SearchNavHostFragment로 통합</li>
+    <li><strong class="cat2">선언적 네비게이션</strong> — FragmentManager.commit 트랜잭션을 NavDisplay + NavBackStack으로 전환</li>
+    <li><strong class="cat3">직렬화 가능 라우트</strong> — 도메인 타입 라우트를 @Serializable 프리미티브 타입으로 변환</li>
+  </ol>
+</div>
+
+<!-- ═══ Navigation Flow Animation: Before vs After ═══ -->
+<div class="anim-section">
+  <div class="anim-label">화면 전환 메커니즘 비교</div>
+
+  <!-- Step indicator -->
+  <div class="step-bar" id="stepBar">
+    <div class="step-pill active" data-step="0">홈</div>
+    <div class="step-pill" data-step="1">검색탭</div>
+    <div class="step-pill" data-step="2">검색결과</div>
+    <div class="step-pill" data-step="3">뒤로가기(검색탭)</div>
+  </div>
+
+  <div style="height:16px;"></div>
+
+  <div class="anim-pair">
+    <!-- ======== BEFORE ======== -->
+    <div>
+      <span class="anim-col-label before">◀ Before — FragmentManager</span>
+      <div class="act-frame">
+        <span class="act-title">MainActivity</span>
+
+        <!-- FrameLayout container -->
+        <div class="b-frame-layout" style="margin-top:16px;">
+          <span class="b-frame-title">FrameLayout (R.id.content)</span>
+
+          <!-- Home placeholder -->
+          <div class="frag-box b-frag active-frag" id="b-home" style="margin-top:10px;">
+            <span class="frag-label">HomeFragment</span>
+            <span class="frag-sub">홈 탭 콘텐츠</span>
+          </div>
+
+          <!-- SearchInputFragment -->
+          <div class="frag-box b-frag" id="b-search-input" style="display:none; margin-top:10px;">
+            <span class="frag-label">SearchInputFragment</span>
+            <span class="frag-sub">extends SearchFragment (abstract)</span>
+          </div>
+
+          <!-- ProductPagingListFragment -->
+          <div class="frag-box b-frag" id="b-result" style="display:none; margin-top:10px;">
+            <span class="frag-label">ProductPagingListFragment</span>
+            <span class="frag-sub">.newInstance(keyword, site, ...)</span>
+          </div>
+        </div>
+
+        <!-- API call annotation -->
+        <div class="api-call" id="b-api"></div>
+      </div>
+    </div>
+
+    <!-- ======== AFTER ======== -->
+    <div>
+      <span class="anim-col-label after">After ▶ — Navigation3</span>
+      <div class="act-frame" style="border-color: rgba(74,222,128,0.25);">
+        <span class="act-title" style="color:var(--viz-color-add);">MainActivity</span>
+
+        <!-- Home placeholder (before search tab) -->
+        <div class="frag-box a-frag active-frag" id="a-home" style="margin-top:16px;">
+          <span class="frag-label" style="color:var(--viz-color-add);">HomeFragment</span>
+          <span class="frag-sub" style="color:var(--color-on-surface-muted);">홈 탭 콘텐츠</span>
+        </div>
+
+        <!-- SearchNavHostFragment wrapper -->
+        <div id="a-nav-wrapper" style="display:none; margin-top:12px; border:2px solid rgba(74,222,128,0.3); border-radius:14px; padding:12px; background:rgba(74,222,128,0.02); position:relative;">
+          <span style="position:absolute; top:-9px; left:14px; font-family:'SF Mono',Consolas,monospace; font-size:0.6rem; font-weight:700; color:var(--viz-color-add); background:var(--color-surface); padding:0 8px;">SearchNavHostFragment</span>
+
+          <div class="a-navdisplay" style="margin-top:6px;">
+            <span class="a-navdisplay-title">NavDisplay (ComposeView)</span>
+
+            <div class="frag-box a-frag active-frag" id="a-input" style="margin-top:10px;">
+              <span class="frag-label" style="color:var(--viz-color-add);">SearchInputScreen</span>
+              <span class="frag-sub" style="color:var(--color-on-surface-muted);">entry&lt;SearchDestination.Input&gt;</span>
+            </div>
+
+            <div class="frag-box a-frag" id="a-result" style="display:none; margin-top:10px;">
+              <span class="frag-label" style="color:var(--viz-color-add);">AndroidFragment&lt;ProductPagingListFragment&gt;</span>
+              <span class="frag-sub" style="color:var(--color-on-surface-muted);">entry&lt;SearchDestination.Result&gt;</span>
+            </div>
+
+            <!-- backStack state -->
+            <div class="bs-bar" id="a-bs">
+              <span class="bs-label">backStack:</span>
+              <span class="bs-bracket">[</span>
+              <span class="bs-chip input">Input</span>
+              <span class="bs-bracket">]</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- API call annotation -->
+        <div class="api-call" id="a-api"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const DURATIONS = [2200, 2500, 2500, 2200];
+  let step = 0, tid = null;
+
+  // Before
+  const bHome = document.getElementById('b-home');
+  const bInput = document.getElementById('b-search-input');
+  const bResult = document.getElementById('b-result');
+  const bApi = document.getElementById('b-api');
+
+  // After
+  const aHome = document.getElementById('a-home');
+  const aWrap = document.getElementById('a-nav-wrapper');
+  const aInput = document.getElementById('a-input');
+  const aResult = document.getElementById('a-result');
+  const aApi = document.getElementById('a-api');
+  const aBs = document.getElementById('a-bs');
+
+  const pills = document.querySelectorAll('.step-pill');
+
+  function setPills(i) { pills.forEach((p, j) => p.classList.toggle('active', j === i)); }
+
+  function showBs(items) {
+    let h = '<span class="bs-label">backStack:</span><span class="bs-bracket">[</span>';
+    items.forEach((it, i) => {
+      if (i) h += '<span style="color:var(--color-on-surface-muted);font-size:0.55rem;">, </span>';
+      h += '<span class="bs-chip ' + it.type + (it.pop ? ' popping' : '') + '">' + it.text + '</span>';
+    });
+    h += '<span class="bs-bracket">]</span>';
+    aBs.innerHTML = h;
+  }
+
+  function resetEl(el) { el.style.animation = 'none'; void el.offsetWidth; el.style.animation = ''; }
+
+  function hideAll() {
+    [bHome, bInput, bResult].forEach(el => { el.style.display = 'none'; el.style.animation = ''; el.className = 'frag-box b-frag'; });
+    [aInput, aResult].forEach(el => { el.style.display = 'none'; el.style.animation = ''; el.className = 'frag-box a-frag'; });
+    bApi.classList.remove('visible'); bApi.innerHTML = '';
+    aApi.classList.remove('visible'); aApi.innerHTML = '';
+  }
+
+  function goTo(s) {
+    step = s;
+    setPills(s);
+    hideAll();
+
+    switch(s) {
+      case 0: // 홈
+        bHome.style.display = ''; bHome.className = 'frag-box b-frag active-frag';
+        aHome.style.display = ''; aWrap.style.display = 'none';
+        bApi.innerHTML = '// 홈 탭 표시 중'; bApi.classList.add('visible');
+        aApi.innerHTML = '// 홈 탭 표시 중'; aApi.classList.add('visible');
+        break;
+
+      case 1: // 검색탭 → SearchInputFragment / SearchNavHostFragment
+        // Before: slide in SearchInputFragment
+        bInput.style.display = ''; bInput.className = 'frag-box b-frag active-frag';
+        bInput.style.animation = 'slideInRight 0.45s cubic-bezier(0.4,0,0.2,1) forwards';
+        bApi.innerHTML = '// 검색 탭 선택 →<br><span class="api-keyword">SearchInputFragment</span> 로드<br><span class="frag-sub" style="opacity:0.6;">extends SearchFragment (abstract)</span>';
+        bApi.classList.add('visible');
+
+        // After: show SearchNavHostFragment + NavDisplay
+        aHome.style.display = 'none';
+        aWrap.style.display = '';
+        aInput.style.display = ''; aInput.className = 'frag-box a-frag active-frag';
+        aInput.style.animation = 'slideInRight 0.45s cubic-bezier(0.4,0,0.2,1) forwards';
+        showBs([{type:'input', text:'Input'}]);
+        aApi.innerHTML = '// 검색 탭 선택 →<br><span class="api-added">SearchNavHostFragment</span> 로드<br><span class="api-keyword">rememberNavBackStack</span>(SearchDestination.Input)';
+        aApi.classList.add('visible');
+        break;
+
+      case 2: // 검색결과 → ProductPagingListFragment
+        // Before: replace SearchInputFragment with ProductPagingListFragment
+        bInput.style.display = '';
+        bInput.style.animation = 'slideOutLeft 0.45s cubic-bezier(0.4,0,0.2,1) forwards';
+        bResult.style.display = ''; bResult.className = 'frag-box b-frag active-frag';
+        bResult.style.animation = 'slideInRight 0.45s cubic-bezier(0.4,0,0.2,1) forwards';
+        bApi.innerHTML = '<span class="api-keyword">parentFragmentManager</span>.commit {<br>&nbsp;&nbsp;replace(R.id.content,<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="api-removed">ProductPagingListFragment.newInstance(...)</span>)<br>}';
+        bApi.classList.add('visible');
+
+        // After: backStack.add(Result)
+        aHome.style.display = 'none'; aWrap.style.display = '';
+        aInput.style.display = '';
+        aInput.style.animation = 'slideOutLeft 0.45s cubic-bezier(0.4,0,0.2,1) forwards';
+        aResult.style.display = ''; aResult.className = 'frag-box a-frag active-frag';
+        aResult.style.animation = 'slideInRight 0.45s cubic-bezier(0.4,0,0.2,1) forwards';
+        showBs([{type:'input', text:'Input'}, {type:'result', text:'Result("딸기")'}]);
+        aApi.innerHTML = '<span class="api-added">backStack</span>.add(<span class="api-keyword">SearchDestination.Result</span>("딸기"))';
+        aApi.classList.add('visible');
+        break;
+
+      case 3: // 뒤로가기(검색탭)
+        // Before: pop → re-create SearchInputFragment
+        bResult.style.display = '';
+        bResult.style.animation = 'slideOutRight 0.45s cubic-bezier(0.4,0,0.2,1) forwards';
+        bInput.style.display = ''; bInput.className = 'frag-box b-frag active-frag';
+        bInput.style.animation = 'slideInLeft 0.45s cubic-bezier(0.4,0,0.2,1) forwards';
+        bApi.innerHTML = '// <span class="api-keyword">onBackPressed()</span><br>// SearchInputFragment <span class="api-removed">복원</span>';
+        bApi.classList.add('visible');
+
+        // After: backStack.removeLastOrNull()
+        aHome.style.display = 'none'; aWrap.style.display = '';
+        aResult.style.display = '';
+        aResult.style.animation = 'slideOutRight 0.45s cubic-bezier(0.4,0,0.2,1) forwards';
+        aInput.style.display = ''; aInput.className = 'frag-box a-frag active-frag';
+        aInput.style.animation = 'slideInLeft 0.45s cubic-bezier(0.4,0,0.2,1) forwards';
+        showBs([{type:'input', text:'Input'}, {type:'result', text:'Result', pop:true}]);
+        aApi.innerHTML = '<span class="api-added">backStack</span>.<span class="api-removed">removeLastOrNull</span>()';
+        aApi.classList.add('visible');
+        break;
+    }
+  }
+
+  function advance() {
+    tid = setTimeout(() => { goTo((step + 1) % 4); advance(); }, DURATIONS[step]);
+  }
+
+  pills.forEach(p => p.addEventListener('click', () => {
+    if (tid) clearTimeout(tid);
+    goTo(+p.dataset.step);
+    advance();
+  }));
+
+  goTo(0); advance();
+})();
+</script>
+
+<!-- ═══ Category 1: 상속 구조 제거 ═══ -->
+<div class="category cat1">
+  <div class="category-header">
+    <span class="category-number cat1">1</span>
+    <span class="category-title">상속 구조 제거</span>
+    <span class="category-desc">3개 클래스 → 1개 클래스</span>
+  </div>
+  <div class="category-insight cat1">
+    <span class="from">공통 로직을 abstract 클래스에 분산</span>
+    <span class="arrow">→</span>
+    <span class="to">한 클래스가 모든 검색 네비게이션을 소유</span>
+  </div>
+  <div class="ba-grid">
+    <div class="ba-col">
+      <span class="ba-label before">◀ Before</span>
+      <div class="code-block">
+        <div class="code-row concern">
+          <span class="code-icon" style="color:var(--cat1-accent);">◇</span>
+          SearchFragment
+          <span class="code-meta">abstract · 229줄</span>
+        </div>
+        <div class="connector">
+          <span class="connector-arrow">↳</span>
+          <span style="font-size:0.7rem; color:var(--color-on-surface-muted);">extends</span>
+        </div>
+        <div class="code-row concern">
+          <span class="code-icon" style="color:var(--cat1-accent);">◇</span>
+          SearchInputFragment
+          <span class="code-meta">concrete · 198줄</span>
+        </div>
+        <div class="code-row old">
+          <span class="code-icon" style="color:var(--color-on-surface-muted);">─</span>
+          moveToSearchResultProductList()
+          <span class="code-meta">base에 정의</span>
+        </div>
+        <div class="code-row old">
+          <span class="code-icon" style="color:var(--color-on-surface-muted);">─</span>
+          sendSearchEvent()
+          <span class="code-meta">base에 정의</span>
+        </div>
+        <div class="concern-text">개발자가 로직을 찾으려면 2개 파일을 오가야 함</div>
+      </div>
+    </div>
+    <div class="ba-col">
+      <span class="ba-label after">After ▶</span>
+      <div class="code-block after-block cat1">
+        <div class="code-row merged">
+          <span class="code-icon" style="color:var(--viz-color-merge);">⬡</span>
+          SearchNavHostFragment
+          <span class="code-meta">454줄 · 단일 진입점</span>
+        </div>
+        <div class="code-row neutral">
+          <span class="code-icon" style="color:var(--color-on-surface-muted);">·</span>
+          SearchFragment
+          <span class="code-meta">삭제됨</span>
+        </div>
+        <div class="code-row neutral">
+          <span class="code-icon" style="color:var(--color-on-surface-muted);">·</span>
+          SearchInputFragment
+          <span class="code-meta">삭제됨</span>
+        </div>
+        <div class="flow-note">네비게이션 + 이벤트 + UI 로직이 한 곳에 모여 탐색 비용 제거</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Category 2: 선언적 네비게이션 ═══ -->
+<div class="category cat2">
+  <div class="category-header">
+    <span class="category-number cat2">2</span>
+    <span class="category-title">선언적 네비게이션</span>
+    <span class="category-desc">명령형 → 선언형</span>
+  </div>
+  <div class="category-insight cat2">
+    <span class="from">FragmentManager가 화면 교체를 명령</span>
+    <span class="arrow">→</span>
+    <span class="to">backStack 상태가 UI를 자동 결정</span>
+  </div>
+  <div class="ba-grid">
+    <div class="ba-col">
+      <span class="ba-label before">◀ Before</span>
+      <div class="code-block">
+        <div class="code-row concern">
+          <span class="code-icon" style="color:var(--cat2-accent);">▷</span>
+          parentFragmentManager.commit {
+          <span class="code-meta">명령형</span>
+        </div>
+        <div class="code-row old">
+          <span class="code-icon" style="color:var(--color-on-surface-muted);">─</span>
+          &nbsp;&nbsp;replace(R.id.content, fragment)
+        </div>
+        <div class="code-row concern">
+          <span class="code-icon" style="color:var(--cat2-accent);">▷</span>
+          ProductPagingListFragment.newInstance(...)
+          <span class="code-meta">수동 생성</span>
+        </div>
+        <div class="concern-text">화면 전환마다 Fragment 인스턴스를 직접 생성하고 교체해야 함</div>
+      </div>
+    </div>
+    <div class="ba-col">
+      <span class="ba-label after">After ▶</span>
+      <div class="code-block after-block cat2">
+        <div class="code-row moved">
+          <span class="code-icon" style="color:var(--viz-color-move);">⬡</span>
+          NavDisplay(backStack, entryProvider)
+          <span class="code-meta">선언형</span>
+        </div>
+        <div class="code-row new">
+          <span class="code-icon" style="color:var(--viz-color-add);">+</span>
+          rememberNavBackStack(SearchDestination.Input)
+        </div>
+        <div class="code-row new">
+          <span class="code-icon" style="color:var(--viz-color-add);">+</span>
+          entryProvider { entry&lt;SearchDestination.Result&gt; }
+          <span class="code-meta">DSL</span>
+        </div>
+        <div class="code-row new">
+          <span class="code-icon" style="color:var(--viz-color-add);">+</span>
+          AndroidFragment&lt;ProductPagingListFragment&gt;
+          <span class="code-meta">기존 Fragment 래핑</span>
+        </div>
+        <div class="flow-note">backStack.add(route)만으로 화면 전환 — Fragment 생성/교체 불필요</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Category 3: 직렬화 가능 라우트 ═══ -->
+<div class="category cat3">
+  <div class="category-header">
+    <span class="category-number cat3">3</span>
+    <span class="category-title">직렬화 가능 라우트</span>
+    <span class="category-desc">도메인 타입 → 프리미티브</span>
+  </div>
+  <div class="category-insight cat3">
+    <span class="from">라우트가 도메인 enum에 직접 의존</span>
+    <span class="arrow">→</span>
+    <span class="to">@Serializable 프리미티브로 상태 저장/복원 가능</span>
+  </div>
+  <div class="ba-grid">
+    <div class="ba-col">
+      <span class="ba-label before">◀ Before</span>
+      <div class="code-block">
+        <div class="code-row concern">
+          <span class="code-icon" style="color:var(--cat3-accent);">◇</span>
+          sealed interface SearchRoute
+        </div>
+        <div class="code-row old">
+          <span class="code-icon" style="color:var(--color-on-surface-muted);">─</span>
+          site: SiteFilterType
+          <span class="code-meta">enum 직접 참조</span>
+        </div>
+        <div class="code-row old">
+          <span class="code-icon" style="color:var(--color-on-surface-muted);">─</span>
+          searchSelectionType: SearchSelectionType?
+          <span class="code-meta">enum 직접 참조</span>
+        </div>
+        <div class="concern-text">직렬화 불가 — 프로세스 복원 시 상태 유실 위험</div>
+      </div>
+    </div>
+    <div class="ba-col">
+      <span class="ba-label after">After ▶</span>
+      <div class="code-block after-block cat3">
+        <div class="code-row highlight">
+          <span class="code-icon" style="color:var(--viz-color-emphasis);">⬡</span>
+          @Serializable SearchDestination : NavKey
+        </div>
+        <div class="code-row new">
+          <span class="code-icon" style="color:var(--viz-color-add);">+</span>
+          siteName: String
+          <span class="code-meta">프리미티브</span>
+        </div>
+        <div class="code-row new">
+          <span class="code-icon" style="color:var(--viz-color-add);">+</span>
+          searchSelectionTypeValue: String?
+          <span class="code-meta">프리미티브</span>
+        </div>
+        <div class="flow-note">NavKey 구현으로 Navigation3가 상태를 자동 저장/복원</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Summary ═══ -->
+<div class="summary-section">
+  <div class="summary-label">변경 요약</div>
+  <ul class="summary-list">
+    <li class="summary-item">
+      <span class="summary-badge merge">통합</span>
+      <span>SearchFragment + SearchInputFragment → SearchNavHostFragment (427줄 삭제, 454줄 생성)</span>
+    </li>
+    <li class="summary-item">
+      <span class="summary-badge move">전환</span>
+      <span>FragmentManager.commit → Navigation3 NavDisplay + rememberNavBackStack</span>
+    </li>
+    <li class="summary-item">
+      <span class="summary-badge move">전환</span>
+      <span>SearchRoute → SearchDestination (@Serializable, NavKey 구현)</span>
+    </li>
+    <li class="summary-item">
+      <span class="summary-badge add">추가</span>
+      <span>navigation3-runtime 1.0.1, navigation3-ui, fragment-compose + compileSdk 36</span>
+    </li>
+    <li class="summary-item">
+      <span class="summary-badge add">추가</span>
+      <span>AndroidFragment&lt;ProductPagingListFragment&gt;로 기존 Fragment Compose에서 래핑</span>
+    </li>
+  </ul>
+</div>
+
+<!-- ═══ Cognitive Rationale ═══ -->
+<details class="rationale">
+  <summary>Cognitive Rationale — 이 시각화가 이 형태인 이유</summary>
+  <div class="rationale-body">
+    <div>
+      <div class="rationale-block-label">Pattern</div>
+      <div class="rationale-text">
+        <strong>PAT-009</strong> — Categorized Before/After<br>
+        3가지 독립적 변경(클래스 통합, 네비게이션 패러다임 전환, 라우트 직렬화)이 단일 본질 특성으로 귀결되지 않으므로, 카테고리별 Before/After 대비가 가장 효과적이다. 각 카테고리가 "왜 이 변경이 필요한가"를 독립적으로 전달한다.
+      </div>
+    </div>
+    <div>
+      <div class="rationale-block-label">Applied Rules</div>
+      <ul class="rationale-rules-list">
+        <li><span class="rule-id">RULE-L01</span> Before/After 그리드가 카테고리 내에서 앵커 포인트 유지 <span class="principle-ref">← WM-001, ATT-002</span></li>
+        <li><span class="rule-id">RULE-L02</span> 카테고리 3개 = 작업기억 4±1 한계 내 <span class="principle-ref">← WM-001, WM-002</span></li>
+        <li><span class="rule-id">RULE-C01</span> 변경 유형별 색상 일관: merge=주황, move=파랑, emphasis=보라 <span class="principle-ref">← PRC-003</span></li>
+        <li><span class="rule-id">RULE-C09</span> Slate 다크 테마 — Deep Navy 배경 + 카드 표면 위계 <span class="principle-ref">← PRC-004, AES-003</span></li>
+        <li><span class="rule-id">RULE-T01</span> category-insight로 카테고리당 1문장 핵심 메시지 <span class="principle-ref">← IP-001, WM-003</span></li>
+        <li><span class="rule-id">RULE-CMP03</span> concern/neutral 행 대비 + concern-text/flow-note로 변경 안내 <span class="principle-ref">← ATT-004</span></li>
+      </ul>
+    </div>
+    <div>
+      <div class="rationale-block-label">Self-Evaluation</div>
+      <div class="eval-grid">
+        <div class="eval-cell"><div class="eval-score">2/5</div><div class="eval-label">Cognitive Load</div></div>
+        <div class="eval-cell"><div class="eval-score">5/5</div><div class="eval-label">Change Visibility</div></div>
+        <div class="eval-cell"><div class="eval-score">5/5</div><div class="eval-label">Anchor Stability</div></div>
+        <div class="eval-cell"><div class="eval-score">5/5</div><div class="eval-label">Text Economy</div></div>
+      </div>
+    </div>
+    <div>
+      <div class="rationale-block-label">Evidence Trail</div>
+      <ul class="evidence-list">
+        <li><span class="evidence-level l1">L1</span> Cowan (2001) — 작업기억 4±1 → 카테고리 3개로 제한</li>
+        <li><span class="evidence-level l2">L2</span> Brehmer & Munzner (2013) — 과제 유형 분류 → 변경 의도별 카테고리 분리</li>
+        <li><span class="evidence-level l2">L2</span> Hullman & Diakopoulos (2011) — 시각화 수사학 → category-insight 프레이밍이 해석 방향 결정</li>
+        <li><span class="evidence-level l2">L2</span> Rensink (2002) — Change Blindness → concern/neutral 행 대비로 변화 탐지 촉진</li>
+      </ul>
+    </div>
+  </div>
+</details>
+
+</div>
+</body>
+</html>
