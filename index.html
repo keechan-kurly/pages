@@ -97,6 +97,27 @@
   .article-arrow { position: absolute; right: 28px; top: 50%; transform: translateY(-50%); font-size: 1.2rem; color: var(--color-outline); opacity: 0; transition: 0.3s; }
   .article-card:hover .article-arrow { opacity: 1; transform: translateY(-50%) translateX(4px); }
 
+  /* ── Section Divider ── */
+  .section-header { margin-bottom: 24px; }
+  .section-label { display: inline-flex; align-items: center; gap: 8px; font-size: 0.7rem; font-weight: 700; color: var(--color-outline); text-transform: uppercase; letter-spacing: 0.12em; padding-bottom: 12px; border-bottom: 1px solid var(--color-border); width: 100%; }
+
+  /* ── Viz Grid (compact 2-col) ── */
+  .viz-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 48px; }
+  .viz-card { padding: 20px; border-radius: 16px; border: 1px solid var(--color-border); background: var(--color-surface); text-decoration: none; color: inherit; transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 10px; }
+  .viz-card:hover { transform: translateY(-2px); border-color: rgba(148,163,184,0.3); box-shadow: 0 6px 24px rgba(0,0,0,0.2); }
+  .viz-card-header { display: flex; align-items: center; gap: 10px; }
+  .viz-card-icon { width: 32px; height: 32px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 800; color: #fff; flex-shrink: 0; background: linear-gradient(135deg, var(--color-outline), var(--color-surface-inner)); }
+  .viz-card-ticket { font-size: 0.65rem; font-weight: 600; color: var(--color-outline); letter-spacing: 0.04em; }
+  .viz-card-title { font-size: 1rem; font-weight: 700; color: var(--color-on-surface); line-height: 1.4; }
+  .viz-card-desc { font-size: 0.8rem; color: var(--color-on-surface-body); line-height: 1.6; }
+  .viz-card-stats { display: flex; gap: 8px; flex-wrap: wrap; }
+  .viz-card-stat { font-size: 0.62rem; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(148,163,184,0.08); border: 1px solid var(--color-border); color: var(--color-outline); }
+  .viz-card-stat.good { color: var(--viz-color-add); border-color: rgba(74,222,128,0.2); background: rgba(74,222,128,0.06); }
+
+  @media (max-width: 768px) {
+    .viz-grid { grid-template-columns: 1fr; }
+  }
+
   /* ── Footer ── */
   .footer { text-align: center; padding: 32px 0; border-top: 1px solid var(--color-border); }
   .footer-text { font-size: 0.72rem; color: var(--color-outline); }
@@ -118,6 +139,10 @@
   <h1>기술 블로그<br>아카이브</h1>
   <p class="hero-desc">PR 기반 기술 블로그 + 시각화 문서 모음</p>
 </header>
+
+<div class="section-header">
+  <div class="section-label">📝 기술 블로그</div>
+</div>
 
 <div class="articles">
 
@@ -260,6 +285,43 @@
       </div>
     </div>
     <span class="article-arrow">→</span>
+  </a>
+
+</div>
+
+<div class="section-header" style="margin-top:48px;">
+  <div class="section-label">📊 시각화 자료</div>
+</div>
+
+<div class="viz-grid">
+
+  <!-- Filter BottomSheet Unification (KMA-7402) -->
+  <a href="filter-bottomsheet-unification.html" class="viz-card">
+    <div class="viz-card-header">
+      <div class="viz-card-icon">V</div>
+      <span class="viz-card-ticket">KMA-7402</span>
+    </div>
+    <div class="viz-card-title">필터 BottomSheet 통합</div>
+    <div class="viz-card-desc">XML 리뷰 필터 BottomSheet 삭제 → Compose 상품 필터에 EntryPoint.Review 추가하여 재사용</div>
+    <div class="viz-card-stats">
+      <span class="viz-card-stat">17 파일</span>
+      <span class="viz-card-stat good">−851줄</span>
+      <span class="viz-card-stat">Before/After</span>
+    </div>
+  </a>
+
+  <!-- Search Nav3 Migration (KMA-7359) -->
+  <a href="search-nav3-migration.html" class="viz-card">
+    <div class="viz-card-header">
+      <div class="viz-card-icon">V</div>
+      <span class="viz-card-ticket">KMA-7359</span>
+    </div>
+    <div class="viz-card-title">검색 탭 Navigation3 마이그레이션</div>
+    <div class="viz-card-desc">Fragment 트랜잭션 → NavDisplay 선언적 라우팅, 상속 구조 제거 + @Serializable 라우트</div>
+    <div class="viz-card-stats">
+      <span class="viz-card-stat">3가지 핵심 변경</span>
+      <span class="viz-card-stat">Before/After</span>
+    </div>
   </a>
 
 </div>
