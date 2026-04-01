@@ -3,278 +3,925 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KMA-7446 부팅 라우팅 플로우</title>
+<title>부팅 라우팅 전략 — BootRouteResolver</title>
 <style>
-  @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+/* ════════════════════════════════════════════════════════════════════════
+   BASE CSS — Cognitive Visualization Shared Design Tokens
+   (RULE-C04, RULE-C05, RULE-T04, RULE-S01, RULE-E01, RULE-C09)
+   ════════════════════════════════════════════════════════════════════════ */
+:root {
+  /* Slate Dark Theme (RULE-C09) */
+  --color-bg: #0a0e1a;
+  --color-surface: #1e293b;
+  --color-surface-elevated: #334155;
+  --color-surface-hover: #253348;
+  --color-on-surface: #f1f5f9;
+  --color-on-surface-body: #94a3b8;
+  --color-outline: #64748b;
+  --color-border: rgba(148, 163, 184, 0.15);
 
-  :root {
-    --bg: #0a0e1a;
-    --surface: #1e293b;
-    --inner: #334155;
-    --border: rgba(148,163,184,0.15);
-    --border-h: rgba(148,163,184,0.3);
-    --text: #f1f5f9;
-    --text2: #94a3b8;
-    --muted: #64748b;
-    --green: #4ade80;
-    --blue: #60a5fa;
-    --purple: #a78bfa;
-    --yellow: #fbbf24;
-    --red: #f87171;
-    --mono: 'SF Mono','Fira Code',Consolas,monospace;
-  }
+  /* Semantic Viz Colors (bright for dark bg) */
+  --viz-add: #4ade80;
+  --viz-remove: #94a3b8;
+  --viz-move: #60a5fa;
+  --viz-emphasis: #a78bfa;
+  --viz-merge: #fb923c;
+  --viz-danger: #f87171;
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Pretendard',-apple-system,sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 48px 24px; }
-  .c { max-width: 800px; margin: 0 auto; }
+  /* Route Colors */
+  --route-allow: #4ade80;
+  --route-block: #f87171;
+  --route-warn: #fbbf24;
+  --route-neutral: #94a3b8;
 
-  /* Hero */
-  .hero { text-align: center; margin-bottom: 48px; }
-  .badge { display: inline-block; padding: 5px 14px; border-radius: 9999px; font-size: 0.72rem; font-weight: 600; color: var(--blue); background: rgba(96,165,250,0.1); border: 1px solid rgba(96,165,250,0.2); margin-bottom: 16px; }
-  h1 { font-size: 1.8rem; font-weight: 800; background: linear-gradient(135deg, var(--text), var(--blue), var(--purple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 8px; }
-  .sub { font-size: 0.88rem; color: var(--muted); }
+  /* Spacing */
+  --sp-xs: 4px; --sp-sm: 8px; --sp-md: 16px; --sp-lg: 24px; --sp-xl: 32px; --sp-2xl: 48px;
 
-  /* Flow */
-  .flow { display: flex; flex-direction: column; align-items: center; }
-  .line { width: 2px; height: 24px; background: var(--muted); opacity: 0.2; }
-  .line.short { height: 14px; }
+  /* Fonts */
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', Menlo, Consolas, monospace;
+  --font-sans: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
 
-  /* Node */
-  .n { padding: 14px 20px; border-radius: 12px; text-align: center; width: 100%; max-width: 480px; border: 1px solid var(--border); background: var(--surface); transition: transform 0.2s; }
-  .n:hover { transform: translateY(-1px); }
-  .n-class { font-family: var(--mono); font-size: 0.72rem; color: var(--purple); background: rgba(167,139,250,0.1); padding: 2px 8px; border-radius: 5px; display: inline-block; margin-bottom: 4px; }
-  .n-fn { font-family: var(--mono); font-size: 0.78rem; color: var(--text); font-weight: 600; }
-  .n-desc { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  /* Decision */
-  .decision { padding: 20px 28px; border-radius: 20px; text-align: center; width: 100%; max-width: 480px; border: 2px solid rgba(167,139,250,0.3); background: linear-gradient(135deg, rgba(167,139,250,0.06), rgba(96,165,250,0.04)); }
-  .decision:hover { border-color: rgba(167,139,250,0.5); }
+body {
+  font-family: var(--font-sans);
+  background: var(--color-bg);
+  color: var(--color-on-surface);
+  min-height: 100vh;
+}
 
-  /* Split layout */
-  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; width: 100%; }
-  .split-col { display: flex; flex-direction: column; align-items: center; gap: 0; }
+.container { max-width: 1100px; margin: 0 auto; padding: 48px 24px; }
 
-  .col-label { padding: 5px 14px; border-radius: 9999px; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.08em; margin-bottom: 14px; }
-  .col-label.pass { background: rgba(74,222,128,0.1); color: var(--green); border: 1px solid rgba(74,222,128,0.2); }
-  .col-label.block { background: rgba(248,113,113,0.1); color: var(--red); border: 1px solid rgba(248,113,113,0.2); }
+/* ── Hero (EVAL-0004) ── */
+.hero {
+  text-align: center;
+  padding: 64px 24px 48px;
+  position: relative;
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -40%; left: 30%;
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(167,139,250,0.1) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero::after {
+  content: '';
+  position: absolute;
+  bottom: -30%; right: 20%;
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, rgba(96,165,250,0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px;
+  background: linear-gradient(135deg, rgba(167,139,250,0.12), rgba(96,165,250,0.12));
+  border: 1px solid rgba(167,139,250,0.2);
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--viz-emphasis);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 28px;
+  position: relative;
+}
+.hero h1 {
+  font-size: 2.4rem;
+  font-weight: 800;
+  line-height: 1.2;
+  margin-bottom: 20px;
+  position: relative;
+  background: linear-gradient(135deg, var(--color-on-surface) 0%, var(--viz-emphasis) 50%, var(--viz-move) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero h1 .accent {
+  background: linear-gradient(135deg, var(--viz-move) 0%, var(--viz-emphasis) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero-desc {
+  font-size: 0.95rem;
+  color: var(--color-outline);
+  max-width: 580px;
+  margin: 0 auto;
+  position: relative;
+  line-height: 1.7;
+}
 
-  /* Route card */
-  .route { padding: 14px 16px; border-radius: 14px; border: 1px solid; width: 100%; transition: all 0.2s; }
-  .route:hover { transform: translateY(-1px); }
-  .route-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-  .route-icon { font-size: 1rem; }
-  .route-name { font-family: var(--mono); font-size: 0.78rem; font-weight: 700; }
-  .route-flow { font-size: 0.75rem; color: var(--text2); line-height: 1.6; }
-  .route-flow code { font-family: var(--mono); font-size: 0.68rem; padding: 1px 5px; border-radius: 4px; background: rgba(148,163,184,0.08); }
+/* ── Section Label (pill badge) ── */
+.section-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--color-outline);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  padding: 6px 14px;
+  background: rgba(148,163,184,0.06);
+  border: 1px solid var(--color-border);
+  border-radius: 9999px;
+  margin-bottom: var(--sp-lg);
+}
 
-  .route.enter { background: rgba(74,222,128,0.04); border-color: rgba(74,222,128,0.15); }
-  .route.enter:hover { border-color: rgba(74,222,128,0.3); }
-  .route.enter .route-name { color: var(--green); }
+/* ── Pipeline Section ── */
+.pipeline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin-bottom: var(--sp-2xl);
+  flex-wrap: wrap;
+}
+.pipe-node {
+  padding: 20px 28px;
+  border-radius: 16px;
+  border: 1px solid;
+  text-align: center;
+  min-width: 180px;
+  transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.pipe-node:hover { transform: translateY(-2px); }
+.pipe-node.api {
+  background: linear-gradient(135deg, rgba(96,165,250,0.08), var(--color-surface));
+  border-color: rgba(96,165,250,0.2);
+}
+.pipe-node.dto {
+  background: linear-gradient(135deg, rgba(251,146,60,0.08), var(--color-surface));
+  border-color: rgba(251,146,60,0.2);
+}
+.pipe-node.domain {
+  background: linear-gradient(135deg, rgba(167,139,250,0.08), var(--color-surface));
+  border-color: rgba(167,139,250,0.2);
+}
+.pipe-node.resolver {
+  background: linear-gradient(135deg, rgba(74,222,128,0.08), var(--color-surface));
+  border-color: rgba(74,222,128,0.2);
+}
+.pipe-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.pipe-label.api { color: var(--viz-move); }
+.pipe-label.dto { color: var(--viz-merge); }
+.pipe-label.domain { color: var(--viz-emphasis); }
+.pipe-label.resolver { color: var(--viz-add); }
+.pipe-code {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--color-on-surface-body);
+}
+.pipe-arrow {
+  font-size: 1.4rem;
+  color: var(--color-outline);
+  padding: 0 10px;
+  flex-shrink: 0;
+}
 
-  .route.dialog { background: rgba(167,139,250,0.04); border-color: rgba(167,139,250,0.15); }
-  .route.dialog:hover { border-color: rgba(167,139,250,0.3); }
-  .route.dialog .route-name { color: var(--purple); }
+/* ── Decision Tree (SVG) ── */
+.diagram-wrap {
+  max-width: 1000px;
+  margin: 0 auto var(--sp-2xl);
+  overflow-x: auto;
+}
+.diagram-wrap svg { width: 100%; height: auto; }
 
-  .route.braze { background: rgba(251,191,36,0.04); border-color: rgba(251,191,36,0.15); }
-  .route.braze:hover { border-color: rgba(251,191,36,0.3); }
-  .route.braze .route-name { color: var(--yellow); }
+/* SVG styles */
+.node-process rect { fill: var(--color-surface); stroke: var(--viz-emphasis); stroke-width: 2; rx: 12; }
+.node-process .n-title { font-family: var(--font-mono); font-size: 11px; font-weight: 600; fill: var(--color-on-surface); }
+.node-process .n-code { font-family: var(--font-mono); font-size: 9px; fill: var(--color-on-surface-body); }
 
-  .route.store { background: rgba(96,165,250,0.04); border-color: rgba(96,165,250,0.15); }
-  .route.store:hover { border-color: rgba(96,165,250,0.3); }
-  .route.store .route-name { color: var(--blue); }
+.node-decision polygon { fill: var(--color-surface); stroke: var(--viz-merge); stroke-width: 2; }
+.node-decision text { font-family: var(--font-mono); font-size: 10px; font-weight: 600; fill: var(--viz-merge); text-anchor: middle; dominant-baseline: central; }
 
-  .route.block { background: rgba(248,113,113,0.04); border-color: rgba(248,113,113,0.15); }
-  .route.block:hover { border-color: rgba(248,113,113,0.3); }
-  .route.block .route-name { color: var(--red); }
+.node-terminal rect { rx: 10; }
+.node-terminal .t-label { font-family: var(--font-mono); font-size: 10px; font-weight: 700; text-anchor: middle; }
+.node-terminal .t-desc { font-family: var(--font-sans); font-size: 8.5px; fill: var(--color-on-surface-body); text-anchor: middle; }
+.node-terminal .t-action { font-family: var(--font-sans); font-size: 8px; text-anchor: middle; }
 
-  .gap { height: 10px; }
+.terminal-allow rect { fill: rgba(74,222,128,0.1); stroke: var(--route-allow); stroke-width: 1.5; }
+.terminal-allow .t-label { fill: var(--route-allow); }
+.terminal-block rect { fill: rgba(248,113,113,0.1); stroke: var(--route-block); stroke-width: 1.5; }
+.terminal-block .t-label { fill: var(--route-block); }
+.terminal-warn rect { fill: rgba(251,191,36,0.1); stroke: var(--route-warn); stroke-width: 1.5; }
+.terminal-warn .t-label { fill: var(--route-warn); }
 
-  /* Arrow in flow text */
-  .arr { color: var(--muted); margin: 0 2px; }
+.flow-line { stroke: var(--color-outline); stroke-width: 1.5; fill: none; }
+.flow-line.yes { stroke: var(--route-allow); }
+.flow-line.no { stroke: var(--route-block); }
+.flow-label { font-family: var(--font-mono); font-size: 9px; font-weight: 700; }
+.flow-label.yes { fill: var(--route-allow); }
+.flow-label.no { fill: var(--route-block); }
+.arrow-default { fill: var(--color-outline); }
+.arrow-yes { fill: var(--route-allow); }
+.arrow-no { fill: var(--route-block); }
 
-  /* Column line */
-  .col-line { width: 2px; height: 16px; background: var(--muted); opacity: 0.15; }
+/* ── Route Cards (EVAL-0014: 좌우 분할) ── */
+.route-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-lg);
+  margin-bottom: var(--sp-2xl);
+}
+@media (max-width: 768px) { .route-split { grid-template-columns: 1fr; } }
 
-  /* Rationale */
-  details { margin-top: 56px; border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
-  summary { padding: 14px 20px; background: var(--surface); color: var(--muted); font-size: 0.78rem; font-weight: 600; cursor: pointer; list-style: none; }
-  summary::before { content: '▶ '; font-size: 0.55rem; }
-  details[open] summary::before { content: '▼ '; }
-  .rat { padding: 20px; font-size: 0.78rem; line-height: 1.8; color: var(--text2); background: rgba(30,41,59,0.5); }
-  .rat h3 { font-size: 0.82rem; font-weight: 700; color: var(--text); margin: 16px 0 6px; }
-  .rat h3:first-child { margin-top: 0; }
-  .rat ul { padding-left: 18px; }
-  .rat li { margin-bottom: 3px; }
-  .rat code { font-family: var(--mono); font-size: 0.7rem; padding: 1px 5px; background: rgba(148,163,184,0.1); border-radius: 3px; color: var(--purple); }
+.route-col { display: flex; flex-direction: column; gap: var(--sp-md); }
+.route-col-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-sm);
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.route-col-header.allow {
+  color: var(--route-allow);
+  background: rgba(74,222,128,0.06);
+  border: 1px solid rgba(74,222,128,0.15);
+}
+.route-col-header.block {
+  color: var(--route-block);
+  background: rgba(248,113,113,0.06);
+  border: 1px solid rgba(248,113,113,0.15);
+}
+.route-col-header .dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.route-col-header.allow .dot { background: var(--route-allow); }
+.route-col-header.block .dot { background: var(--route-block); }
+
+.route-card {
+  padding: 20px;
+  border-radius: 16px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.route-card:hover { transform: translateY(-2px); border-color: rgba(148,163,184,0.3); }
+
+.route-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.route-enum {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 8px;
+}
+.route-enum.allow { color: var(--route-allow); background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.2); }
+.route-enum.block { color: var(--route-block); background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.2); }
+.route-enum.warn { color: var(--route-warn); background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.2); }
+
+.route-condition {
+  font-size: 0.72rem;
+  color: var(--color-on-surface-body);
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+.route-condition code {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  padding: 2px 6px;
+  background: var(--color-surface-elevated);
+  border-radius: 4px;
+  color: var(--viz-emphasis);
+}
+
+.route-action {
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: var(--color-surface-elevated);
+  border: 1px solid var(--color-border);
+}
+.route-action-title {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--color-outline);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+.route-action-msg {
+  font-size: 0.75rem;
+  color: var(--color-on-surface-body);
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+.route-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.route-btn {
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid;
+}
+.route-btn.primary {
+  background: rgba(96,165,250,0.15);
+  border-color: rgba(96,165,250,0.3);
+  color: var(--viz-move);
+}
+.route-btn.secondary {
+  background: transparent;
+  border-color: var(--color-border);
+  color: var(--color-on-surface-body);
+}
+.route-btn.danger {
+  background: rgba(248,113,113,0.1);
+  border-color: rgba(248,113,113,0.2);
+  color: var(--route-block);
+}
+
+/* ── Change Summary ── */
+.summary-section {
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--sp-lg);
+  margin-bottom: var(--sp-2xl);
+}
+.summary-title {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--color-outline);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: var(--sp-md);
+}
+.summary-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-sm);
+}
+.summary-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--color-on-surface-body);
+}
+.summary-badge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  min-width: 56px;
+}
+.summary-badge.add { background: rgba(74,222,128,0.12); color: var(--viz-add); border: 1px solid rgba(74,222,128,0.25); }
+.summary-badge.move { background: rgba(96,165,250,0.1); color: var(--viz-move); border: 1px solid rgba(96,165,250,0.25); }
+.summary-badge.remove { background: rgba(148,163,184,0.08); color: var(--viz-remove); border: 1px solid rgba(148,163,184,0.15); }
+
+/* ── Cognitive Rationale ── */
+.rationale {
+  margin-top: var(--sp-xl);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background: var(--color-surface);
+}
+.rationale summary {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-outline);
+  padding: var(--sp-md) var(--sp-lg);
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-sm);
+}
+.rationale summary::before { content: '\25B8'; transition: transform 0.15s; }
+.rationale[open] summary::before { transform: rotate(90deg); }
+.rationale-body {
+  padding: 0 var(--sp-lg) var(--sp-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-md);
+}
+.rationale-block-label {
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-outline);
+  margin-bottom: var(--sp-xs);
+}
+.rationale-text {
+  font-size: 0.8125rem;
+  color: var(--color-on-surface);
+  line-height: 1.55;
+}
+.pattern-selection-log {
+  padding: var(--sp-md);
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  line-height: 1.6;
+  color: var(--color-on-surface-body);
+  white-space: pre-line;
+}
+.rationale-rules-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.rationale-rules-list li {
+  font-size: 0.8125rem;
+  color: var(--color-on-surface);
+  line-height: 1.45;
+  padding: 6px 10px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+}
+.rule-id {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--viz-emphasis);
+  margin-right: 6px;
+}
+.principle-ref {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  color: var(--color-outline);
+  margin-left: 4px;
+}
+.eval-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--sp-sm);
+}
+@media (max-width: 768px) { .eval-grid { grid-template-columns: repeat(2, 1fr); } }
+.eval-cell {
+  text-align: center;
+  padding: var(--sp-sm);
+  background: rgba(255,255,255,0.03);
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+}
+.eval-score { font-size: 1.125rem; font-weight: 700; color: var(--viz-emphasis); }
+.eval-label { font-size: 0.625rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-outline); margin-top: 2px; }
+.evidence-list { list-style: none; display: flex; flex-direction: column; gap: 3px; }
+.evidence-list li { font-size: 0.75rem; color: var(--color-on-surface-body); line-height: 1.4; padding-left: 12px; position: relative; }
+.evidence-list li::before { content: '\00B7'; position: absolute; left: 0; font-weight: 700; }
+.evidence-level { font-family: var(--font-mono); font-size: 0.625rem; font-weight: 700; padding: 1px 4px; border-radius: 3px; margin-right: 4px; }
+.evidence-level.l1 { background: #e8f5e9; color: #2e7d32; }
+.evidence-level.l2 { background: #e3f2fd; color: #1565c0; }
+.evidence-level.l3 { background: #fff3e0; color: #e65100; }
+.evidence-level.l4 { background: #f3e5f5; color: #7b1fa2; }
 </style>
 </head>
 <body>
-<div class="c">
+<div class="container">
 
+<!-- ═══ HERO ═══ -->
 <header class="hero">
-  <div class="badge">KMA-7446</div>
-  <h1>부팅 라우팅 플로우</h1>
-  <p class="sub">서버 응답 기반 OS 버전 판별 → 6개 라우트 분기</p>
+  <div class="hero-badge">KMA-7446 &middot; Kurly Android</div>
+  <h1>Boot API 기반<br><span class="accent">앱 진입 라우팅 전략</span></h1>
+  <p class="hero-desc">
+    2개 조건을 개별 체크하던 구조에서, <code style="font-family:var(--font-mono);font-size:0.82rem;color:var(--viz-emphasis)">BootRouteResolver</code>로 4개 플래그 &times; 8가지 조합을 체계적으로 판정하는 라우팅 매트릭스로 전환
+  </p>
 </header>
 
-<div class="flow">
-
-  <!-- 1 -->
-  <div class="n">
-    <div class="n-class">AppStarterViewModel</div>
-    <div class="n-fn">startBooting()</div>
+<!-- ═══ DATA PIPELINE ═══ -->
+<div class="section-label">데이터 변환 파이프라인</div>
+<div class="pipeline">
+  <div class="pipe-node api">
+    <div class="pipe-label api">Boot API</div>
+    <div class="pipe-code">/api/boot &rarr; os_support</div>
   </div>
-  <div class="line"></div>
-
-  <!-- 2 -->
-  <div class="n">
-    <div class="n-class">BootKurlyUseCase</div>
-    <div class="n-fn">execute()</div>
-    <div class="n-desc">서버에서 os_support.android 포함한 부팅 정보 조회</div>
+  <div class="pipe-arrow">&rarr;</div>
+  <div class="pipe-node dto">
+    <div class="pipe-label dto">DTO 파싱</div>
+    <div class="pipe-code">BootInfoDto.toDomainModel()</div>
   </div>
-  <div class="line"></div>
-
-  <!-- 3: Decision -->
-  <div class="decision">
-    <div class="n-class">BootRouteResolver</div>
-    <div class="n-fn">resolve(versionInfo) → BootRoute</div>
-    <div class="n-desc">isOsSupported × isLtsDeprecated × isRequiredUpdate 조합</div>
+  <div class="pipe-arrow">&rarr;</div>
+  <div class="pipe-node domain">
+    <div class="pipe-label domain">도메인 모델</div>
+    <div class="pipe-code">BootInfo.VersionInfo</div>
   </div>
-  <div class="line"></div>
-
-  <!-- 4: Split -->
-  <div class="split">
-
-    <!-- Left: 앱 진입 허용 -->
-    <div class="split-col">
-      <div class="col-label pass">앱 진입 허용</div>
-
-      <div class="route enter">
-        <div class="route-header">
-          <span class="route-icon">✅</span>
-          <span class="route-name">Normal</span>
-        </div>
-        <div class="route-flow">
-          <code>onSuccessBooting()</code>
-          <span class="arr">→</span>
-          <code>proceedToAppStart()</code>
-          <div style="display:flex;gap:6px;margin-top:8px;">
-            <div style="flex:1;padding:6px 8px;border-radius:8px;background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.2);font-size:0.7rem;text-align:center;">
-              <div style="color:var(--green);font-weight:700;">홈 화면 진입</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="gap"></div>
-
-      <div class="route dialog">
-        <div class="route-header">
-          <span class="route-icon">💬</span>
-          <span class="route-name">LtsSupported</span>
-        </div>
-        <div class="route-flow">
-          <code>onSuccessBooting()</code><br>
-          <span class="arr">→</span> <code>ShowLtsSupportedDialog</code>
-          <div style="display:flex;gap:6px;margin-top:8px;">
-            <div style="flex:1;padding:6px 8px;border-radius:8px;background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.2);font-size:0.7rem;text-align:center;">
-              <div style="color:var(--green);font-weight:700;margin-bottom:2px;">계속 이용하기</div>
-              <code style="font-size:0.62rem;">onLtsSupportedContinue()</code><br>
-              <span class="arr">→</span> <code style="font-size:0.62rem;">proceedToAppStart()</code>
-            </div>
-            <div style="flex:1;padding:6px 8px;border-radius:8px;background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.2);font-size:0.7rem;text-align:center;">
-              <div style="color:var(--blue);font-weight:700;margin-bottom:2px;">컬리 웹으로 이동</div>
-              <span style="font-size:0.65rem;color:var(--muted);">웹 브라우저 열기</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="gap"></div>
-
-      <div class="route braze">
-        <div class="route-header">
-          <span class="route-icon">📢</span>
-          <span class="route-name">OsUnsupported</span>
-        </div>
-        <div class="route-flow">
-          <code>onSuccessBooting()</code>
-          <span class="arr">→</span>
-          <code>proceedToAppStart()</code>
-          <div style="display:flex;gap:6px;margin-top:8px;">
-            <div style="flex:1;padding:6px 8px;border-radius:8px;background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.2);font-size:0.7rem;text-align:center;">
-              <div style="color:var(--green);font-weight:700;">홈 화면 진입</div>
-              <span style="font-size:0.65rem;color:var(--muted);">이후 Braze 인앱 메시지 표시</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Right: 앱 진입 차단 -->
-    <div class="split-col">
-      <div class="col-label block">앱 진입 차단</div>
-
-      <div class="route store">
-        <div class="route-header">
-          <span class="route-icon">📦</span>
-          <span class="route-name">ForceUpdate</span>
-        </div>
-        <div class="route-flow">
-          <code>onErrorBooting()</code><br>
-          <span class="arr">→</span> <code>ShowUpdateDialog</code>
-          <div style="display:flex;gap:6px;margin-top:8px;">
-            <div style="flex:1;padding:6px 8px;border-radius:8px;background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.2);font-size:0.7rem;text-align:center;">
-              <div style="color:var(--blue);font-weight:700;margin-bottom:2px;">업데이트</div>
-              <span style="font-size:0.65rem;color:var(--muted);">스토어 이동</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="gap"></div>
-
-      <div class="route block">
-        <div class="route-header">
-          <span class="route-icon">🌐</span>
-          <span class="route-name">ForceWeb</span>
-        </div>
-        <div class="route-flow">
-          <code>onErrorBooting()</code><br>
-          <span class="arr">→</span> <code>ShowForceWebDialog</code>
-          <div style="display:flex;gap:6px;margin-top:8px;">
-            <div style="flex:1;padding:6px 8px;border-radius:8px;background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.2);font-size:0.7rem;text-align:center;">
-              <div style="color:var(--blue);font-weight:700;margin-bottom:2px;">컬리 웹으로 이동</div>
-              <span style="font-size:0.65rem;color:var(--muted);">웹 브라우저 열기</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
+  <div class="pipe-arrow">&rarr;</div>
+  <div class="pipe-node resolver">
+    <div class="pipe-label resolver">라우트 결정</div>
+    <div class="pipe-code">BootRouteResolver.resolve()</div>
   </div>
 </div>
 
-<!-- Rationale -->
-<details>
-  <summary>Cognitive Rationale</summary>
-  <div class="rat">
-    <h3>Pattern</h3>
-    <p><strong>PAT-024 (data_flow_diagram)</strong> — 부팅 프로세스 분기 흐름 이해가 목적. 좌우 분할로 "진입 허용 vs 차단"을 공간적으로 대비하여 텍스트 읽기 전에 그룹 차이를 인지하게 함.</p>
-    <h3>Applied Rules</h3>
-    <ul>
-      <li><code>RULE-L01</code> — 위→아래 흐름 + 좌우 대비로 앵커 안정 ← PRC-004</li>
-      <li><code>RULE-C01</code> — 라우트별 색상: 정상=초록, 안내=보라, Braze=노랑, 스토어=파랑, 차단=빨강 ← PRC-003</li>
-      <li><code>RULE-T01</code> — 카드당 호출 체인 1줄 ← IP-001</li>
-      <li><code>RULE-CMP02</code> — 5개 라우트를 진입(3)/차단(2) 그룹으로 압축 ← WM-001</li>
-    </ul>
-    <h3>Self-Evaluation</h3>
-    <ul>
-      <li>cognitive_load: <strong>1</strong></li>
-      <li>change_visibility: <strong>5</strong></li>
-      <li>anchor_stability: <strong>5</strong></li>
-      <li>text_economy: <strong>5</strong></li>
-    </ul>
+<!-- ═══ DECISION TREE (SVG) ═══ -->
+<div class="section-label">결정 트리 &mdash; BootRouteResolver.resolve()</div>
+<div class="diagram-wrap">
+<svg viewBox="0 0 1040 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" class="arrow-default"/></marker>
+    <marker id="arr-y" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" class="arrow-yes"/></marker>
+    <marker id="arr-n" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" class="arrow-no"/></marker>
+  </defs>
+
+  <!-- ── Layer 0: Entry ── -->
+  <g class="node-process" transform="translate(380,10)">
+    <rect x="0" y="0" width="200" height="50"/>
+    <text class="n-title" text-anchor="middle" x="100" y="22">BootKurlyUseCase</text>
+    <text class="n-code" text-anchor="middle" x="100" y="38">getBootInfo()</text>
+  </g>
+
+  <!-- Flow: Entry → Decision 1 -->
+  <line class="flow-line" x1="480" y1="60" x2="480" y2="85" marker-end="url(#arr)"/>
+
+  <!-- ── Layer 1: Main Decision ── -->
+  <g class="node-decision" transform="translate(480,130)">
+    <polygon points="0,-45 90,0 0,45 -90,0"/>
+    <text y="-6">isOsSupported?</text>
+    <text y="10" style="font-size:8px;font-weight:400;fill:var(--color-on-surface-body)">VersionInfo</text>
+  </g>
+
+  <!-- YES branch (left) -->
+  <line class="flow-line yes" x1="390" y1="130" x2="250" y2="200" marker-end="url(#arr-y)"/>
+  <text class="flow-label yes" x="290" y="155">YES</text>
+
+  <!-- NO branch (right) -->
+  <line class="flow-line no" x1="570" y1="130" x2="710" y2="200" marker-end="url(#arr-n)"/>
+  <text class="flow-label no" x="650" y="155">NO</text>
+
+  <!-- ═══ LEFT BRANCH: OS Supported ═══ -->
+
+  <!-- Decision: isRequiredUpdate? -->
+  <g class="node-decision" transform="translate(250,245)">
+    <polygon points="0,-45 85,0 0,45 -85,0"/>
+    <text y="-4">isRequired</text>
+    <text y="10" style="font-size:9px">Update?</text>
+  </g>
+
+  <!-- YES → ForceUpdate -->
+  <line class="flow-line no" x1="165" y1="245" x2="85" y2="315" marker-end="url(#arr-n)"/>
+  <text class="flow-label" x="100" y="272" style="fill:var(--route-block)">YES</text>
+
+  <!-- ForceUpdate terminal -->
+  <g class="node-terminal terminal-block" transform="translate(10,320)">
+    <rect x="0" y="0" width="150" height="55"/>
+    <text class="t-label" x="75" y="20">ForceUpdate</text>
+    <text class="t-desc" x="75" y="36">스토어 이동 다이얼로그</text>
+    <text class="t-action" x="75" y="50" style="fill:var(--route-block)">throw RequireUpdate</text>
+  </g>
+
+  <!-- NO → isInvalid? -->
+  <line class="flow-line yes" x1="335" y1="245" x2="380" y2="315" marker-end="url(#arr-y)"/>
+  <text class="flow-label yes" x="348" y="272">NO</text>
+
+  <!-- Decision: isInvalid? (left branch) -->
+  <g class="node-decision" transform="translate(380,360)">
+    <polygon points="0,-45 70,0 0,45 -70,0"/>
+    <text y="0">isInvalid?</text>
+  </g>
+
+  <!-- YES → InvalidHash -->
+  <line class="flow-line no" x1="310" y1="360" x2="220" y2="430" marker-end="url(#arr-n)"/>
+  <text class="flow-label" x="240" y="388" style="fill:var(--route-warn)">YES</text>
+
+  <!-- InvalidHash terminal (left) -->
+  <g class="node-terminal terminal-warn" transform="translate(130,435)">
+    <rect x="0" y="0" width="150" height="55"/>
+    <text class="t-label" x="75" y="20">InvalidHash</text>
+    <text class="t-desc" x="75" y="36">앱 위변조 감지</text>
+    <text class="t-action" x="75" y="50" style="fill:var(--route-warn)">throw RequireIntegrity</text>
+  </g>
+
+  <!-- NO → Normal -->
+  <line class="flow-line yes" x1="450" y1="360" x2="480" y2="430" marker-end="url(#arr-y)"/>
+  <text class="flow-label yes" x="460" y="388">NO</text>
+
+  <!-- Normal terminal -->
+  <g class="node-terminal terminal-allow" transform="translate(410,435)">
+    <rect x="0" y="0" width="150" height="55"/>
+    <text class="t-label" x="75" y="20">Normal</text>
+    <text class="t-desc" x="75" y="36">정상 앱 진입</text>
+    <text class="t-action" x="75" y="50" style="fill:var(--route-allow)">홈 화면 이동</text>
+  </g>
+
+  <!-- ═══ RIGHT BRANCH: OS Not Supported ═══ -->
+
+  <!-- Decision: isLtsDeprecated? -->
+  <g class="node-decision" transform="translate(710,245)">
+    <polygon points="0,-45 80,0 0,45 -80,0"/>
+    <text y="-4">isLts</text>
+    <text y="10" style="font-size:9px">Deprecated?</text>
+  </g>
+
+  <!-- YES → ForceWeb -->
+  <line class="flow-line no" x1="630" y1="245" x2="605" y2="315" marker-end="url(#arr-n)"/>
+  <text class="flow-label" x="596" y="272" style="fill:var(--route-block)">YES</text>
+
+  <!-- ForceWeb terminal -->
+  <g class="node-terminal terminal-block" transform="translate(530,320)">
+    <rect x="0" y="0" width="150" height="55"/>
+    <text class="t-label" x="75" y="20">ForceWeb</text>
+    <text class="t-desc" x="75" y="36">웹 전환 다이얼로그</text>
+    <text class="t-action" x="75" y="50" style="fill:var(--route-block)">throw ForceWeb</text>
+  </g>
+
+  <!-- NO → isInvalid? (right) -->
+  <line class="flow-line yes" x1="790" y1="245" x2="830" y2="315" marker-end="url(#arr-y)"/>
+  <text class="flow-label yes" x="802" y="272">NO</text>
+
+  <!-- Decision: isInvalid? (right branch) -->
+  <g class="node-decision" transform="translate(830,360)">
+    <polygon points="0,-45 70,0 0,45 -70,0"/>
+    <text y="0">isInvalid?</text>
+  </g>
+
+  <!-- YES → InvalidHash (right) -->
+  <line class="flow-line no" x1="760" y1="360" x2="720" y2="430" marker-end="url(#arr-n)"/>
+  <text class="flow-label" x="718" y="388" style="fill:var(--route-warn)">YES</text>
+
+  <!-- InvalidHash terminal (right) -->
+  <g class="node-terminal terminal-warn" transform="translate(640,435)">
+    <rect x="0" y="0" width="150" height="55"/>
+    <text class="t-label" x="75" y="20">InvalidHash</text>
+    <text class="t-desc" x="75" y="36">앱 위변조 감지</text>
+    <text class="t-action" x="75" y="50" style="fill:var(--route-warn)">throw RequireIntegrity</text>
+  </g>
+
+  <!-- NO → isRequiredUpdate? -->
+  <line class="flow-line yes" x1="900" y1="360" x2="900" y2="430" marker-end="url(#arr-y)"/>
+  <text class="flow-label yes" x="908" y="398">NO</text>
+
+  <!-- Decision: isRequiredUpdate? (right sub) -->
+  <g class="node-decision" transform="translate(900,480)">
+    <polygon points="0,-45 80,0 0,45 -80,0"/>
+    <text y="-4">isRequired</text>
+    <text y="10" style="font-size:9px">Update?</text>
+  </g>
+
+  <!-- YES → LtsSupported -->
+  <line class="flow-line" x1="820" y1="480" x2="770" y2="550" marker-end="url(#arr)" style="stroke:var(--route-allow)"/>
+  <text class="flow-label" x="774" y="510" style="fill:var(--route-allow)">YES</text>
+
+  <!-- LtsSupported terminal -->
+  <g class="node-terminal terminal-allow" transform="translate(665,555)">
+    <rect x="0" y="0" width="160" height="55"/>
+    <text class="t-label" x="80" y="20">LtsSupported</text>
+    <text class="t-desc" x="80" y="36">LTS 유지 안내 다이얼로그</text>
+    <text class="t-action" x="80" y="50" style="fill:var(--route-allow)">확인 후 앱 진입 허용</text>
+  </g>
+
+  <!-- NO → OsUnsupported -->
+  <line class="flow-line" x1="950" y1="525" x2="950" y2="555" marker-end="url(#arr)" style="stroke:var(--route-allow)"/>
+  <text class="flow-label" x="930" y="540" style="fill:var(--route-allow);text-anchor:end">NO</text>
+
+  <!-- OsUnsupported terminal -->
+  <g class="node-terminal terminal-allow" transform="translate(870,555)">
+    <rect x="0" y="0" width="150" height="55"/>
+    <text class="t-label" x="75" y="20">OsUnsupported</text>
+    <text class="t-desc" x="75" y="36">Braze 팝업으로 대응</text>
+    <text class="t-action" x="75" y="50" style="fill:var(--route-allow)">앱 진입 허용</text>
+  </g>
+
+  <!-- ── Group Labels (dashed borders) ── -->
+  <rect x="5" y="195" width="555" height="310" rx="16" fill="none" stroke="rgba(74,222,128,0.12)" stroke-width="1" stroke-dasharray="6,4"/>
+  <text x="20" y="215" style="font-family:var(--font-sans);font-size:10px;font-weight:700;fill:rgba(74,222,128,0.4)">OS 지원</text>
+
+  <rect x="525" y="195" width="430" height="425" rx="16" fill="none" stroke="rgba(248,113,113,0.12)" stroke-width="1" stroke-dasharray="6,4"/>
+  <text x="540" y="215" style="font-family:var(--font-sans);font-size:10px;font-weight:700;fill:rgba(248,113,113,0.4)">OS 미지원</text>
+</svg>
+</div>
+
+<!-- ═══ ROUTE CARDS (EVAL-0014: 좌우 분할) ═══ -->
+<div class="section-label">라우트별 사용자 액션</div>
+<div class="route-split">
+
+  <!-- LEFT: 앱 진입 허용 -->
+  <div class="route-col">
+    <div class="route-col-header allow">
+      <span class="dot"></span>
+      앱 진입 허용 &mdash; 3개 라우트
+    </div>
+
+    <div class="route-card">
+      <div class="route-card-header">
+        <span class="route-enum allow">Normal</span>
+      </div>
+      <div class="route-condition">
+        <code>isOsSupported=true</code> + <code>isRequiredUpdate=false</code> + <code>isInvalid=false</code>
+      </div>
+      <div class="route-action">
+        <div class="route-action-title">사용자 화면</div>
+        <div class="route-action-msg">정상 부팅 &rarr; 홈 화면 진입</div>
+        <div class="route-buttons">
+          <span class="route-btn primary">홈 화면</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="route-card">
+      <div class="route-card-header">
+        <span class="route-enum allow">LtsSupported</span>
+      </div>
+      <div class="route-condition">
+        <code>isOsSupported=false</code> + <code>isRequiredUpdate=true</code> + <code>isLtsDeprecated=false</code>
+      </div>
+      <div class="route-action">
+        <div class="route-action-title">사용자 화면 &mdash; 다이얼로그</div>
+        <div class="route-action-msg">안전하고 원활한 서비스 이용을 위해 현재 OS 버전의 앱 지원이 종료되었습니다.</div>
+        <div class="route-buttons">
+          <span class="route-btn secondary">계속 이용하기</span>
+          <span class="route-btn primary">컬리 웹으로 이동</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="route-card">
+      <div class="route-card-header">
+        <span class="route-enum allow">OsUnsupported</span>
+      </div>
+      <div class="route-condition">
+        <code>isOsSupported=false</code> + <code>isLtsDeprecated=false</code> + <code>isInvalid=false</code> + <code>isRequiredUpdate=false</code>
+      </div>
+      <div class="route-action">
+        <div class="route-action-title">사용자 화면</div>
+        <div class="route-action-msg">Braze 인앱 메시지로 안내 (앱 진입은 허용)</div>
+        <div class="route-buttons">
+          <span class="route-btn primary">홈 화면</span>
+          <span class="route-btn secondary">Braze 팝업</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: 앱 진입 차단 -->
+  <div class="route-col">
+    <div class="route-col-header block">
+      <span class="dot"></span>
+      앱 진입 차단 &mdash; 3개 라우트
+    </div>
+
+    <div class="route-card">
+      <div class="route-card-header">
+        <span class="route-enum block">ForceWeb</span>
+      </div>
+      <div class="route-condition">
+        <code>isOsSupported=false</code> + <code>isLtsDeprecated=true</code>
+      </div>
+      <div class="route-action">
+        <div class="route-action-title">사용자 화면 &mdash; 다이얼로그</div>
+        <div class="route-action-msg">더 이상 지원되지 않는 버전입니다. 컬리 웹에서도 동일하게 쇼핑할 수 있습니다.</div>
+        <div class="route-buttons">
+          <span class="route-btn danger">컬리 웹으로 이동</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="route-card">
+      <div class="route-card-header">
+        <span class="route-enum block">ForceUpdate</span>
+      </div>
+      <div class="route-condition">
+        <code>isOsSupported=true</code> + <code>isRequiredUpdate=true</code>
+      </div>
+      <div class="route-action">
+        <div class="route-action-title">사용자 화면 &mdash; 다이얼로그</div>
+        <div class="route-action-msg">강제 업데이트 안내 &rarr; Play Store 이동</div>
+        <div class="route-buttons">
+          <span class="route-btn danger">스토어로 이동</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="route-card">
+      <div class="route-card-header">
+        <span class="route-enum warn">InvalidHash</span>
+      </div>
+      <div class="route-condition">
+        <code>isInvalid=true</code> (OS 지원 여부 무관, <code>ForceWeb</code>보다 낮은 우선순위)
+      </div>
+      <div class="route-action">
+        <div class="route-action-title">사용자 화면</div>
+        <div class="route-action-msg">앱 위변조 감지 &mdash; 무결성 검증 실패 다이얼로그</div>
+        <div class="route-buttons">
+          <span class="route-btn danger">앱 종료</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ CHANGE SUMMARY ═══ -->
+<div class="summary-section">
+  <div class="summary-title">변경 요약</div>
+  <ul class="summary-list">
+    <li class="summary-item">
+      <span class="summary-badge add">추가</span>
+      <span><code style="font-family:var(--font-mono);font-size:0.75rem;color:var(--viz-emphasis)">BootRouteResolver</code> &mdash; 4개 플래그 기반 8가지 조합 라우팅 매트릭스 (13개 테스트 케이스 전수 검증)</span>
+    </li>
+    <li class="summary-item">
+      <span class="summary-badge add">추가</span>
+      <span><code style="font-family:var(--font-mono);font-size:0.75rem;color:var(--viz-emphasis)">OsSupportDto</code>, <code style="font-family:var(--font-mono);font-size:0.75rem;color:var(--viz-emphasis)">AndroidOsSupportDto</code> &mdash; Boot API <code style="font-family:var(--font-mono);font-size:0.75rem">os_support</code> 필드 파싱</span>
+    </li>
+    <li class="summary-item">
+      <span class="summary-badge add">추가</span>
+      <span>ForceWeb / LtsSupported 다이얼로그 UI + <code style="font-family:var(--font-mono);font-size:0.75rem;color:var(--viz-emphasis)">openWebBrowser()</code> 앱링크 회피 유틸</span>
+    </li>
+    <li class="summary-item">
+      <span class="summary-badge move">변경</span>
+      <span><code style="font-family:var(--font-mono);font-size:0.75rem;color:var(--viz-emphasis)">BootKurlyUseCase.getBootInfo()</code> &mdash; 인라인 조건 체크 &rarr; <code style="font-family:var(--font-mono);font-size:0.75rem;color:var(--viz-emphasis)">BootRouteResolver</code> 위임</span>
+    </li>
+    <li class="summary-item">
+      <span class="summary-badge remove">제거</span>
+      <span><code style="font-family:var(--font-mono);font-size:0.75rem">VersionInfoDto.toDomainModel()</code> 데드코드 제거 &mdash; <code style="font-family:var(--font-mono);font-size:0.75rem;color:var(--viz-emphasis)">BootInfoDto</code>에서 직접 생성</span>
+    </li>
+  </ul>
+</div>
+
+<!-- ═══ COGNITIVE RATIONALE ═══ -->
+<details class="rationale">
+  <summary>Cognitive Rationale &mdash; 이 시각화가 이렇게 구성된 이유</summary>
+  <div class="rationale-body">
+
+    <div>
+      <div class="rationale-block-label">Pattern</div>
+      <div class="rationale-text">
+        <strong>PAT-024</strong> &mdash; 데이터 흐름도 (Data Flow Diagram)<br>
+        Boot API 응답에서 라우팅 결정까지의 데이터 변환 파이프라인과, <code style="font-family:var(--font-mono);font-size:0.78rem;color:var(--viz-emphasis)">BootRouteResolver.resolve()</code>의 결정 트리를 시각화. 리뷰어가 &ldquo;이 플래그 조합에서 어떤 라우트가 나오는가?&rdquo;를 코드 읽기 전에 파악할 수 있도록 설계.
+      </div>
+    </div>
+
+    <div>
+      <div class="rationale-block-label">Pattern Selection Log</div>
+      <div class="pattern-selection-log">Step 1 본질 판별: "순차 흐름" &mdash; Boot API &rarr; 파싱 &rarr; 결정 &rarr; 6가지 분기
+Step 2 세부 선택: PAT-024 (data_flow_diagram) &mdash; 결정 트리 + 터미널 노드 사용자 액션
+Step 3 컨텍스트: audience=team, purpose=pr &rarr; 코드 레퍼런스 포함 흐름도 적합
+Step 4 Anti-Bias: N/A (카테고리 패턴 미선택)
+골든 레퍼런스: PAT-024-data-flow/example-01.html (구조 참조)
+최종: PAT-024</div>
+    </div>
+
+    <div>
+      <div class="rationale-block-label">Applied Rules</div>
+      <ul class="rationale-rules-list">
+        <li><span class="rule-id">RULE-L02</span>동시 강조 &le; 2 &mdash; 결정 트리에서 한 번에 하나의 분기만 강조<span class="principle-ref">&larr; ATT-003</span></li>
+        <li><span class="rule-id">RULE-C01</span>변경 유형별 색상 &mdash; 허용(초록), 차단(빨강), 경고(노랑) 일관 적용<span class="principle-ref">&larr; PRC-001</span></li>
+        <li><span class="rule-id">RULE-T01</span>화면당 한 문장 &mdash; 각 터미널 노드에 1줄 설명만 배치<span class="principle-ref">&larr; WM-001</span></li>
+        <li><span class="rule-id">RULE-CMP03</span>변경 안내 &mdash; &ldquo;OS 지원 / OS 미지원&rdquo; 점선 그룹으로 분기 사전 안내<span class="principle-ref">&larr; ATT-002</span></li>
+        <li><span class="rule-id">RULE-C09</span>Slate 다크 테마 &mdash; Deep Navy 배경 + Slate 카드로 깊이감<span class="principle-ref">&larr; AES-001</span></li>
+        <li><span class="rule-id">EVAL-0014</span>이진 결과 좌우 분할 &mdash; 진입 허용(좌) vs 진입 차단(우) 공간적 대비<span class="principle-ref">&larr; PRC-004, DES-CO-001</span></li>
+        <li><span class="rule-id">EVAL-0014</span>터미널 노드 사용자 액션 &mdash; 각 라우트의 실제 버튼 UI 동일 스타일 카드<span class="principle-ref">&larr; DES-DS-001</span></li>
+        <li><span class="rule-id">EVAL-0014</span>노드 코드 레퍼런스 &mdash; BootRouteResolver.resolve(), BootRoute.* enum 표기<span class="principle-ref">&larr; ENG-CC-001</span></li>
+      </ul>
+    </div>
+
+    <div>
+      <div class="rationale-block-label">Self-Evaluation</div>
+      <div class="eval-grid">
+        <div class="eval-cell"><div class="eval-score">2/5</div><div class="eval-label">Cognitive Load</div></div>
+        <div class="eval-cell"><div class="eval-score">5/5</div><div class="eval-label">Change Visibility</div></div>
+        <div class="eval-cell"><div class="eval-score">4/5</div><div class="eval-label">Anchor Stability</div></div>
+        <div class="eval-cell"><div class="eval-score">5/5</div><div class="eval-label">Text Economy</div></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="rationale-block-label">Evidence Trail</div>
+      <ul class="evidence-list">
+        <li><span class="evidence-level l1">L1</span>Miller (1956) &mdash; 작업기억 4&pm;1 청크, 6개 라우트가 한계 내 (WM-001)</li>
+        <li><span class="evidence-level l2">L2</span>Treisman &amp; Gelade (1980) &mdash; 색상은 전주의적 처리, 초록/빨강 허용/차단 즉시 인지 (PRC-001)</li>
+        <li><span class="evidence-level l2">L2</span>Palmer (1992) &mdash; Figure-Ground 분리, 좌우 공간 배치로 그룹 대비 (PRC-004)</li>
+        <li><span class="evidence-level l3">L3</span>Segel &amp; Heer (2010) &mdash; Author-driven 서사, 결정 트리 순서가 코드 로직 순서와 일치 (DES-ID-003)</li>
+        <li><span class="evidence-level l4">L4</span>Kurly PR 관행 &mdash; 코드 레퍼런스가 있으면 리뷰어가 diff에서 즉시 탐색 가능 (ENG-CC-001)</li>
+      </ul>
+    </div>
+
   </div>
 </details>
 
