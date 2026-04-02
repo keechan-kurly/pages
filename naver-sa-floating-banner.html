@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>네이버 SA 플로팅 배너 — 사용자 상태별 맞춤 분기</title>
+<style>
+  :root {
+    --md-sys-color-primary: #6750A4;
+    --md-sys-color-surface: #FFFBFE;
+    --md-sys-color-surface-container: #F3EDF7;
+    --md-sys-color-surface-container-high: #ECE6F0;
+    --md-sys-color-on-surface: #1C1B1F;
+    --md-sys-color-outline: #79747E;
+    --md-sys-color-outline-variant: #CAC4D0;
+
+    --viz-color-add: #4ade80;
+    --viz-color-remove: #888888;
+    --viz-color-move: #60a5fa;
+    --viz-color-emphasis: #a78bfa;
+    --viz-color-merge: #fb923c;
+
+    --md-sys-elevation-1: 0 1px 2px rgba(0,0,0,0.3), 0 1px 3px 1px rgba(0,0,0,0.15);
+    --md-sys-elevation-2: 0 1px 2px rgba(0,0,0,0.3), 0 2px 6px 2px rgba(0,0,0,0.15);
+    --md-sys-shape-small: 8px;
+    --md-sys-shape-medium: 12px;
+    --md-sys-shape-large: 16px;
+    --spacing-xs: 4px; --spacing-sm: 8px; --spacing-md: 16px; --spacing-lg: 24px; --spacing-xl: 32px;
+    --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, monospace;
+
+    --color-bg: #0a0e1a;
+    --color-bg-gradient: #0f1424;
+    --color-surface: #1e293b;
+    --color-surface-inner: #334155;
+    --color-surface-hover: #253348;
+    --color-border: rgba(148, 163, 184, 0.15);
+    --color-border-strong: rgba(148, 163, 184, 0.3);
+    --color-on-surface: #e2e8f0;
+    --color-on-surface-body: #94a3b8;
+    --color-on-surface-muted: #64748b;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Pretendard', 'Google Sans', 'Roboto', -apple-system, sans-serif;
+    background: linear-gradient(to bottom, var(--color-bg), var(--color-bg-gradient));
+    color: var(--color-on-surface);
+    min-height: 100vh;
+    transition: background 0.3s, color 0.3s;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 48px 24px;
+  }
+
+  /* ── Animations ── */
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate-in { animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) both; }
+  .delay-1 { animation-delay: 0.1s; }
+  .delay-2 { animation-delay: 0.2s; }
+  .delay-3 { animation-delay: 0.3s; }
+  .delay-4 { animation-delay: 0.4s; }
+  .delay-5 { animation-delay: 0.5s; }
+  .delay-6 { animation-delay: 0.6s; }
+  .delay-7 { animation-delay: 0.7s; }
+
+  /* ── Hero ── */
+  .hero {
+    text-align: center;
+    margin-bottom: 48px;
+    position: relative;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -60px; left: 50%; transform: translateX(-50%);
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(96,165,250,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero::after {
+    content: '';
+    position: absolute;
+    top: -40px; left: 60%; transform: translateX(-50%);
+    width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(167,139,250,0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    border-radius: 9999px;
+    background: linear-gradient(135deg, rgba(96,165,250,0.12), rgba(167,139,250,0.12));
+    border: 1px solid rgba(96,165,250,0.2);
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--viz-color-move);
+    letter-spacing: 0.05em;
+    margin-bottom: 16px;
+  }
+  .hero h1 {
+    font-size: 2.2rem;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    line-height: 1.3;
+    background: linear-gradient(135deg, var(--color-on-surface), var(--viz-color-move), var(--viz-color-emphasis));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero h1 .accent {
+    background: linear-gradient(135deg, var(--viz-color-move), var(--viz-color-emphasis));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero-desc {
+    font-size: 0.95rem;
+    color: var(--color-on-surface-body);
+    margin-top: 12px;
+    max-width: 580px;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.6;
+  }
+
+  /* ── Stats Bar ── */
+  .stats-bar {
+    display: flex;
+    gap: var(--spacing-md);
+    justify-content: center;
+    margin-bottom: 48px;
+    flex-wrap: wrap;
+  }
+  .stat {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+    padding: 8px 16px;
+    border-radius: 9999px;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+  }
+  .stat-value { font-weight: 700; font-family: var(--font-mono); }
+  .stat-value.positive { color: var(--viz-color-add); }
+  .stat-value.negative { color: #ef4444; }
+  .stat-value.neutral { color: var(--color-on-surface-muted); }
+  .stat-value.emphasis { color: var(--viz-color-emphasis); }
+
+  /* ── Key Changes ── */
+  .key-changes {
+    margin-bottom: 48px;
+    padding: 28px;
+    border-radius: 20px;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+  }
+  .key-changes-title {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--color-on-surface-muted);
+    margin-bottom: var(--spacing-sm);
+    padding: 4px 12px;
+    background: rgba(148,163,184,0.08);
+    border-radius: 9999px;
+    display: inline-block;
+  }
+  .key-changes ol { padding-left: 1.2rem; display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+  .key-changes li { font-size: 0.82rem; line-height: 1.6; color: var(--color-on-surface-body); }
+  .key-changes li strong { color: var(--viz-color-emphasis); }
+
+  /* ── Category ── */
+  .category {
+    margin-bottom: 48px;
+    padding: 28px;
+    border-radius: 20px;
+    border: 1px solid var(--color-border);
+    transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .category:hover {
+    transform: translateY(-2px);
+    border-color: var(--color-border-strong);
+  }
+  .category.cat-journey {
+    background: linear-gradient(135deg, rgba(251,146,60,0.06) 0%, rgba(251,146,60,0.02) 100%);
+  }
+  .category.cat-flow {
+    background: linear-gradient(135deg, rgba(96,165,250,0.06) 0%, rgba(96,165,250,0.02) 100%);
+  }
+
+  .category-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+    flex-wrap: wrap;
+  }
+  .category-number {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.85rem; font-weight: 800; color: #fff; flex-shrink: 0;
+  }
+  .category-number.cat-merge { background: linear-gradient(135deg, var(--viz-color-merge), #f59e0b); }
+  .category-number.cat-move { background: linear-gradient(135deg, var(--viz-color-move), #818cf8); }
+  .category-title { font-size: 1.05rem; font-weight: 700; }
+  .category-badge {
+    font-size: 0.55rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 3px 10px; border-radius: 9999px; margin-left: 4px;
+  }
+  .category-badge.journey { background: rgba(251,146,60,0.12); color: var(--viz-color-merge); border: 1px solid rgba(251,146,60,0.25); }
+  .category-badge.flow { background: rgba(96,165,250,0.12); color: var(--viz-color-move); border: 1px solid rgba(96,165,250,0.25); }
+  .category-desc {
+    font-size: 0.78rem; color: var(--color-on-surface-muted); margin-left: auto;
+  }
+  .category-insight {
+    font-size: 0.82rem;
+    color: var(--color-on-surface-body);
+    margin-bottom: var(--spacing-md);
+    padding: 10px 16px;
+    border-radius: 12px;
+    background: rgba(148,163,184,0.06);
+    border-left: 3px solid var(--viz-color-emphasis);
+    line-height: 1.5;
+  }
+
+  /* ════════════════════════════════════════════════════════════════════════ */
+  /* Inner Style 1: JOURNEY — Before/After 사용자 경험 대비                   */
+  /* ════════════════════════════════════════════════════════════════════════ */
+  .journey-container {
+    border: 1px solid var(--color-border);
+    border-radius: var(--md-sys-shape-large);
+    padding: 28px;
+    background: var(--color-surface);
+  }
+  .journey-grid {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: var(--spacing-lg);
+    align-items: stretch;
+  }
+  .journey-panel { display: flex; flex-direction: column; gap: 12px; }
+  .journey-panel.before-panel { justify-content: center; position: relative; }
+  .journey-panel.before-panel .journey-panel-label { position: absolute; top: 0; }
+  .journey-panel-label {
+    font-size: 0.6rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.12em; margin-bottom: 4px;
+    padding: 3px 10px; border-radius: 9999px; display: inline-block; width: fit-content;
+  }
+  .journey-panel-label.before { color: #ef4444; background: rgba(239,68,68,0.1); }
+  .journey-panel-label.after { color: var(--viz-color-add); background: rgba(74,222,128,0.1); }
+
+  /* Before: RED accent — 개선이 필요한 상태 강조 */
+  .journey-before-card {
+    padding: 24px;
+    border-radius: 16px;
+    border: 2px solid rgba(239,68,68,0.4);
+    background: rgba(239,68,68,0.06);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .journey-before-icon {
+    font-size: 2.4rem;
+    opacity: 0.7;
+  }
+  .journey-before-title {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: #ef4444;
+  }
+  .journey-before-desc {
+    font-size: 0.72rem;
+    color: rgba(239,68,68,0.7);
+    line-height: 1.5;
+  }
+
+  /* After: rich, colorful — visually dense */
+  .journey-after-card {
+    padding: 18px 20px;
+    border-radius: 14px;
+    border: 1.5px solid rgba(74,222,128,0.3);
+    background: rgba(74,222,128,0.04);
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+  }
+  .journey-after-card.guest { border-color: rgba(251,146,60,0.35); background: rgba(251,146,60,0.04); }
+  .journey-after-card.first { border-color: rgba(167,139,250,0.35); background: rgba(167,139,250,0.04); }
+  .journey-after-card.existing { border-color: rgba(96,165,250,0.35); background: rgba(96,165,250,0.04); }
+  .journey-after-icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+    width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 10px;
+  }
+  .journey-after-icon.guest { background: rgba(251,146,60,0.12); }
+  .journey-after-icon.first { background: rgba(167,139,250,0.12); }
+  .journey-after-icon.existing { background: rgba(96,165,250,0.12); }
+  .journey-after-body { flex: 1; }
+
+  .journey-after-tag {
+    font-size: 0.55rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.08em; padding: 2px 8px; border-radius: 9999px;
+    display: inline-block; margin-bottom: 8px;
+  }
+  .journey-after-tag.guest { background: rgba(251,146,60,0.15); color: var(--viz-color-merge); }
+  .journey-after-tag.first { background: rgba(167,139,250,0.15); color: var(--viz-color-emphasis); }
+  .journey-after-tag.existing { background: rgba(96,165,250,0.15); color: var(--viz-color-move); }
+
+  .journey-after-title {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--color-on-surface);
+  }
+  .journey-after-desc {
+    font-size: 0.7rem;
+    color: var(--color-on-surface-body);
+    margin-top: 4px;
+    line-height: 1.4;
+  }
+  .journey-after-fallback {
+    font-size: 0.6rem;
+    color: var(--color-on-surface-muted);
+    margin-top: 6px;
+    font-style: italic;
+  }
+
+  /* Arrow column — 1-to-3 fan-out */
+  .journey-arrow-col {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    position: relative; min-width: 80px;
+  }
+  .journey-arrow-label {
+    font-size: 0.58rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--viz-color-merge); margin-bottom: 8px;
+  }
+  .journey-arrow-svg { width: 80px; height: 100%; min-height: 200px; }
+  .journey-arrow-svg line { stroke-width: 2; }
+  .journey-arrow-svg polygon { }
+  .journey-note {
+    font-size: 0.72rem; color: var(--color-on-surface-muted);
+    font-style: italic; margin-top: var(--spacing-md); text-align: center;
+  }
+
+  /* ════════════════════════════════════════════════════════════════════════ */
+  /* Inner Style 2: FLOW — 사용자 여정 결정 트리                              */
+  /* ════════════════════════════════════════════════════════════════════════ */
+  /* ── Flow: SVG-based diagram with animated dots ── */
+  .flow-diagram {
+    border: 1px solid var(--color-border);
+    border-radius: var(--md-sys-shape-large);
+    padding: 28px;
+    background: var(--color-surface);
+    display: flex;
+    justify-content: center;
+  }
+  .flow-svg { width: 100%; max-width: 700px; }
+  .flow-svg text { font-family: 'Pretendard', -apple-system, sans-serif; }
+  .flow-svg .box-start { fill: rgba(148,163,184,0.08); stroke: rgba(148,163,184,0.3); stroke-width: 1.5; rx: 12; }
+  .flow-svg .box-question { fill: rgba(96,165,250,0.1); stroke: rgba(96,165,250,0.35); stroke-width: 1.5; rx: 12; }
+  .flow-svg .box-guest { fill: rgba(251,146,60,0.05); stroke: rgba(251,146,60,0.35); stroke-width: 1.5; rx: 12; }
+  .flow-svg .box-first { fill: rgba(167,139,250,0.05); stroke: rgba(167,139,250,0.35); stroke-width: 1.5; rx: 12; }
+  .flow-svg .box-existing { fill: rgba(96,165,250,0.05); stroke: rgba(96,165,250,0.35); stroke-width: 1.5; rx: 12; }
+  .flow-svg .conn { stroke: rgba(148,163,184,0.3); stroke-width: 1.5; fill: none; }
+  .flow-svg .conn-guest { stroke: var(--viz-color-merge); }
+  .flow-svg .conn-first { stroke: var(--viz-color-emphasis); }
+  .flow-svg .conn-existing { stroke: var(--viz-color-move); }
+  .flow-svg .label-yes { fill: var(--viz-color-add); font-size: 11px; font-weight: 700; }
+  .flow-svg .label-no { fill: var(--color-on-surface-muted); font-size: 11px; font-weight: 700; }
+  .flow-svg .txt-title { fill: var(--color-on-surface); font-size: 13px; font-weight: 700; }
+  .flow-svg .txt-q { fill: var(--viz-color-move); font-size: 14px; font-weight: 700; }
+  .flow-svg .txt-sub { fill: var(--color-on-surface-muted); font-size: 10px; }
+  .flow-svg .txt-banner { font-size: 11px; font-weight: 700; }
+  .flow-svg .txt-banner.guest { fill: var(--viz-color-merge); }
+  .flow-svg .txt-banner.first { fill: var(--viz-color-emphasis); }
+  .flow-svg .txt-banner.existing { fill: var(--viz-color-move); }
+  .flow-svg .txt-detail { fill: var(--color-on-surface-body); font-size: 10px; }
+
+  /* Flow result boxes: dimmed by default, lit up when .active */
+  .flow-svg .result-group { opacity: 0.25; transition: opacity 0.5s ease; }
+  .flow-svg .result-group.active { opacity: 1; }
+
+  /* SVG animated dot */
+  .flow-svg .travel-dot { opacity: 0; }
+  .flow-svg .travel-dot.running { opacity: 1; }
+
+  .flow-note {
+    font-size: 0.72rem; color: var(--color-on-surface-muted);
+    font-style: italic; margin-top: var(--spacing-md); text-align: center;
+  }
+
+  /* ── Biz Impact ── */
+  .biz-impact {
+    margin-bottom: 48px;
+    padding: 28px;
+    border-radius: 20px;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+  }
+  .biz-impact-title {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--color-on-surface-muted);
+    margin-bottom: 16px;
+    padding: 4px 12px;
+    background: rgba(148,163,184,0.08);
+    border-radius: 9999px;
+    display: inline-block;
+  }
+  .biz-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+  }
+  .biz-card {
+    padding: 16px;
+    border-radius: 12px;
+    border: 1px solid var(--color-border);
+    background: rgba(255,255,255,0.02);
+  }
+  .biz-card-label {
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 6px;
+  }
+  .biz-card-label.guest { color: var(--viz-color-merge); }
+  .biz-card-label.first { color: var(--viz-color-emphasis); }
+  .biz-card-label.existing { color: var(--viz-color-move); }
+  .biz-card-desc {
+    font-size: 0.78rem;
+    color: var(--color-on-surface-body);
+    line-height: 1.5;
+  }
+
+  /* ── Change Summary ── */
+  .summary-section {
+    margin-top: 48px;
+    border-top: 1px solid var(--color-border);
+    padding-top: var(--spacing-lg);
+  }
+  .summary-title {
+    font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.12em; color: var(--color-on-surface-muted); margin-bottom: var(--spacing-md);
+    padding: 4px 12px;
+    background: rgba(148,163,184,0.08);
+    border-radius: 9999px;
+    display: inline-block;
+  }
+  .summary-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  .summary-item { display: flex; align-items: flex-start; gap: 10px; font-size: 0.82rem; line-height: 1.5; color: var(--color-on-surface-body); }
+  .summary-badge {
+    flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
+    padding: 3px 10px; border-radius: 9999px;
+    font-size: 0.6rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.05em; min-width: 56px;
+  }
+  .summary-badge.add-b { background: rgba(74,222,128,0.12); color: var(--viz-color-add); border: 1px solid rgba(74,222,128,0.25); }
+  .summary-badge.move-b { background: rgba(96,165,250,0.12); color: var(--viz-color-move); border: 1px solid rgba(96,165,250,0.25); }
+  .summary-badge.merge-b { background: rgba(251,146,60,0.12); color: var(--viz-color-merge); border: 1px solid rgba(251,146,60,0.25); }
+  .summary-badge.emphasis-b { background: rgba(167,139,250,0.12); color: var(--viz-color-emphasis); border: 1px solid rgba(167,139,250,0.25); }
+
+  /* ── Legend ── */
+  .legend {
+    display: flex; flex-wrap: wrap; gap: var(--spacing-md); justify-content: center;
+    margin-top: var(--spacing-md); padding: var(--spacing-md);
+    border: 1px solid var(--color-border); border-radius: 16px;
+    background: var(--color-surface);
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--color-on-surface-muted); }
+  .legend-dot { width: 10px; height: 10px; border-radius: var(--md-sys-shape-small); }
+  .legend-dot.merge-d { background: var(--viz-color-merge); }
+  .legend-dot.move-d { background: var(--viz-color-move); }
+  .legend-dot.add-d { background: var(--viz-color-add); }
+  .legend-dot.emphasis-d { background: var(--viz-color-emphasis); }
+
+  /* ── Rationale ── */
+  .rationale {
+    margin-top: 48px;
+    border: 1px solid var(--color-border);
+    border-radius: 20px;
+    background: var(--color-surface);
+  }
+  .rationale summary {
+    font-size: 0.72rem; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--color-on-surface-muted);
+    padding: var(--spacing-md) 28px; cursor: pointer; user-select: none;
+    list-style: none; display: flex; align-items: center; gap: var(--spacing-sm);
+  }
+  .rationale summary::before { content: '\25B8'; transition: transform 0.15s; }
+  .rationale[open] summary::before { transform: rotate(90deg); }
+  .rationale-body { padding: 0 28px 28px; display: flex; flex-direction: column; gap: var(--spacing-md); }
+  .rationale-block-label {
+    font-size: 0.6rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--color-on-surface-muted); margin-bottom: var(--spacing-xs);
+  }
+  .rationale-text { font-size: 0.78rem; color: var(--color-on-surface-body); line-height: 1.55; }
+  .rationale-rules-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+  .rationale-rules-list li {
+    font-size: 0.78rem; padding: 8px 12px;
+    background: rgba(255,255,255,0.03); border-radius: 12px;
+    border: 1px solid var(--color-border); color: var(--color-on-surface-body);
+  }
+  .rule-id { font-family: var(--font-mono); font-size: 0.65rem; font-weight: 700; color: var(--md-sys-color-primary); margin-right: 6px; }
+  .principle-ref { font-family: var(--font-mono); font-size: 0.58rem; color: var(--color-on-surface-muted); margin-left: 4px; }
+  .eval-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--spacing-sm); }
+  .eval-cell {
+    text-align: center; padding: var(--spacing-sm);
+    background: rgba(255,255,255,0.03); border-radius: 12px;
+    border: 1px solid var(--color-border);
+  }
+  .eval-score { font-size: 1.1rem; font-weight: 700; color: var(--md-sys-color-primary); }
+  .eval-label { font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-on-surface-muted); margin-top: 2px; }
+  .evidence-list { list-style: none; display: flex; flex-direction: column; gap: 3px; }
+  .evidence-list li { font-size: 0.7rem; color: var(--color-on-surface-muted); line-height: 1.4; padding-left: 12px; position: relative; }
+  .evidence-list li::before { content: '\00B7'; position: absolute; left: 0; font-weight: 700; }
+  .evidence-level {
+    font-family: var(--font-mono); font-size: 0.58rem; font-weight: 700;
+    padding: 1px 4px; border-radius: 3px; margin-right: 4px;
+  }
+  .evidence-level.l1 { background: #e8f5e9; color: #2e7d32; }
+  .evidence-level.l2 { background: #e3f2fd; color: #1565c0; }
+  .evidence-level.l3 { background: #fff3e0; color: #e65100; }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    .journey-grid { grid-template-columns: 1fr; }
+    .journey-arrow { padding-top: 0; transform: rotate(90deg); }
+    .flow-branch { flex-direction: column; align-items: center; }
+    .flow-sub-branch { flex-direction: column; align-items: center; }
+    .eval-grid { grid-template-columns: repeat(2, 1fr); }
+    .biz-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- HERO                                                               -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<header class="hero animate-in">
+  <div class="hero-badge">KMA-7434 &middot; Naver SA &middot; PR #7347</div>
+  <h1>사용자 상태별 <span class="accent">맞춤 배너 분기</span></h1>
+  <p class="hero-desc">
+    모든 사용자에게 동일한 배너를 보여주던 구조에서, 사용자 상태를 자동 판별하여 최적의 배너를 매칭하는 구조로 전환
+  </p>
+</header>
+
+<!-- STATS -->
+<div class="stats-bar animate-in delay-1">
+  <div class="stat"><span class="stat-value positive">+508</span> 줄 추가</div>
+  <div class="stat"><span class="stat-value negative">&minus;47</span> 줄 삭제</div>
+  <div class="stat"><span class="stat-value neutral">17</span> 파일 변경</div>
+  <div class="stat"><span class="stat-value emphasis">16</span> 테스트 케이스</div>
+</div>
+
+<!-- KEY CHANGES -->
+<div class="key-changes animate-in delay-2">
+  <div class="key-changes-title">2가지 핵심 변경</div>
+  <ol>
+    <li><strong>사용자별 맞춤 배너</strong> — 단일 배너 리스트를 사용자 상태(비회원/첫 구매/기존 회원)별 조건 매칭 구조로 전환</li>
+    <li><strong>사용자 상태 자동 판별</strong> — 로그인 여부와 구매 이력을 조합하여 배너 조건을 자동으로 결정하는 분기 로직 추가</li>
+  </ol>
+</div>
+
+<!-- BIZ IMPACT -->
+<div class="biz-impact animate-in delay-3">
+  <div class="biz-impact-title">비즈니스 임팩트</div>
+  <div class="biz-grid">
+    <div class="biz-card">
+      <div class="biz-card-label guest">비회원 전환</div>
+      <div class="biz-card-desc">비회원에게 가입 유도 배너를 자동 매칭하여 회원 전환율 개선</div>
+    </div>
+    <div class="biz-card">
+      <div class="biz-card-label first">첫 구매 촉진</div>
+      <div class="biz-card-desc">가입은 했지만 구매 이력이 없는 회원에게 첫 구매 혜택 배너를 노출하여 구매 유도</div>
+    </div>
+    <div class="biz-card">
+      <div class="biz-card-label existing">기존 회원 리텐션</div>
+      <div class="biz-card-desc">이미 구매 경험이 있는 회원에게는 쿠폰/프로모션 배너를 유지하여 재구매 유도</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- CATEGORY 1: 사용자별 맞춤 배너 분기 — JOURNEY                       -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="category cat-journey animate-in delay-4">
+  <div class="category-header">
+    <span class="category-number cat-merge">1</span>
+    <span class="category-title">사용자별 맞춤 배너 분기</span>
+    <span class="category-badge journey">Journey</span>
+    <span class="category-desc">동일 배너 1개 &rarr; 사용자별 3가지 배너</span>
+  </div>
+  <div class="category-insight">
+    모든 사용자에게 같은 배너를 보여주던 구조에서, 사용자가 누구인지에 따라 가장 효과적인 배너를 자동으로 선택하는 구조로 전환
+  </div>
+  <div class="journey-container">
+    <div class="journey-grid">
+      <!-- Before: vertically centered -->
+      <div class="journey-panel before-panel">
+        <div class="journey-panel-label before">Before</div>
+        <div class="journey-before-card">
+          <div class="journey-before-icon">&#128240;</div>
+          <div class="journey-before-title">단일 배너</div>
+          <div class="journey-before-desc">
+            모든 사용자에게<br>동일한 배너 1개를 표시<br>
+            <span style="opacity:0.5">사용자 구분 없음</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Arrow: 1→3 fan-out, 직각 경로, 단일 색상 -->
+      <div class="journey-arrow-col">
+        <svg class="journey-arrow-svg" viewBox="0 0 80 240" preserveAspectRatio="xMidYMid meet">
+          <!-- 수평 줄기 -->
+          <line x1="0" y1="120" x2="40" y2="120" stroke="var(--viz-color-add)" stroke-width="2" />
+          <!-- 수직 분기선 -->
+          <line x1="40" y1="30" x2="40" y2="210" stroke="var(--viz-color-add)" stroke-width="2" />
+          <!-- 상단 가지 -->
+          <line x1="40" y1="30" x2="72" y2="30" stroke="var(--viz-color-add)" stroke-width="2" />
+          <polygon points="80,30 70,25 70,35" fill="var(--viz-color-add)" />
+          <!-- 중간 가지 -->
+          <line x1="40" y1="120" x2="72" y2="120" stroke="var(--viz-color-add)" stroke-width="2" />
+          <polygon points="80,120 70,115 70,125" fill="var(--viz-color-add)" />
+          <!-- 하단 가지 -->
+          <line x1="40" y1="210" x2="72" y2="210" stroke="var(--viz-color-add)" stroke-width="2" />
+          <polygon points="80,210 70,205 70,215" fill="var(--viz-color-add)" />
+        </svg>
+      </div>
+
+      <!-- After: 3 variants -->
+      <div class="journey-panel">
+        <div class="journey-panel-label after">After</div>
+        <div class="journey-after-card guest">
+          <div class="journey-after-icon guest">&#128075;</div>
+          <div class="journey-after-body">
+            <div class="journey-after-tag guest">비회원</div>
+            <div class="journey-after-title">가입 유도 배너</div>
+            <div class="journey-after-desc">로그인하지 않은 방문자에게 회원가입 혜택을 안내</div>
+          </div>
+        </div>
+        <div class="journey-after-card first">
+          <div class="journey-after-icon first">&#127381;</div>
+          <div class="journey-after-body">
+            <div class="journey-after-tag first">첫 구매 회원</div>
+            <div class="journey-after-title">첫 구매 혜택 배너</div>
+            <div class="journey-after-desc">아직 구매한 적 없는 회원에게 첫 주문 혜택 제공</div>
+          </div>
+        </div>
+        <div class="journey-after-card existing">
+          <div class="journey-after-icon existing">&#127873;</div>
+          <div class="journey-after-body">
+            <div class="journey-after-tag existing">기존 회원</div>
+            <div class="journey-after-title">쿠폰/프로모션 배너</div>
+            <div class="journey-after-desc">구매 경험이 있는 회원에게 재구매를 유도하는 쿠폰 안내</div>
+            <div class="journey-after-fallback">* 조건 미매칭 시 기본 폴백으로도 사용</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="journey-note">사용자 상태에 따라 규칙 리스트에서 조건이 일치하는 배너를 선택하고, 매칭되지 않으면 기본(DEFAULT) 배너로 폴백</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- CATEGORY 2: 사용자 상태 자동 판별 — FLOW (비즈니스 질문 관점)         -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="category cat-flow animate-in delay-5">
+  <div class="category-header">
+    <span class="category-number cat-move">2</span>
+    <span class="category-title">사용자 상태 자동 판별</span>
+    <span class="category-badge flow">Flow</span>
+    <span class="category-desc">2단계 질문으로 사용자 유형 결정</span>
+  </div>
+  <div class="category-insight">
+    "이 사용자는 누구인가?"를 2가지 질문으로 자동 판별 — 로그인 여부와 구매 이력을 순차적으로 확인하여 최적의 배너 조건을 결정
+  </div>
+  <div class="flow-diagram">
+    <svg class="flow-svg" id="flowSvg" viewBox="0 0 700 510">
+      <!-- ═══ Segmented trails (박스 구간 건너뜀) ═══ -->
+      <!-- Guest: seg1(Start→Q1상단) + seg2(Q1하단→카드) -->
+      <path id="trail-guest-1" d="M350,65 L350,95" fill="none" stroke="#fb923c" stroke-width="3" stroke-linecap="round" opacity="0" />
+      <path id="trail-guest-2" d="M350,145 L350,185 L140,185 L140,390" fill="none" stroke="#fb923c" stroke-width="3" stroke-linecap="round" opacity="0" />
+
+      <!-- First: seg1(Start→Q1상단) + seg2(Q1하단→Q2상단) + seg3(Q2하단→카드) -->
+      <path id="trail-first-1" d="M350,65 L350,95" fill="none" stroke="#a78bfa" stroke-width="3" stroke-linecap="round" opacity="0" />
+      <path id="trail-first-2" d="M350,145 L350,185 L540,185 L540,225" fill="none" stroke="#a78bfa" stroke-width="3" stroke-linecap="round" opacity="0" />
+      <path id="trail-first-3" d="M540,275 L540,330 L410,330 L410,390" fill="none" stroke="#a78bfa" stroke-width="3" stroke-linecap="round" opacity="0" />
+
+      <!-- Existing: seg1(Start→Q1상단) + seg2(Q1하단→Q2상단) + seg3(Q2하단→카드) -->
+      <path id="trail-existing-1" d="M350,65 L350,95" fill="none" stroke="#60a5fa" stroke-width="3" stroke-linecap="round" opacity="0" />
+      <path id="trail-existing-2" d="M350,145 L350,185 L540,185 L540,225" fill="none" stroke="#60a5fa" stroke-width="3" stroke-linecap="round" opacity="0" />
+      <path id="trail-existing-3" d="M540,275 L540,330 L625,330 L625,390" fill="none" stroke="#60a5fa" stroke-width="3" stroke-linecap="round" opacity="0" />
+
+      <circle id="travel-dot" r="6" fill="white" opacity="0" />
+
+      <!-- ═══ Layer 2: Base connectors (dim) ═══ -->
+      <line class="conn" x1="350" y1="65" x2="350" y2="95" />
+      <path class="conn" d="M350,145 L350,185 L140,185 L140,390" />
+      <polygon points="140,392 134,382 146,382" fill="rgba(148,163,184,0.2)" />
+      <path class="conn" d="M350,145 L350,185 L540,185 L540,225" />
+      <polygon points="540,227 534,217 546,217" fill="rgba(148,163,184,0.2)" />
+      <path class="conn" d="M540,275 L540,330 L410,330 L410,390" />
+      <polygon points="410,392 404,382 416,382" fill="rgba(148,163,184,0.2)" />
+      <path class="conn" d="M540,275 L540,330 L625,330 L625,390" />
+      <polygon points="625,392 619,382 631,382" fill="rgba(148,163,184,0.2)" />
+
+      <!-- ═══ Layer 3: Boxes (렌더링 최상단 — trail을 가림) ═══ -->
+      <rect class="box-start" x="250" y="15" width="200" height="50" />
+      <text class="txt-title" x="350" y="38" text-anchor="middle">배너 요청 발생</text>
+      <text class="txt-sub" x="350" y="52" text-anchor="middle">이 사용자에게 어떤 배너를?</text>
+
+      <rect class="box-question" x="260" y="95" width="180" height="50" />
+      <text class="txt-q" x="350" y="125" text-anchor="middle">&#128100; 로그인 했는가?</text>
+
+      <rect class="box-question" x="450" y="225" width="180" height="50" />
+      <text class="txt-q" x="540" y="255" text-anchor="middle">&#128722; 구매한 적 있는가?</text>
+
+      <!-- Result groups -->
+      <g class="result-group" id="rg-guest">
+        <rect class="box-guest" x="40" y="390" width="200" height="80" />
+        <text class="txt-sub" x="140" y="415" text-anchor="middle">비회원</text>
+        <text class="txt-banner guest" x="140" y="435" text-anchor="middle">가입 유도 배너</text>
+        <text class="txt-detail" x="140" y="453" text-anchor="middle">"지금 가입하면 혜택 제공"</text>
+      </g>
+      <g class="result-group" id="rg-first">
+        <rect class="box-first" x="310" y="390" width="200" height="80" />
+        <text class="txt-sub" x="410" y="415" text-anchor="middle">첫 구매 회원</text>
+        <text class="txt-banner first" x="410" y="435" text-anchor="middle">첫 구매 혜택 배너</text>
+        <text class="txt-detail" x="410" y="453" text-anchor="middle">"첫 주문 시 특별 할인"</text>
+      </g>
+      <g class="result-group" id="rg-existing">
+        <rect class="box-existing" x="560" y="390" width="130" height="80" />
+        <text class="txt-sub" x="625" y="415" text-anchor="middle">기존 회원</text>
+        <text class="txt-banner existing" x="625" y="435" text-anchor="middle">쿠폰 배너</text>
+        <text class="txt-detail" x="625" y="453" text-anchor="middle">"할인 쿠폰 받기"</text>
+      </g>
+
+      <!-- 예/아니오 라벨 -->
+      <text id="lbl-q1-no" x="230" y="181" fill="rgba(148,163,184,0.3)" font-size="12" font-weight="700">아니오</text>
+      <text id="lbl-q1-yes" x="448" y="181" fill="rgba(148,163,184,0.3)" font-size="12" font-weight="700">예</text>
+      <text id="lbl-q2-no" x="465" y="326" fill="rgba(148,163,184,0.3)" font-size="12" font-weight="700">아니오</text>
+      <text id="lbl-q2-yes" x="580" y="326" fill="rgba(148,163,184,0.3)" font-size="12" font-weight="700">예</text>
+
+      <!-- Arrowheads -->
+      <polygon id="arrow-guest" points="140,392 134,382 146,382" fill="#fb923c" opacity="0" />
+      <polygon id="arrow-first" points="410,392 404,382 416,382" fill="#a78bfa" opacity="0" />
+      <polygon id="arrow-existing" points="625,392 619,382 631,382" fill="#60a5fa" opacity="0" />
+
+      <text class="txt-sub" x="350" y="500" text-anchor="middle" font-style="italic">
+        API 실패 시 기본(DEFAULT) 배너로 안전하게 폴백
+      </text>
+    </svg>
+  </div>
+  <div class="flow-note">2가지 질문만으로 사용자 유형을 판별 — 선을 따라 색이 칠해지며 해당 배너가 활성화됩니다</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SUMMARY                                                            -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="summary-section animate-in delay-6">
+  <div class="summary-title">변경 요약</div>
+  <ul class="summary-list">
+    <li class="summary-item">
+      <span class="summary-badge add-b">추가</span>
+      <span>사용자 상태별 배너 조건 매칭 구조 (규칙 리스트 + 조건 + 폴백)</span>
+    </li>
+    <li class="summary-item">
+      <span class="summary-badge add-b">추가</span>
+      <span>로그인 여부 + 구매 이력 기반 사용자 유형 자동 판별 로직</span>
+    </li>
+    <li class="summary-item">
+      <span class="summary-badge merge-b">통합</span>
+      <span>비회원/첫 구매/기존 회원 3가지 조건에 맞는 배너 자동 선택</span>
+    </li>
+    <li class="summary-item">
+      <span class="summary-badge emphasis-b">검증</span>
+      <span>16개 단위 테스트로 조건 분기, 폴백, 엣지 케이스 검증</span>
+    </li>
+  </ul>
+</div>
+
+<!-- LEGEND -->
+<div class="legend animate-in delay-6">
+  <div class="legend-item"><span class="legend-dot merge-d"></span> 비회원 (가입 유도)</div>
+  <div class="legend-item"><span class="legend-dot emphasis-d"></span> 첫 구매 회원 (혜택)</div>
+  <div class="legend-item"><span class="legend-dot move-d"></span> 기존 회원 (쿠폰)</div>
+  <div class="legend-item"><span class="legend-dot add-d"></span> 신규 추가</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- COGNITIVE RATIONALE                                                -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<details class="rationale animate-in delay-7">
+  <summary>Cognitive Rationale</summary>
+  <div class="rationale-body">
+    <!-- 1. Design Approach -->
+    <div>
+      <div class="rationale-block-label">Design Approach</div>
+      <div class="rationale-text">
+        2개 카테고리 구성: "무엇이 달라지는가"(Journey — Before/After 사용자 경험 대비)와 "어떻게 결정하는가"(Flow — 비즈니스 질문 기반 결정 트리).
+        4개에서 2개로 축소하여 작업기억 부담을 최소화하고(WM-001: 4±1 청크), 구현 디테일(배너 조회 책임 이동, 닫기 피드백 루프)은 맥락 이해에 불필요하여 제외했다.
+        Flow 다이어그램은 세그먼트 분리 + 순차 색칠 애니메이션으로 의사결정 경로를 직관적으로 표현한다.
+      </div>
+    </div>
+
+    <!-- 2. Applied Rules -->
+    <div>
+      <div class="rationale-block-label">Applied Rules</div>
+      <ul class="rationale-rules-list">
+        <li><span class="rule-id">RULE-CMP02</span> 변경점 5개 이하 유지 — 4개 카테고리를 2개로 축소 <span class="principle-ref">← WM-001</span></li>
+        <li><span class="rule-id">RULE-L02</span> 동시 강조 &le; 2 — 카테고리당 1개 핵심 메시지 <span class="principle-ref">← ATT-002</span></li>
+        <li><span class="rule-id">RULE-C01</span> 시맨틱 컬러 — 비회원(주황), 첫 구매(보라), 기존 회원(파랑) 일관된 색상 언어 <span class="principle-ref">← PRC-001</span></li>
+        <li><span class="rule-id">RULE-C09</span> Slate 다크 테마 — Deep Navy 배경 + Slate 카드 <span class="principle-ref">← AES-001</span></li>
+        <li><span class="rule-id">RULE-T01</span> 화면당 핵심 메시지 1문장 — category-insight로 프레이밍 <span class="principle-ref">← IP-001</span></li>
+        <li><span class="rule-id">EVAL-0002</span> Before/After 시각적 비대칭 — Before(점선 1개 카드) vs After(실선 3개 카드) <span class="principle-ref">← IP-001</span></li>
+        <li><span class="rule-id">I-01</span> 비개발자 10초 이해 — 코드 클래스명 배제, 사용자 여정/비즈니스 질문으로 표현 <span class="principle-ref">← DES-ID-002</span></li>
+        <li><span class="rule-id">I-03</span> 사용자 여정 관점 — Flow 카테고리를 코드 호출이 아닌 "로그인했는가? → 구매한 적 있는가?" 비즈니스 질문으로 전환 <span class="principle-ref">← DES-ID-002</span></li>
+      </ul>
+    </div>
+
+    <!-- 3. Self-Evaluation -->
+    <div>
+      <div class="rationale-block-label">Self-Evaluation</div>
+      <div class="eval-grid">
+        <div class="eval-cell"><div class="eval-score">2</div><div class="eval-label">인지 부하</div></div>
+        <div class="eval-cell"><div class="eval-score">5</div><div class="eval-label">변화 가시성</div></div>
+        <div class="eval-cell"><div class="eval-score">5</div><div class="eval-label">앵커 안정성</div></div>
+        <div class="eval-cell"><div class="eval-score">5</div><div class="eval-label">직관성</div></div>
+      </div>
+    </div>
+
+    <!-- 4. Evidence Trail -->
+    <div>
+      <div class="rationale-block-label">Evidence Trail</div>
+      <ul class="evidence-list">
+        <li><span class="evidence-level l1">L1</span> WM-001 — 작업기억 청크 4&plusmn;1 제한 (Cowan, 2001) → 2 카테고리로 청크 축소</li>
+        <li><span class="evidence-level l2">L2</span> PRC-001 — 전주의적 색상 인코딩 (Treisman, 1985) → 사용자 유형별 일관된 색상 코딩</li>
+        <li><span class="evidence-level l2">L2</span> IP-001 — 이중 부호화 이론 (Paivio, 1991) → Journey(시각 대비) + Flow(결정 트리) 두 가지 표현</li>
+        <li><span class="evidence-level l2">L2</span> ATT-002 — 순차적 주의 유도 (Posner, 1980) → 카테고리 1(무엇이) → 카테고리 2(어떻게) 순서</li>
+        <li><span class="evidence-level l3">L3</span> DES-ID-002 — 정보 계층화 (Tufte, 2001) → 구현 디테일 제거, 핵심 의도만 표면화</li>
+      </ul>
+    </div>
+  </div>
+</details>
+
+</div>
+
+<script>
+(function() {
+  const svg = document.getElementById('flowSvg');
+  if (!svg) return;
+
+  const DIM = 'rgba(148,163,184,0.3)';
+
+  // labels per segment: activate when that segment starts drawing
+  const steps = [
+    { segments: ['trail-guest-1', 'trail-guest-2'],
+      segLabels: [[], ['lbl-q1-no']],
+      arrow: 'arrow-guest', group: 'rg-guest', color: '#fb923c' },
+    { segments: ['trail-first-1', 'trail-first-2', 'trail-first-3'],
+      segLabels: [[], ['lbl-q1-yes'], ['lbl-q2-no']],
+      arrow: 'arrow-first', group: 'rg-first', color: '#a78bfa' },
+    { segments: ['trail-existing-1', 'trail-existing-2', 'trail-existing-3'],
+      segLabels: [[], ['lbl-q1-yes'], ['lbl-q2-yes']],
+      arrow: 'arrow-existing', group: 'rg-existing', color: '#60a5fa' },
+  ];
+
+  const allSegments = steps.flatMap(s => s.segments);
+  const allLabels = ['lbl-q1-no', 'lbl-q1-yes', 'lbl-q2-no', 'lbl-q2-yes'];
+
+  const HOLD_MS = 1200;
+  const PAUSE_MS = 600;
+
+  const dot = document.getElementById('travel-dot');
+
+  function resetAll() {
+    allSegments.forEach(id => {
+      const el = document.getElementById(id);
+      const len = el.getTotalLength();
+      el.setAttribute('opacity', '0');
+      el.style.strokeDasharray = len;
+      el.style.strokeDashoffset = len;
+    });
+    steps.forEach(s => {
+      document.getElementById(s.arrow).setAttribute('opacity', '0');
+      document.getElementById(s.group).classList.remove('active');
+    });
+    allLabels.forEach(id => document.getElementById(id).setAttribute('fill', DIM));
+    dot.setAttribute('opacity', '0');
+  }
+
+  // Animate a single segment: draw stroke + move dot along it
+  function animateSegment(segId, color, durationMs) {
+    return new Promise(resolve => {
+      const seg = document.getElementById(segId);
+      const len = seg.getTotalLength();
+      seg.style.strokeDasharray = len;
+      seg.style.strokeDashoffset = len;
+      seg.setAttribute('opacity', '1');
+      dot.setAttribute('fill', color);
+      dot.setAttribute('opacity', '1');
+
+      const start = performance.now();
+      function frame(now) {
+        const frac = Math.min((now - start) / durationMs, 1);
+        const eased = frac < 0.5 ? 2*frac*frac : 1 - Math.pow(-2*frac+2, 2)/2;
+        seg.style.strokeDashoffset = len * (1 - eased);
+        const pt = seg.getPointAtLength(len * eased);
+        dot.setAttribute('cx', pt.x);
+        dot.setAttribute('cy', pt.y);
+        if (frac < 1) requestAnimationFrame(frame);
+        else resolve();
+      }
+      requestAnimationFrame(frame);
+    });
+  }
+
+  async function animateStep(step) {
+    resetAll();
+
+    // 세그먼트별 시간 배분: 길이에 비례
+    const lengths = step.segments.map(id => document.getElementById(id).getTotalLength());
+    const totalLen = lengths.reduce((a, b) => a + b, 0);
+    const TOTAL_MS = 1600;
+
+    for (let i = 0; i < step.segments.length; i++) {
+      // 해당 세그먼트의 라벨 활성화 (경로 색상으로)
+      if (step.segLabels[i]) {
+        step.segLabels[i].forEach(id => document.getElementById(id).setAttribute('fill', step.color));
+      }
+      const segMs = Math.max(250, (lengths[i] / totalLen) * TOTAL_MS);
+      await animateSegment(step.segments[i], step.color, segMs);
+      // 세그먼트 사이 dot을 숨기지 않고 다음 세그먼트 시작점으로 즉시 이동
+      if (i < step.segments.length - 1) {
+        const nextSeg = document.getElementById(step.segments[i + 1]);
+        const nextStart = nextSeg.getPointAtLength(0);
+        dot.setAttribute('cx', nextStart.x);
+        dot.setAttribute('cy', nextStart.y);
+      }
+    }
+
+    // 도착: 화살표 + 배너 활성화
+    document.getElementById(step.arrow).setAttribute('opacity', '1');
+    document.getElementById(step.group).classList.add('active');
+    dot.setAttribute('opacity', '0');
+    await new Promise(r => setTimeout(r, HOLD_MS));
+  }
+
+  async function runCycle() {
+    for (const step of steps) {
+      await animateStep(step);
+      await new Promise(r => setTimeout(r, PAUSE_MS));
+    }
+    resetAll();
+    await new Promise(r => setTimeout(r, PAUSE_MS));
+    runCycle();
+  }
+
+  const observer = new IntersectionObserver(entries => {
+    if (entries[0].isIntersecting) {
+      observer.disconnect();
+      resetAll();
+      runCycle();
+    }
+  }, { threshold: 0.3 });
+  const flowEl = document.querySelector('.flow-diagram');
+  if (flowEl) observer.observe(flowEl);
+})();
+</script>
+</body>
+</html>
