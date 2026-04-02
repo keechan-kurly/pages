@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>검색 Pagination 캐시를 메모리에서 Room으로 — RemoteMediator 재설계</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════
+   Toss Tech Light Theme — Blog Template
+   ═══════════════════════════════════════════════ */
+:root {
+    --grey-50: #f9fafb;
+    --grey-100: #f2f4f6;
+    --grey-200: #e5e8eb;
+    --grey-300: #d1d6db;
+    --grey-400: #b0b8c1;
+    --grey-500: #8b95a1;
+    --grey-600: #6b7684;
+    --grey-700: #4e5968;
+    --grey-800: #333d4b;
+    --grey-900: #191f28;
+
+    --toss-blue: #0064FF;
+    --toss-blue-light: rgba(0, 100, 255, 0.08);
+    --toss-blue-border: rgba(0, 100, 255, 0.2);
+
+    --bg: #ffffff;
+    --bg-elevated: var(--grey-50);
+    --bg-highlight: #ffc34236;
+    --bg-code: var(--grey-100);
+    --bg-blockquote: transparent;
+    --text-primary: var(--grey-900);
+    --text-secondary: var(--grey-700);
+    --text-tertiary: var(--grey-500);
+    --border-light: var(--grey-200);
+    --border-blockquote: var(--grey-800);
+
+    --content-width: 680px;
+    --wide-width: 780px;
+    --radius: 16px;
+    --radius-sm: 10px;
+
+    --font-body: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --font-code: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text-primary);
+    line-height: 1.8;
+    font-size: 16.5px;
+    -webkit-font-smoothing: antialiased;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+}
+
+::selection {
+    background: rgba(0, 100, 255, 0.15);
+    color: var(--grey-900);
+}
+
+a { color: var(--toss-blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.article {
+    max-width: var(--content-width);
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+.article-wide {
+    max-width: var(--wide-width);
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+.hero {
+    padding: 80px 24px 48px;
+    max-width: var(--content-width);
+    margin: 0 auto;
+}
+
+.hero-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 24px;
+    font-size: 0.875rem;
+    color: var(--text-tertiary);
+}
+
+.hero-meta .author { color: var(--text-secondary); font-weight: 600; }
+.hero-meta .dot { color: var(--grey-300); }
+
+.hero-title {
+    font-size: 2.2rem;
+    font-weight: 800;
+    line-height: 1.3;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+    letter-spacing: -0.02em;
+}
+
+.hero-subtitle {
+    font-size: 1.1rem;
+    line-height: 1.7;
+    color: var(--text-secondary);
+    max-width: 580px;
+}
+
+.hero-tags {
+    display: flex;
+    gap: 8px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+}
+
+.hero-tag {
+    padding: 4px 12px;
+    border-radius: var(--radius-sm);
+    background: var(--toss-blue-light);
+    border: 1px solid var(--toss-blue-border);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--toss-blue);
+}
+
+.toc {
+    margin: 0 0 48px 0;
+    padding: 24px 28px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+}
+
+.toc-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+}
+
+.toc-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.toc-list a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    font-size: 0.92rem;
+    color: var(--text-secondary);
+    transition: color 0.2s;
+}
+
+.toc-list a:hover { color: var(--toss-blue); text-decoration: none; }
+
+.toc-num {
+    width: 24px;
+    height: 24px;
+    border-radius: 7px;
+    background: var(--grey-200);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.article h2 {
+    font-size: 1.55rem;
+    font-weight: 800;
+    line-height: 1.35;
+    color: var(--text-primary);
+    margin: 56px 0 20px 0;
+    letter-spacing: -0.01em;
+}
+
+.article h2:first-child { margin-top: 0; }
+
+.article h3 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    line-height: 1.4;
+    color: var(--text-primary);
+    margin: 40px 0 14px 0;
+}
+
+.article p { margin: 0 0 20px 0; color: var(--text-primary); }
+.article strong { font-weight: 700; color: var(--grey-900); }
+
+.article blockquote {
+    margin: 28px 0;
+    padding: 0 0 0 20px;
+    border-left: 2.5px solid var(--border-blockquote);
+    font-size: 1.05rem;
+    font-weight: 600;
+    line-height: 1.7;
+    color: var(--text-primary);
+}
+
+.article blockquote p { margin: 0; }
+
+.highlight-box {
+    margin: 28px 0;
+    padding: 20px 24px;
+    background: var(--bg-highlight);
+    border-radius: var(--radius);
+    font-weight: 600;
+    line-height: 1.7;
+    color: var(--text-primary);
+}
+
+.content-box {
+    margin: 28px 0;
+    padding: 24px 28px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+}
+
+.content-box-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+}
+
+.article code {
+    font-family: var(--font-code);
+    font-size: 0.88em;
+    padding: 2px 6px;
+    background: var(--bg-code);
+    border-radius: 5px;
+    color: var(--grey-800);
+}
+
+.article pre {
+    margin: 24px 0;
+    padding: 24px;
+    background: var(--grey-900);
+    border-radius: var(--radius);
+    overflow-x: auto;
+    line-height: 1.6;
+}
+
+.article pre code {
+    font-family: var(--font-code);
+    font-size: 0.85rem;
+    background: none;
+    padding: 0;
+    color: #abb2bf;
+    border-radius: 0;
+}
+
+.kw { color: #c678dd; }
+.str { color: #98c379; }
+.cmt { color: #5c6370; font-style: italic; }
+.typ { color: #e5c07b; }
+.fn { color: #61afef; }
+.ann { color: #d19a66; }
+.op { color: #56b6c2; }
+
+.article ul, .article ol {
+    margin: 0 0 20px 0;
+    padding-left: 24px;
+}
+
+.article li {
+    margin-bottom: 10px;
+    line-height: 1.7;
+}
+
+.article li::marker { color: var(--text-tertiary); }
+
+.article img, .article-wide img {
+    max-width: 100%;
+    border-radius: var(--radius);
+    margin: 28px 0;
+    display: block;
+}
+
+.metrics-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0;
+    font-size: 0.9rem;
+}
+
+.metrics-table th {
+    text-align: left;
+    padding: 12px 16px;
+    background: var(--bg-elevated);
+    border-bottom: 2px solid var(--border-light);
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.metrics-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-light);
+    color: var(--text-secondary);
+}
+
+.metrics-table .metric-label { color: var(--text-primary); font-weight: 600; }
+.metrics-table .metric-good { color: #16a34a; font-weight: 700; }
+.metrics-table .metric-bad { color: #dc2626; font-weight: 600; }
+.metrics-table .metric-neutral { color: var(--text-tertiary); }
+
+.delta {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.delta-good { background: rgba(22, 163, 74, 0.1); color: #16a34a; }
+.delta-bad { background: rgba(220, 38, 38, 0.1); color: #dc2626; }
+.delta-neutral { background: var(--grey-100); color: var(--text-tertiary); }
+
+.summary-box {
+    margin: 36px 0;
+    padding: 24px 28px;
+    background: var(--toss-blue-light);
+    border: 1px solid var(--toss-blue-border);
+    border-radius: var(--radius);
+}
+
+.summary-box-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--toss-blue);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.summary-box p, .summary-box li {
+    color: var(--text-primary);
+    font-size: 0.95rem;
+}
+
+.compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 28px 0;
+}
+
+.compare-card {
+    padding: 20px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+    background: var(--bg);
+    transition: border-color 0.2s;
+}
+
+.compare-card:hover { border-color: var(--grey-300); }
+
+.compare-card-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+}
+
+.compare-before { border-left: 3px solid var(--grey-400); }
+.compare-after { border-left: 3px solid var(--toss-blue); }
+
+.article hr {
+    border: none;
+    height: 1px;
+    background: var(--border-light);
+    margin: 48px 0;
+}
+
+.footnotes {
+    margin-top: 56px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border-light);
+    font-size: 0.82rem;
+    color: var(--text-tertiary);
+    line-height: 1.8;
+}
+
+.footnotes a { color: var(--text-tertiary); text-decoration: underline; }
+
+.footnote-ref {
+    font-size: 0.75em;
+    vertical-align: super;
+    color: var(--toss-blue);
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.article-footer {
+    margin-top: 56px;
+    padding: 32px 0;
+    text-align: center;
+    color: var(--text-tertiary);
+    font-size: 0.82rem;
+}
+
+.share-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.share-btn {
+    padding: 8px 20px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-light);
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.share-btn:hover { background: var(--grey-200); color: var(--text-primary); }
+
+@media (max-width: 768px) {
+    .hero { padding: 48px 20px 32px; }
+    .hero-title { font-size: 1.7rem; }
+    .article, .article-wide { padding: 0 20px; }
+    .article h2 { font-size: 1.35rem; margin-top: 40px; }
+    .article h3 { font-size: 1.1rem; }
+    .compare-grid { grid-template-columns: 1fr; }
+    .article pre { padding: 16px; margin-left: -8px; margin-right: -8px; border-radius: 12px; }
+}
+
+@media print {
+    body { font-size: 11pt; }
+    .hero { padding: 24px 0; }
+    .article pre { white-space: pre-wrap; }
+    .toc, .share-buttons, .article-footer { display: none; }
+}
+</style>
+</head>
+<body>
+
+<header class="hero">
+    <div class="hero-meta">
+        <span class="author">keechan-kurly</span>
+        <span class="dot">&middot;</span>
+        <span>Android Developer</span>
+        <span class="dot">&middot;</span>
+        <time>2025 Q3</time>
+    </div>
+    <h1 class="hero-title">검색 Pagination 캐시를 메모리에서 Room으로 &mdash; RemoteMediator 재설계</h1>
+    <p class="hero-subtitle">페이지네이션 사이사이에 아이템을 끼워 넣어야 했다. 메모리 캐시로는 부수 정보 관리가 누락되기 쉬웠고, 실제로 일부 케이스에서 정상 동작하지 않았다. Room으로 책임을 옮긴 여정을 정리한다.</p>
+    <div class="hero-tags">
+        <span class="hero-tag">Paging 3</span>
+        <span class="hero-tag">Room</span>
+        <span class="hero-tag">RemoteMediator</span>
+        <span class="hero-tag">Migration</span>
+    </div>
+</header>
+
+<nav class="article">
+    <div class="toc">
+        <div class="toc-label">목차</div>
+        <ol class="toc-list">
+            <li><a href="#section-1"><span class="toc-num">1</span> 왜 메모리 캐시로는 안 되었나</a></li>
+            <li><a href="#section-2"><span class="toc-num">2</span> 기존 구조: 메모리 캐시 기반 Pagination</a></li>
+            <li><a href="#section-3"><span class="toc-num">3</span> Room Entity 설계</a></li>
+            <li><a href="#section-4"><span class="toc-num">4</span> 까다로웠던 부분</a></li>
+            <li><a href="#section-5"><span class="toc-num">5</span> Before / After</a></li>
+            <li><a href="#section-6"><span class="toc-num">6</span> 마무리</a></li>
+        </ol>
+    </div>
+</nav>
+
+<article class="article">
+
+    <!-- ═══ Section 1: 세 가지 제약 ═══ -->
+    <h2 id="section-1">왜 메모리 캐시로는 안 되었나</h2>
+
+    <p>검색 결과 페이지네이션에는 단순히 상품을 나열하는 것 이상의 요구사항이 있었다. 페이지네이션 사이사이에 연관 상품, 배너, 구매 이력 등 다양한 섹션을 INSERT해야 했다. 문제는 이 삽입을 메모리 캐시에서 관리하는 것이었다.</p>
+
+    <p>기존에는 검색 결과를 <code>Map&lt;Int, List&lt;SearchPagingModel&gt;&gt;</code> 형태로 메모리에 저장했다. 페이지 번호가 키이고, 해당 페이지의 모든 섹션 데이터가 값이었다. 여기에 아이템을 삽입하려면 페이지 경계를 넘나드는 위치 계산, 삽입 후 인덱스 보정, 각 섹션의 메타정보(sectionId, sectionPosition, sectionArea) 관리를 모두 메모리에서 직접 수행해야 했다.</p>
+
+    <p>이 부수 정보를 앱 코드에서 하나하나 관리하다 보니 누락이 발생했다. 실제로 일부 케이스에서 삽입된 섹션의 위치 정보가 정확하지 않아 정상 동작하지 않는 경우가 발견되었다.</p>
+
+    <div class="highlight-box">
+        페이지네이션 데이터와 부수 정보의 관리를 앱 코드가 아닌 Room에 위임하면, 삽입·정렬·조회를 SQL이 책임진다. 이것이 마이그레이션의 핵심 동기였다.
+    </div>
+
+
+    <!-- ═══ Section 2: 기존 구조 ═══ -->
+    <h2 id="section-2">기존 구조: 메모리 캐시 기반 Pagination</h2>
+
+    <p>마이그레이션 대상을 이해하려면 기존 구조를 먼저 살펴야 한다. 검색 Pagination은 세 개의 핵심 클래스로 구성되어 있었다.</p>
+
+    <pre><code><span class="cmt">// 메모리 캐시: 페이지 번호 → 검색 결과 리스트</span>
+<span class="kw">class</span> <span class="typ">SearchProductCachePool</span> {
+    <span class="kw">private val</span> cache = <span class="typ">ConcurrentHashMap</span>&lt;<span class="typ">Int</span>, <span class="typ">List</span>&lt;<span class="typ">SearchPagingModel</span>&gt;&gt;()
+    <span class="kw">private val</span> pageKeys = <span class="typ">ConcurrentHashMap</span>&lt;<span class="typ">String</span>, <span class="typ">PageKeySource</span>&gt;()
+
+    <span class="kw">fun</span> <span class="fn">put</span>(page: <span class="typ">Int</span>, data: <span class="typ">List</span>&lt;<span class="typ">SearchPagingModel</span>&gt;) { <span class="cmt">/* ... */</span> }
+    <span class="kw">fun</span> <span class="fn">get</span>(page: <span class="typ">Int</span>): <span class="typ">List</span>&lt;<span class="typ">SearchPagingModel</span>&gt;? { <span class="cmt">/* ... */</span> }
+    <span class="kw">fun</span> <span class="fn">clear</span>() { cache.<span class="fn">clear</span>(); pageKeys.<span class="fn">clear</span>() }
+}</code></pre>
+
+    <p><code>SearchProductCachePool</code>은 148줄의 클래스로, API 응답을 도메인 모델(<code>SearchPagingModel</code>)로 변환한 뒤 페이지 번호를 키로 메모리에 저장했다. <code>SearchProductRemoteMediator</code>가 API를 호출하여 이 캐시에 쓰고, <code>SearchProductCacheSource</code>라는 커스텀 <code>PagingSource</code>가 캐시에서 읽었다.</p>
+
+    <p>이 구조에는 한 가지 추가적인 문제가 있었다. API 응답을 역직렬화하는 시점(<code>SearchSectionTypeAdapter</code>)에서 바로 도메인 모델로 변환했기 때문에, 원본 JSON이 보존되지 않았다. 캐시를 디스크로 옮기려면 도메인 모델 전체를 직렬화해야 하는데, <code>SearchPagingModel</code>은 sealed class 계층 구조를 포함하고 있어 직렬화가 단순하지 않았다.</p>
+
+    <div style="margin:32px 0;display:flex;flex-direction:column;gap:24px;">
+        <!-- Before Flow -->
+        <div style="border-left:3px solid var(--grey-400);padding:16px 20px;border-radius:0 var(--radius) var(--radius) 0;background:var(--bg);">
+            <div style="font-size:0.72rem;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px;">Before — 변환이 앞에서 일어남</div>
+            <div style="display:flex;align-items:center;gap:0;overflow-x:auto;padding-bottom:4px;">
+                <div style="padding:10px 14px;background:var(--grey-100);border-radius:10px;font-size:0.82rem;font-weight:600;color:var(--text-secondary);white-space:nowrap;flex-shrink:0;">API 응답</div>
+                <div style="padding:0 6px;color:var(--grey-400);font-size:0.9rem;flex-shrink:0;">→</div>
+                <div style="padding:10px 14px;background:#fef3c7;border:1.5px solid #f59e0b;border-radius:10px;font-size:0.82rem;font-weight:700;color:#92400e;white-space:nowrap;flex-shrink:0;">TypeAdapter<br><span style="font-weight:500;font-size:0.75rem;">도메인 모델로 즉시 변환</span></div>
+                <div style="padding:0 6px;color:var(--grey-400);font-size:0.9rem;flex-shrink:0;">→</div>
+                <div style="padding:10px 14px;background:var(--grey-100);border:1.5px dashed var(--grey-300);border-radius:10px;font-size:0.82rem;font-weight:600;color:var(--text-tertiary);white-space:nowrap;flex-shrink:0;">메모리 캐시<br><span style="font-weight:500;font-size:0.75rem;color:#dc2626;">원본 JSON 유실</span></div>
+                <div style="padding:0 6px;color:var(--grey-400);font-size:0.9rem;flex-shrink:0;">→</div>
+                <div style="padding:10px 14px;background:var(--grey-100);border-radius:10px;font-size:0.82rem;font-weight:600;color:var(--text-secondary);white-space:nowrap;flex-shrink:0;">PagingSource</div>
+                <div style="padding:0 6px;color:var(--grey-400);font-size:0.9rem;flex-shrink:0;">→</div>
+                <div style="padding:10px 14px;background:var(--grey-100);border-radius:10px;font-size:0.82rem;font-weight:600;color:var(--text-secondary);white-space:nowrap;flex-shrink:0;">UI</div>
+            </div>
+        </div>
+        <!-- After Flow -->
+        <div style="border-left:3px solid var(--toss-blue);padding:16px 20px;border-radius:0 var(--radius) var(--radius) 0;background:var(--bg);">
+            <div style="font-size:0.72rem;font-weight:700;color:var(--toss-blue);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px;">After — 변환을 뒤로 미룸</div>
+            <div style="display:flex;align-items:center;gap:0;overflow-x:auto;padding-bottom:4px;">
+                <div style="padding:10px 14px;background:var(--grey-100);border-radius:10px;font-size:0.82rem;font-weight:600;color:var(--text-secondary);white-space:nowrap;flex-shrink:0;">API 응답</div>
+                <div style="padding:0 6px;color:var(--grey-400);font-size:0.9rem;flex-shrink:0;">→</div>
+                <div style="padding:10px 14px;background:var(--grey-100);border-radius:10px;font-size:0.82rem;font-weight:600;color:var(--text-secondary);white-space:nowrap;flex-shrink:0;">TypeAdapter<br><span style="font-weight:500;font-size:0.75rem;">메타데이터만 추출</span></div>
+                <div style="padding:0 6px;color:var(--grey-400);font-size:0.9rem;flex-shrink:0;">→</div>
+                <div style="padding:10px 14px;background:rgba(0,100,255,0.08);border:1.5px solid var(--toss-blue);border-radius:10px;font-size:0.82rem;font-weight:700;color:var(--toss-blue);white-space:nowrap;flex-shrink:0;">Room DB<br><span style="font-weight:500;font-size:0.75rem;">raw JSON + orderKey 보존</span></div>
+                <div style="padding:0 6px;color:var(--grey-400);font-size:0.9rem;flex-shrink:0;">→</div>
+                <div style="padding:10px 14px;background:var(--grey-100);border-radius:10px;font-size:0.82rem;font-weight:600;color:var(--text-secondary);white-space:nowrap;flex-shrink:0;">Room PagingSource</div>
+                <div style="padding:0 6px;color:var(--grey-400);font-size:0.9rem;flex-shrink:0;">→</div>
+                <div style="padding:10px 14px;background:#f0fdf4;border:1.5px solid #16a34a;border-radius:10px;font-size:0.82rem;font-weight:700;color:#15803d;white-space:nowrap;flex-shrink:0;">Mapper<br><span style="font-weight:500;font-size:0.75rem;">여기서 도메인 모델 변환</span></div>
+                <div style="padding:0 6px;color:var(--grey-400);font-size:0.9rem;flex-shrink:0;">→</div>
+                <div style="padding:10px 14px;background:var(--grey-100);border-radius:10px;font-size:0.82rem;font-weight:600;color:var(--text-secondary);white-space:nowrap;flex-shrink:0;">UI</div>
+            </div>
+        </div>
+    </div>
+
+    <p>핵심 발상의 전환은 "변환 시점의 지연"이다. 원본 JSON을 Room에 저장하고, 도메인 모델로의 변환은 UI 바인딩 시점으로 미룬다. 이렇게 하면 Room이 삽입·정렬·페이지 관리를 SQL로 처리하고, 앱 코드는 변환에만 집중할 수 있다.</p>
+
+
+    <!-- ═══ Section 3: Room Entity 설계 ═══ -->
+    <h2 id="section-3">Room Entity 설계</h2>
+
+    <p>Room 캐시의 설계에서 결정해야 할 것은 세 가지였다. 무엇을 저장할 것인가, 어떤 순서로 정렬할 것인가, 그리고 페이지 키를 어떻게 관리할 것인가.</p>
+
+    <h3>SearchSectionEntity: 원본 보존 전략</h3>
+
+    <p>검색 결과의 각 섹션(상품 리스트, 배너, 테마 등)을 하나의 Row로 저장한다. 핵심은 <code>payload</code> 필드에 원본 JSON 문자열을 그대로 보존하는 것이다.</p>
+
+    <pre><code><span class="ann">@Entity</span>(tableName = <span class="str">"search_sections"</span>)
+<span class="kw">data class</span> <span class="typ">SearchSectionEntity</span>(
+    <span class="ann">@PrimaryKey</span>(autoGenerate = <span class="kw">true</span>)
+    <span class="kw">val</span> id: <span class="typ">Int</span> = <span class="ann">0</span>,
+    <span class="kw">val</span> payload: <span class="typ">String</span>,          <span class="cmt">// 원본 JSON 문자열</span>
+    <span class="kw">val</span> actualKeyword: <span class="typ">String</span>?,
+    <span class="kw">val</span> orderKey: <span class="typ">Double</span>,         <span class="cmt">// 정렬 키</span>
+    <span class="kw">val</span> sectionArea: <span class="typ">SearchSectionArea</span>,
+    <span class="kw">val</span> sectionAreaType: <span class="typ">String</span>,
+    <span class="kw">val</span> sectionId: <span class="typ">String</span>,
+    <span class="kw">val</span> sectionCode: <span class="typ">String</span>,
+)</code></pre>
+
+    <p>도메인 모델 대신 원본 JSON을 저장하면 두 가지 이점이 있다. 첫째, <code>SearchPagingModel</code>의 sealed class 계층 전체를 직렬화할 필요가 없다. 둘째, Mapper 로직이 변경되어도 캐시를 무효화하지 않아도 된다.</p>
+
+    <h3>orderKey: 페이지 간 안정 정렬</h3>
+
+    <p>여러 페이지의 섹션을 하나의 테이블에 저장할 때, 페이지 내 순서와 페이지 간 순서를 모두 보존해야 한다. 이를 위해 <code>orderKey</code>를 다음과 같이 설계했다.</p>
+
+    <pre><code><span class="kw">private fun</span> <span class="fn">orderKeyOf</span>(page: <span class="typ">Int</span>, indexInPage: <span class="typ">Int</span>): <span class="typ">Double</span> {
+    <span class="kw">return</span> page.<span class="fn">toLong</span>() * <span class="ann">PAGE_STRIDE</span> + indexInPage.<span class="fn">toDouble</span>()
+}
+
+<span class="kw">private const val</span> <span class="ann">PAGE_STRIDE</span> = <span class="ann">1_000_000L</span></code></pre>
+
+    <p>1페이지의 3번째 아이템은 <code>1,000,003</code>, 2페이지의 1번째 아이템은 <code>2,000,001</code>이 된다. 한 페이지에 100만 개 미만의 아이템이 있다는 전제하에, 페이지 간 삽입이나 재정렬 없이 <code>ORDER BY orderKey ASC</code>만으로 올바른 순서를 보장한다.</p>
+
+    <h3>SearchPageKeyEntity: 페이지 키 분리</h3>
+
+    <pre><code><span class="ann">@Entity</span>(tableName = <span class="str">"search_page_keys"</span>)
+<span class="kw">data class</span> <span class="typ">SearchPageKeyEntity</span>(
+    <span class="ann">@PrimaryKey</span>
+    <span class="kw">val</span> keyword: <span class="typ">String</span>,
+    <span class="kw">val</span> prevKey: <span class="typ">Int</span>?,
+    <span class="kw">val</span> nextKey: <span class="typ">Int</span>?,
+)</code></pre>
+
+    <p><code>RemoteMediator</code>가 다음 페이지를 판단하려면 현재 키워드의 이전/다음 페이지 번호가 필요하다. 이를 섹션 테이블과 분리하여 <code>search_page_keys</code> 테이블에 저장했다. 키워드 변경 시 두 테이블을 함께 초기화하는 트랜잭션(<code>SearchProductTransaction</code>)으로 일관성을 유지한다.</p>
+
+
+    <!-- ═══ Section 4: 까다로웠던 부분 ═══ -->
+    <h2 id="section-4">까다로웠던 부분</h2>
+
+    <p>Room Entity 설계는 비교적 직관적이었다. 예상보다 시간이 걸린 것은 세 가지 부수적인 문제였다.</p>
+
+    <h3>Challenge 1: sealed class의 Room 저장</h3>
+
+    <p><code>SearchSectionArea</code>는 sealed class다. <code>Top</code>, <code>List</code>, <code>None</code> 세 가지 하위 타입이 있고, 각각 다른 마진 값을 갖는다. Room의 <code>TypeConverter</code>는 단일 타입 변환만 지원하므로, 다형성을 보존하려면 별도의 직렬화 전략이 필요했다.</p>
+
+    <p>해결 방법은 <code>SerializationSnapshot</code>이라는 래퍼를 도입하는 것이었다.</p>
+
+    <pre><code><span class="kw">data class</span> <span class="typ">SerializationSnapshot</span>(
+    <span class="kw">val</span> className: <span class="typ">String</span>,       <span class="cmt">// "Top", "List", "None"</span>
+    <span class="kw">val</span> jsonElement: <span class="typ">JsonElement</span>?  <span class="cmt">// 실제 데이터</span>
+)</code></pre>
+
+    <p>직렬화 시 클래스 이름과 JSON 데이터를 함께 저장하고, 역직렬화 시 클래스 이름으로 분기하여 올바른 하위 타입을 복원한다. <code>SearchSectionAreaTypeAdapter</code>가 이 변환을 담당한다.</p>
+
+    <pre><code><span class="cmt">// 역직렬화: className으로 분기</span>
+<span class="kw">when</span> (snapshot.className) {
+    <span class="typ">SearchSectionArea</span>.<span class="typ">Top</span>::<span class="kw">class</span>.simpleName -&gt;
+        context.<span class="fn">deserializeOrNull</span>(snapshot.jsonElement, <span class="typ">Top</span>::<span class="kw">class</span>.java)
+    <span class="typ">SearchSectionArea</span>.<span class="typ">List</span>::<span class="kw">class</span>.simpleName -&gt;
+        context.<span class="fn">deserializeOrNull</span>(snapshot.jsonElement, <span class="typ">List</span>::<span class="kw">class</span>.java)
+    <span class="kw">else</span> -&gt; <span class="typ">SearchSectionArea</span>.<span class="typ">None</span>
+}</code></pre>
+
+    <p>이 패턴은 Room에 sealed class를 저장해야 하는 다른 상황에도 재사용할 수 있다. 핵심은 타입 정보를 데이터와 함께 저장하는 것이다.</p>
+
+    <h3>Challenge 2: sectionPosition을 데이터 생성 시점에 확정</h3>
+
+    <p>기존에는 <code>sectionPosition</code>을 Adapter의 <code>bind()</code> 시점에 매번 계산했다. "이 아이템이 같은 섹션에서 몇 번째인지"를 알려면, 전체 스냅샷을 순회하여 같은 섹션 이름을 가진 아이템을 모은 뒤 인덱스를 찾아야 했다.</p>
+
+    <pre><code><span class="cmt">// Before: bind()할 때마다 전체 스냅샷 순회</span>
+<span class="kw">private fun</span> <span class="fn">getSectionPosition</span>(target: <span class="typ">SearchSectionItemUIModel</span>): <span class="typ">Int</span>? {
+    <span class="kw">return</span> <span class="fn">snapshot</span>().items
+        .<span class="fn">filter</span> { it.sectionArea.<span class="fn">getName</span>() == target.sectionArea.<span class="fn">getName</span>() }
+        .<span class="fn">groupBy</span> { it.sectionId }
+        .keys.<span class="fn">toList</span>()
+        .<span class="fn">findIndex</span> { it == target.sectionId }
+}</code></pre>
+
+    <p>Room 마이그레이션과 함께 이 값을 API 응답을 파싱하는 시점에 한 번만 계산하도록 변경했다. <code>SearchSectionTypeAdapter</code>가 각 섹션의 <code>sectionId</code>와 <code>sectionPosition</code>을 확정하고, 이 값이 Entity → UI 모델까지 그대로 전달된다.</p>
+
+    <pre><code><span class="cmt">// After: 파싱 시점에 한 번만 계산하여 Entity에 저장</span>
+<span class="typ">SearchSectionEntity</span>(
+    payload = <span class="kw">this</span>.<span class="fn">toString</span>(),
+    orderKey = <span class="fn">orderKeyOf</span>(page, it.index),
+    sectionId = it.sectionId,       <span class="cmt">// 파싱 시점에 확정</span>
+    sectionCode = it.sectionCode,
+    <span class="cmt">// ...</span>
+)</code></pre>
+
+    <p>결과적으로 ViewHolder는 더 이상 위치를 계산할 필요가 없다. UI 모델이 이미 자신의 위치를 알고 있으므로, <code>bind()</code>의 파라미터가 단순해졌다.</p>
+
+    <div class="compare-grid">
+        <div class="compare-card compare-before">
+            <div class="compare-card-label">Before</div>
+            <p style="font-size:0.85rem;color:var(--text-secondary);margin:0;font-family:var(--font-code);">bind(item, getSectionPosition(item))</p>
+        </div>
+        <div class="compare-card compare-after">
+            <div class="compare-card-label">After</div>
+            <p style="font-size:0.85rem;color:var(--text-secondary);margin:0;font-family:var(--font-code);">bind(item) <span style="color:var(--text-tertiary);font-family:var(--font-body);">// item.sectionPosition 내장</span></p>
+        </div>
+    </div>
+
+    <h3>Challenge 3: peek() vs getItem()</h3>
+
+    <p>PagingDataAdapter의 <code>getItem(position)</code>은 해당 위치의 데이터를 요청하면서 동시에 페이지 로드를 트리거한다. <code>getItemViewType()</code>에서 이 메서드를 호출하면, ViewType을 확인하는 것만으로도 불필요한 페이지 프리페치가 발생할 수 있다.</p>
+
+    <p><code>peek(position)</code>은 이미 로드된 데이터만 반환하고 새로운 로드를 트리거하지 않는다. <code>getItemViewType()</code>과 <code>getSpanSize()</code>처럼 데이터 관찰만 필요한 메서드에서는 <code>peek()</code>이 적합하다.</p>
+
+    <pre><code><span class="cmt">// Before: 로드를 트리거할 수 있음</span>
+<span class="kw">override fun</span> <span class="fn">getItemViewType</span>(position: <span class="typ">Int</span>): <span class="typ">Int</span> {
+    <span class="kw">return when</span> (<span class="fn">getItem</span>(position)) { <span class="cmt">/* ... */</span> }
+}
+
+<span class="cmt">// After: 로드를 트리거하지 않음</span>
+<span class="kw">override fun</span> <span class="fn">getItemViewType</span>(position: <span class="typ">Int</span>): <span class="typ">Int</span> {
+    <span class="kw">return when</span> (<span class="fn">peek</span>(position)) { <span class="cmt">/* ... */</span> }
+}</code></pre>
+
+
+    <!-- ═══ Section 5: Before / After ═══ -->
+    <h2 id="section-5">Before / After</h2>
+
+    <p>95개 파일, 22개 커밋에 걸친 변경의 정량적 결과를 정리한다.</p>
+
+    <table class="metrics-table">
+        <thead>
+            <tr>
+                <th>항목</th>
+                <th>Before (메모리 캐시)</th>
+                <th>After (Room 캐시)</th>
+                <th>변화</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="metric-label">프로세스 재생성 시 캐시</td>
+                <td>유실</td>
+                <td>유지</td>
+                <td><span class="delta delta-good">해결</span></td>
+            </tr>
+            <tr>
+                <td class="metric-label">sectionPosition 계산</td>
+                <td>O(n) 런타임 스캔</td>
+                <td>사전 계산, O(1)</td>
+                <td><span class="delta delta-good">해결</span></td>
+            </tr>
+            <tr>
+                <td class="metric-label">DiffUtil 아이템 식별</td>
+                <td>hashCode() 비교</td>
+                <td>stable id 비교</td>
+                <td><span class="delta delta-good">해결</span></td>
+            </tr>
+            <tr>
+                <td class="metric-label">캐시 관련 코드</td>
+                <td>CachePool 148줄 + CacheSource 37줄</td>
+                <td>Entity 34줄 + Dao 68줄 + Transaction 53줄</td>
+                <td><span class="delta delta-neutral">+30줄</span></td>
+            </tr>
+            <tr>
+                <td class="metric-label">ViewHolder bind() 파라미터</td>
+                <td>item + sectionPosition</td>
+                <td>item만</td>
+                <td><span class="delta delta-good">단순화</span></td>
+            </tr>
+            <tr>
+                <td class="metric-label">TypeAdapter 복잡도</td>
+                <td>45줄</td>
+                <td>270줄</td>
+                <td><span class="delta delta-bad">+225줄</span></td>
+            </tr>
+            <tr>
+                <td class="metric-label">전체 변경 규모</td>
+                <td colspan="2" style="text-align:center;">95 파일, +1333 / -886줄</td>
+                <td><span class="delta delta-neutral">+447줄</span></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <p>전체 코드량은 447줄 증가했다. 특히 <code>SearchSectionTypeAdapter</code>가 45줄에서 270줄로 크게 늘었는데, 기존에 각 Mapper에 분산되어 있던 섹션 분해 로직(<code>resolveTopSections</code>, <code>resolveListSections</code> 등)과 타이틀/아이템 분리 로직이 TypeAdapter로 집중되었기 때문이다.</p>
+
+    <p>코드량 증가는 트레이드오프다. 대신 얻은 것은 캐시의 프로세스 생존성, 바인딩 시점의 O(1) 위치 접근, 그리고 안정적인 아이템 식별이다. 우리 팀에서는 이 교환이 합리적이라고 판단했다.</p>
+
+    <div class="content-box">
+        <div class="content-box-title">부수적 개선</div>
+        <p style="margin-bottom:10px;">Room 마이그레이션과 함께 진행한 정리 작업도 있다.</p>
+        <ul style="margin:0;">
+            <li><code>extensition</code> → <code>extension</code> 패키지명 오타 수정</li>
+            <li><code>StickerTypeAdapter</code> → <code>StickerResponseTypeAdapter</code> 네이밍 명확화</li>
+            <li>Sticker 도메인 모델의 <code>type</code> → <code>stickerType</code> (Room 예약어 충돌 방지)</li>
+            <li><code>SpaceItemDecoration</code>에서 <code>GridLayoutManager.LayoutParams.spanIndex</code> 직접 참조 (ViewHolder 타입 체크 제거)</li>
+        </ul>
+    </div>
+
+
+    <!-- ═══ Section 6: 마무리 ═══ -->
+    <h2 id="section-6">마무리</h2>
+
+    <div class="summary-box">
+        <div class="summary-box-title">핵심 요약</div>
+        <ul>
+            <li><strong>원본 JSON을 저장하라.</strong> 도메인 모델의 sealed class 계층을 직렬화하는 대신, 원본 JSON을 Room에 보존하고 변환을 UI 바인딩 시점으로 미루면 직렬화 복잡도를 크게 줄일 수 있다.</li>
+            <li><strong>위치 정보를 모델에 내재화하라.</strong> sectionPosition처럼 런타임에 반복 계산하는 값은 데이터 생성 시점에 한 번 계산하여 모델에 포함시키면 Adapter의 <code>bind()</code>가 단순해지고 O(n) 스캔이 사라진다.</li>
+            <li><strong>peek()과 getItem()을 구분하라.</strong> PagingDataAdapter에서 데이터 관찰만 필요한 곳(<code>getItemViewType</code>, <code>getSpanSize</code>)에서는 <code>peek()</code>을 사용하여 불필요한 페이지 로드 트리거를 방지하라.</li>
+        </ul>
+    </div>
+
+    <p>한 가지 주의할 점이 있다. 모든 Pagination 캐시를 Room으로 옮길 필요는 없다. 데이터가 수십 개 이하이고, 프로세스 재생성 시 처음부터 다시 로드해도 사용자 경험에 영향이 없다면 메모리 캐시가 더 단순한 선택이다. Room은 "캐시가 프로세스를 넘어 생존해야 하는가?"라는 질문에 "예"라고 답할 때 선택하는 것이 합리적이다.</p>
+
+    <p>이 마이그레이션의 전체 코드는 <a href="https://github.com/thefarmersfront/kurly-android/pull/6419">PR #6419</a>에서 확인할 수 있다.</p>
+
+    <div class="summary-box">
+        <div class="summary-box-title">시각화 자료</div>
+        <p>이 글의 핵심 변경점을 Before/After 비교로 정리한 시각화 문서를 제공합니다.<br>
+        <a href="search-pagination-room-migration.html">&rarr; 시각화 페이지 보기</a></p>
+    </div>
+
+    <hr>
+
+</article>
+
+<div class="article">
+    <div class="footnotes">
+        <p>[1] Paging 3 RemoteMediator 공식 문서: <a href="https://developer.android.com/topic/libraries/architecture/paging/v3-network-db">developer.android.com/topic/libraries/architecture/paging/v3-network-db</a></p>
+        <p>[2] Room TypeConverter 공식 문서: <a href="https://developer.android.com/training/data-storage/room/referencing-data">developer.android.com/training/data-storage/room/referencing-data</a></p>
+    </div>
+</div>
+
+<footer class="article-footer">
+    <div class="share-buttons">
+        <button class="share-btn" onclick="navigator.clipboard.writeText(location.href)">링크 복사</button>
+    </div>
+</footer>
+
+</body>
+</html>

@@ -3,350 +3,841 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kurly Android Tech Blog</title>
+<title>Kurly Android Tech Archive</title>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
 <style>
   :root {
-    --color-bg: #0a0e1a;
-    --color-surface: #1e293b;
-    --color-surface-elevated: #253348;
-    --color-surface-inner: #334155;
-    --color-on-surface: #f1f5f9;
-    --color-on-surface-body: #94a3b8;
-    --color-outline: #64748b;
-    --color-border: rgba(148, 163, 184, 0.15);
-    --viz-color-add: #4ade80;
-    --viz-color-move: #60a5fa;
-    --viz-color-emphasis: #a78bfa;
-    --viz-color-merge: #fb923c;
-    --viz-color-ai: #f472b6;
+    --bg: #0b0f19;
+    --surface: #141820;
+    --surface-elevated: #1a1f2e;
+    --surface-hover: #1e2435;
+    --on-surface: #eef0f6;
+    --on-surface-dim: #9ca3b4;
+    --on-surface-faint: #5c6478;
+    --border: rgba(148,163,184,0.08);
+    --border-hover: rgba(148,163,184,0.16);
+
+    /* Blog = Purple */
+    --blog: #a78bfa;
+    --blog-dim: rgba(167,139,250,0.08);
+    --blog-border: rgba(167,139,250,0.18);
+    --blog-glow: rgba(167,139,250,0.04);
+
+    /* Viz = Emerald */
+    --viz: #34d399;
+    --viz-dim: rgba(52,211,153,0.08);
+    --viz-border: rgba(52,211,153,0.18);
+    --viz-glow: rgba(52,211,153,0.04);
+
+    --green: #4ade80;
+    --orange: #fb923c;
+    --radius: 14px;
+    --radius-sm: 10px;
   }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--color-bg); color: var(--color-on-surface-body); line-height: 1.6; min-height: 100vh; }
-  .container { max-width: 1100px; margin: 0 auto; padding: 48px 24px; }
+  body { font-family: 'Pretendard Variable', -apple-system, sans-serif; background: var(--bg); color: var(--on-surface-dim); line-height: 1.6; -webkit-font-smoothing: antialiased; }
 
-  /* ── Hero ── */
-  .hero { text-align: center; padding: 64px 24px 48px; position: relative; overflow: hidden; margin-bottom: 48px; }
-  .hero::before { content: ''; position: absolute; top: -40%; left: 30%; width: 600px; height: 600px; background: radial-gradient(circle, rgba(167,139,250,0.1) 0%, transparent 70%); pointer-events: none; }
-  .hero::after { content: ''; position: absolute; bottom: -30%; right: 20%; width: 500px; height: 500px; background: radial-gradient(circle, rgba(96,165,250,0.08) 0%, transparent 70%); pointer-events: none; }
-  .hero-badge { display: inline-flex; align-items: center; gap: 8px; padding: 8px 20px; background: linear-gradient(135deg, rgba(167,139,250,0.12), rgba(96,165,250,0.12)); border: 1px solid rgba(167,139,250,0.2); border-radius: 9999px; font-size: 0.72rem; font-weight: 600; color: var(--viz-color-emphasis); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 28px; position: relative; }
-  .hero h1 { font-size: 3rem; font-weight: 800; line-height: 1.15; margin-bottom: 20px; position: relative; background: linear-gradient(135deg, var(--color-on-surface) 0%, var(--viz-color-emphasis) 40%, var(--viz-color-move) 70%, var(--viz-color-add) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-  .hero-desc { font-size: 1.1rem; color: var(--color-outline); max-width: 600px; margin: 0 auto; position: relative; line-height: 1.8; }
+  /* ═══ Fade-in Animations ═══ */
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  .sidebar { animation: fadeIn 0.5s ease both; }
+  .top-bar { animation: fadeInUp 0.4s ease 0.1s both; }
+  .year-group { animation: fadeInUp 0.45s ease both; }
+  .year-group:nth-child(1) { animation-delay: 0.15s; }
+  .year-group:nth-child(2) { animation-delay: 0.25s; }
+  .year-group:nth-child(3) { animation-delay: 0.35s; }
+  .card, .list-row { animation: fadeInUp 0.4s ease both; }
+  .year-group:nth-child(1) .card:nth-child(1),
+  .year-group:nth-child(1) .list-row:nth-child(2) { animation-delay: 0.2s; }
+  .year-group:nth-child(1) .card:nth-child(2),
+  .year-group:nth-child(1) .list-row:nth-child(3) { animation-delay: 0.26s; }
+  .year-group:nth-child(1) .card:nth-child(3),
+  .year-group:nth-child(1) .list-row:nth-child(4) { animation-delay: 0.32s; }
+  .year-group:nth-child(1) .card:nth-child(4),
+  .year-group:nth-child(1) .list-row:nth-child(5) { animation-delay: 0.38s; }
+  .year-group:nth-child(1) .card:nth-child(5),
+  .year-group:nth-child(1) .list-row:nth-child(6) { animation-delay: 0.44s; }
+  .year-group:nth-child(1) .card:nth-child(6),
+  .year-group:nth-child(1) .list-row:nth-child(7) { animation-delay: 0.5s; }
+  .year-group:nth-child(1) .card:nth-child(7),
+  .year-group:nth-child(1) .list-row:nth-child(8) { animation-delay: 0.56s; }
 
-  /* ── Articles Grid ── */
-  .articles { display: flex; flex-direction: column; gap: 20px; margin-bottom: 48px; }
-  .article-card { display: grid; grid-template-columns: auto 1fr; gap: 24px; padding: 28px; border-radius: 20px; border: 1px solid; text-decoration: none; color: inherit; transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden; }
-  .article-card:hover { transform: translateY(-3px); }
-  .article-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
-  .article-card:hover::before { opacity: 1; }
+  /* ═══ Layout ═══ */
+  .layout { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
 
-  .article-card.card-compose { background: linear-gradient(135deg, rgba(244,114,182,0.04) 0%, var(--color-surface) 100%); border-color: rgba(244,114,182,0.12); }
-  .article-card.card-compose:hover { border-color: rgba(244,114,182,0.3); box-shadow: 0 8px 32px rgba(244,114,182,0.08); }
-  .article-card.card-compose::before { background: radial-gradient(circle at 20% 50%, rgba(244,114,182,0.06) 0%, transparent 60%); }
-
-  .article-card.card-webview { background: linear-gradient(135deg, rgba(251,146,60,0.04) 0%, var(--color-surface) 100%); border-color: rgba(251,146,60,0.12); }
-  .article-card.card-webview:hover { border-color: rgba(251,146,60,0.3); box-shadow: 0 8px 32px rgba(251,146,60,0.08); }
-  .article-card.card-webview::before { background: radial-gradient(circle at 20% 50%, rgba(251,146,60,0.06) 0%, transparent 60%); }
-
-  .article-card.card-ci { background: linear-gradient(135deg, rgba(96,165,250,0.04) 0%, var(--color-surface) 100%); border-color: rgba(96,165,250,0.12); }
-  .article-card.card-ci:hover { border-color: rgba(96,165,250,0.3); box-shadow: 0 8px 32px rgba(96,165,250,0.08); }
-  .article-card.card-ci::before { background: radial-gradient(circle at 20% 50%, rgba(96,165,250,0.06) 0%, transparent 60%); }
-
-  .article-card.card-impression { background: linear-gradient(135deg, rgba(167,139,250,0.04) 0%, var(--color-surface) 100%); border-color: rgba(167,139,250,0.12); }
-  .article-card.card-impression:hover { border-color: rgba(167,139,250,0.3); box-shadow: 0 8px 32px rgba(167,139,250,0.08); }
-  .article-card.card-impression::before { background: radial-gradient(circle at 20% 50%, rgba(167,139,250,0.06) 0%, transparent 60%); }
-
-  .article-card.card-popup { background: linear-gradient(135deg, rgba(74,222,128,0.04) 0%, var(--color-surface) 100%); border-color: rgba(74,222,128,0.12); }
-  .article-card.card-popup:hover { border-color: rgba(74,222,128,0.3); box-shadow: 0 8px 32px rgba(74,222,128,0.08); }
-  .article-card.card-popup::before { background: radial-gradient(circle at 20% 50%, rgba(74,222,128,0.06) 0%, transparent 60%); }
-
-  /* Article Number */
-  .article-num { width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; font-weight: 800; color: #fff; flex-shrink: 0; }
-  .article-num.num-compose { background: linear-gradient(135deg, var(--viz-color-ai), #db2777); }
-  .article-num.num-webview { background: linear-gradient(135deg, var(--viz-color-merge), #ea580c); }
-  .article-num.num-popup { background: linear-gradient(135deg, var(--viz-color-add), #16a34a); }
-  .article-num.num-ci { background: linear-gradient(135deg, var(--viz-color-move), #3b82f6); }
-  .article-num.num-impression { background: linear-gradient(135deg, var(--viz-color-emphasis), #7c3aed); }
-
-  /* Article Content */
-  .article-content { display: flex; flex-direction: column; gap: 8px; }
-  .article-tags { display: flex; gap: 6px; flex-wrap: wrap; }
-  .article-tag { font-size: 0.6rem; font-weight: 600; padding: 3px 10px; border-radius: 9999px; letter-spacing: 0.06em; text-transform: uppercase; }
-  .article-tag.tag-compose { color: var(--viz-color-ai); background: rgba(244,114,182,0.1); border: 1px solid rgba(244,114,182,0.2); }
-  .article-tag.tag-webview { color: var(--viz-color-merge); background: rgba(251,146,60,0.1); border: 1px solid rgba(251,146,60,0.2); }
-  .article-tag.tag-popup { color: var(--viz-color-add); background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.2); }
-  .article-tag.tag-ci { color: var(--viz-color-move); background: rgba(96,165,250,0.1); border: 1px solid rgba(96,165,250,0.2); }
-  .article-tag.tag-impression { color: var(--viz-color-emphasis); background: rgba(167,139,250,0.1); border: 1px solid rgba(167,139,250,0.2); }
-  .article-tag.tag-common { color: var(--color-outline); background: rgba(148,163,184,0.08); border: 1px solid rgba(148,163,184,0.12); }
-
-  .article-title { font-size: 1.25rem; font-weight: 700; color: var(--color-on-surface); line-height: 1.4; }
-  .article-desc { font-size: 0.88rem; color: var(--color-on-surface-body); line-height: 1.7; }
-
-  .article-meta { display: flex; align-items: center; gap: 16px; margin-top: 4px; }
-  .article-meta-item { font-size: 0.68rem; color: var(--color-outline); display: flex; align-items: center; gap: 4px; }
-
-  .article-stats { display: flex; gap: 12px; margin-top: 8px; }
-  .article-stat { padding: 6px 12px; border-radius: 10px; font-size: 0.68rem; font-weight: 600; border: 1px solid; }
-  .article-stat.stat-compose { border-color: rgba(244,114,182,0.15); color: var(--viz-color-ai); background: rgba(244,114,182,0.04); }
-  .article-stat.stat-webview { border-color: rgba(251,146,60,0.15); color: var(--viz-color-merge); background: rgba(251,146,60,0.04); }
-  .article-stat.stat-popup { border-color: rgba(74,222,128,0.15); color: var(--viz-color-add); background: rgba(74,222,128,0.04); }
-  .article-stat.stat-ci { border-color: rgba(96,165,250,0.15); color: var(--viz-color-move); background: rgba(96,165,250,0.04); }
-  .article-stat.stat-impression { border-color: rgba(167,139,250,0.15); color: var(--viz-color-emphasis); background: rgba(167,139,250,0.04); }
-
-  /* Arrow indicator */
-  .article-arrow { position: absolute; right: 28px; top: 50%; transform: translateY(-50%); font-size: 1.2rem; color: var(--color-outline); opacity: 0; transition: 0.3s; }
-  .article-card:hover .article-arrow { opacity: 1; transform: translateY(-50%) translateX(4px); }
-
-  /* ── Section Divider ── */
-  .section-header { margin-bottom: 24px; }
-  .section-label { display: inline-flex; align-items: center; gap: 8px; font-size: 0.7rem; font-weight: 700; color: var(--color-outline); text-transform: uppercase; letter-spacing: 0.12em; padding-bottom: 12px; border-bottom: 1px solid var(--color-border); width: 100%; }
-
-  /* ── Viz Grid (compact 2-col) ── */
-  .viz-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 48px; }
-  .viz-card { padding: 20px; border-radius: 16px; border: 1px solid var(--color-border); background: var(--color-surface); text-decoration: none; color: inherit; transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 10px; }
-  .viz-card:hover { transform: translateY(-2px); border-color: rgba(148,163,184,0.3); box-shadow: 0 6px 24px rgba(0,0,0,0.2); }
-  .viz-card-header { display: flex; align-items: center; gap: 10px; }
-  .viz-card-icon { width: 32px; height: 32px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 800; color: #fff; flex-shrink: 0; background: linear-gradient(135deg, var(--color-outline), var(--color-surface-inner)); }
-  .viz-card-ticket { font-size: 0.65rem; font-weight: 600; color: var(--color-outline); letter-spacing: 0.04em; }
-  .viz-card-title { font-size: 1rem; font-weight: 700; color: var(--color-on-surface); line-height: 1.4; }
-  .viz-card-desc { font-size: 0.8rem; color: var(--color-on-surface-body); line-height: 1.6; }
-  .viz-card-stats { display: flex; gap: 8px; flex-wrap: wrap; }
-  .viz-card-stat { font-size: 0.62rem; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(148,163,184,0.08); border: 1px solid var(--color-border); color: var(--color-outline); }
-  .viz-card-stat.good { color: var(--viz-color-add); border-color: rgba(74,222,128,0.2); background: rgba(74,222,128,0.06); }
-
-  @media (max-width: 768px) {
-    .viz-grid { grid-template-columns: 1fr; }
+  /* ═══ Sidebar ═══ */
+  .sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 28px 16px;
+    position: sticky; top: 0; height: 100vh;
+    overflow-y: auto;
+    display: flex; flex-direction: column; gap: 24px;
   }
 
-  /* ── Footer ── */
-  .footer { text-align: center; padding: 32px 0; border-top: 1px solid var(--color-border); }
-  .footer-text { font-size: 0.72rem; color: var(--color-outline); }
-  .footer-text a { color: var(--viz-color-move); text-decoration: none; }
-  .footer-text a:hover { text-decoration: underline; }
+  .sidebar-logo { display: flex; align-items: center; gap: 10px; padding: 0 4px; }
+  .sidebar-logo-icon {
+    width: 30px; height: 30px; border-radius: 9px;
+    background: linear-gradient(135deg, var(--blog), #6366f1);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.75rem; color: #fff; font-weight: 800;
+  }
+  .sidebar-logo-text { font-size: 0.85rem; font-weight: 700; color: var(--on-surface); }
 
-  @media (max-width: 768px) {
-    .hero h1 { font-size: 2rem; }
-    .article-card { grid-template-columns: 1fr; }
-    .article-num { width: 44px; height: 44px; font-size: 1rem; border-radius: 12px; }
+  .sidebar-section { display: flex; flex-direction: column; gap: 2px; }
+  .sidebar-label {
+    font-size: 0.6rem; font-weight: 700; color: var(--on-surface-faint);
+    text-transform: uppercase; letter-spacing: 0.1em;
+    padding: 0 8px; margin-bottom: 6px;
+  }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; border-radius: 8px;
+    font-size: 0.8rem; font-weight: 500; color: var(--on-surface-dim);
+    cursor: pointer; transition: all 0.12s;
+    border: none; background: none; width: 100%; text-align: left; font-family: inherit;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.03); color: var(--on-surface); }
+  .nav-item.active { background: rgba(167,139,250,0.08); color: var(--blog); }
+  .nav-icon { width: 18px; text-align: center; font-size: 0.9rem; }
+  .nav-count {
+    margin-left: auto; font-size: 0.62rem; font-weight: 600;
+    padding: 1px 7px; border-radius: 5px;
+    background: rgba(255,255,255,0.04); color: var(--on-surface-faint);
+  }
+
+  /* Sidebar Stats */
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .stat {
+    padding: 12px; border-radius: var(--radius-sm);
+    background: var(--surface-elevated); border: 1px solid var(--border);
+  }
+  .stat-val { font-size: 1.4rem; font-weight: 800; color: var(--on-surface); line-height: 1; }
+  .stat-lbl { font-size: 0.58rem; color: var(--on-surface-faint); margin-top: 3px; font-weight: 500; }
+
+  /* Sidebar Tags */
+  .tag-cloud { display: flex; flex-wrap: wrap; gap: 5px; }
+  .stag {
+    padding: 3px 9px; border-radius: 6px; font-size: 0.58rem; font-weight: 600;
+    background: rgba(255,255,255,0.02); border: 1px solid var(--border);
+    color: var(--on-surface-faint); cursor: pointer; transition: all 0.12s;
+  }
+  .stag:hover { border-color: var(--border-hover); color: var(--on-surface-dim); }
+  .stag.active { background: var(--blog-dim); border-color: var(--blog-border); color: var(--blog); }
+
+  /* ═══ Main ═══ */
+  .main { padding: 28px 32px; }
+
+  /* Top Bar */
+  .top-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+  .search-wrap { position: relative; flex: 1; }
+  .search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--on-surface-faint); font-size: 0.9rem; pointer-events: none; }
+  .search-input {
+    width: 100%; padding: 10px 16px 10px 40px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    color: var(--on-surface); font-size: 0.82rem; font-family: inherit; outline: none;
+    transition: border-color 0.15s;
+  }
+  .search-input:focus { border-color: var(--blog-border); }
+  .search-input::placeholder { color: var(--on-surface-faint); }
+
+  .top-btn {
+    padding: 9px 14px; border-radius: var(--radius-sm);
+    background: var(--surface); border: 1px solid var(--border);
+    font-size: 0.72rem; font-weight: 600; color: var(--on-surface-dim);
+    cursor: pointer; font-family: inherit; transition: all 0.12s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .top-btn:hover { border-color: var(--border-hover); color: var(--on-surface); }
+  .top-btn.active { background: var(--blog-dim); border-color: var(--blog-border); color: var(--blog); }
+
+  .view-toggle { display: flex; border-radius: var(--radius-sm); overflow: hidden; border: 1px solid var(--border); }
+  .vt-btn {
+    padding: 9px 14px; background: var(--surface); border: none;
+    font-size: 0.72rem; font-weight: 600; color: var(--on-surface-faint);
+    cursor: pointer; font-family: inherit; transition: all 0.12s;
+  }
+  .vt-btn + .vt-btn { border-left: 1px solid var(--border); }
+  .vt-btn:hover { color: var(--on-surface-dim); }
+  .vt-btn.active { background: var(--blog-dim); color: var(--blog); }
+
+  /* ═══ Year Groups ═══ */
+  .year-group { margin-bottom: 8px; }
+  .year-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 4px; cursor: pointer; user-select: none;
+    transition: color 0.12s;
+  }
+  .year-header:hover { color: var(--on-surface); }
+  .year-chevron {
+    font-size: 0.7rem; color: var(--on-surface-faint);
+    transition: transform 0.2s; display: inline-block;
+  }
+  .year-header.collapsed .year-chevron { transform: rotate(-90deg); }
+  .year-text { font-size: 0.82rem; font-weight: 700; color: var(--on-surface); }
+  .year-count {
+    font-size: 0.58rem; font-weight: 600; padding: 2px 8px; border-radius: 5px;
+    background: rgba(255,255,255,0.04); color: var(--on-surface-faint);
+  }
+  .year-line { flex: 1; height: 1px; background: var(--border); }
+
+  .year-content { overflow: hidden; transition: max-height 0.3s ease; }
+  .year-content.collapsed { max-height: 0 !important; }
+
+  /* ═══ Grid View ═══ */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; padding: 8px 0 20px; }
+
+  .card {
+    padding: 22px; border-radius: var(--radius);
+    border: 1px solid; text-decoration: none; color: inherit;
+    transition: all 0.2s; cursor: pointer; position: relative;
+    display: flex; flex-direction: column; gap: 10px;
+    border-left-width: 3px;
+  }
+  .card:hover { transform: translateY(-2px); }
+
+  /* Blog Card */
+  .card.blog {
+    background: linear-gradient(135deg, var(--blog-glow), var(--surface) 60%);
+    border-color: var(--blog-border);
+    border-left-color: var(--blog);
+  }
+  .card.blog:hover {
+    border-color: rgba(167,139,250,0.35);
+    box-shadow: 0 8px 28px rgba(167,139,250,0.08);
+  }
+
+  /* Viz Card */
+  .card.viz {
+    background: linear-gradient(135deg, var(--viz-glow), var(--surface) 60%);
+    border-color: var(--viz-border);
+    border-left-color: var(--viz);
+  }
+  .card.viz:hover {
+    border-color: rgba(56,189,248,0.35);
+    box-shadow: 0 8px 28px rgba(56,189,248,0.08);
+  }
+
+  .card-top { display: flex; align-items: center; justify-content: space-between; }
+  .card-badge {
+    font-size: 0.55rem; font-weight: 700; padding: 3px 9px;
+    border-radius: 6px; letter-spacing: 0.07em; text-transform: uppercase;
+  }
+  .card.blog .card-badge { background: var(--blog-dim); color: var(--blog); border: 1px solid var(--blog-border); }
+  .card.viz .card-badge { background: var(--viz-dim); color: var(--viz); border: 1px solid var(--viz-border); }
+  .card-date { font-size: 0.65rem; color: var(--on-surface-faint); }
+
+  .card-title { font-size: 1rem; font-weight: 700; color: var(--on-surface); line-height: 1.4; }
+  .card-desc {
+    font-size: 0.78rem; color: var(--on-surface-dim); line-height: 1.6;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    flex: 1;
+  }
+  .card-bottom { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
+  .card-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+  .ctag {
+    font-size: 0.55rem; font-weight: 600; padding: 2px 7px; border-radius: 5px;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border); color: var(--on-surface-faint);
+  }
+  .card-arrow { font-size: 0.9rem; color: var(--on-surface-faint); opacity: 0; transition: all 0.15s; }
+  .card:hover .card-arrow { opacity: 1; transform: translateX(2px); }
+
+  /* Stat badges on card */
+  .card-stats { display: flex; gap: 6px; flex-wrap: wrap; }
+  .cstat {
+    font-size: 0.55rem; font-weight: 600; padding: 2px 8px; border-radius: 5px;
+  }
+  .card.blog .cstat { background: var(--blog-dim); color: var(--blog); border: 1px solid var(--blog-border); }
+  .card.viz .cstat { background: var(--viz-dim); color: var(--viz); border: 1px solid var(--viz-border); }
+
+  /* ═══ List View ═══ */
+  .list-wrap { display: none; padding: 8px 0 20px; }
+  .list-wrap.active { display: block; }
+  .grid.active { display: grid; }
+
+  .list-head {
+    display: grid; grid-template-columns: 72px 1fr 180px 80px;
+    gap: 12px; padding: 8px 16px;
+    font-size: 0.55rem; font-weight: 700; color: var(--on-surface-faint);
+    text-transform: uppercase; letter-spacing: 0.1em;
+    border-bottom: 1px solid var(--border);
+  }
+  .list-row {
+    display: grid; grid-template-columns: 72px 1fr 180px 80px;
+    gap: 12px; padding: 12px 16px; align-items: center;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer; transition: background 0.1s;
+    text-decoration: none; color: inherit;
+    border-left: 3px solid transparent;
+  }
+  .list-row:hover { background: var(--surface-hover); }
+  .list-row.blog { border-left-color: var(--blog); }
+  .list-row.viz { border-left-color: var(--viz); }
+  .list-row.blog:hover { background: var(--blog-glow); }
+  .list-row.viz:hover { background: var(--viz-glow); }
+
+  .lr-type { font-size: 0.55rem; font-weight: 700; padding: 3px 8px; border-radius: 5px; text-transform: uppercase; letter-spacing: 0.05em; width: fit-content; }
+  .lr-type.blog { background: var(--blog-dim); color: var(--blog); }
+  .lr-type.viz { background: var(--viz-dim); color: var(--viz); }
+  .lr-title-wrap { display: flex; flex-direction: column; gap: 1px; }
+  .lr-title { font-size: 0.82rem; font-weight: 600; color: var(--on-surface); }
+  .lr-desc { font-size: 0.68rem; color: var(--on-surface-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lr-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+  .lr-date { font-size: 0.68rem; color: var(--on-surface-faint); text-align: right; }
+
+  /* ═══ No Results ═══ */
+  .no-results { text-align: center; padding: 56px 24px; color: var(--on-surface-faint); font-size: 0.88rem; display: none; }
+
+  /* ═══ Responsive ═══ */
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .grid { grid-template-columns: 1fr; }
+    .list-head, .list-row { grid-template-columns: 60px 1fr 70px; }
+    .lr-tags { display: none; }
   }
 </style>
 </head>
 <body>
-<div class="container">
 
-<header class="hero">
-  <div class="hero-badge">🚀 Kurly Android &middot; Tech Blog</div>
-  <h1>기술 블로그<br>아카이브</h1>
-  <p class="hero-desc">PR 기반 기술 블로그 + 시각화 문서 모음</p>
-</header>
+<div class="layout">
 
-<div class="section-header">
-  <div class="section-label">📝 기술 블로그</div>
+<!-- ═══ Sidebar ═══ -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-icon">K</div>
+    <span class="sidebar-logo-text">Tech Archive</span>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-label">Browse</div>
+    <button class="nav-item active" data-nav="all">
+      <span class="nav-icon">&#9776;</span> 전체
+      <span class="nav-count" id="countAll">12</span>
+    </button>
+    <button class="nav-item" data-nav="blog">
+      <span class="nav-icon" style="color:var(--blog);">&#9679;</span> 블로그
+      <span class="nav-count" id="countBlog">7</span>
+    </button>
+    <button class="nav-item" data-nav="viz">
+      <span class="nav-icon" style="color:var(--viz);">&#9679;</span> 시각화
+      <span class="nav-count" id="countViz">5</span>
+    </button>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-label">Overview</div>
+    <div class="stats">
+      <div class="stat"><div class="stat-val">12</div><div class="stat-lbl">Total</div></div>
+      <div class="stat"><div class="stat-val">3</div><div class="stat-lbl">Years</div></div>
+      <div class="stat"><div class="stat-val">16</div><div class="stat-lbl">PRs</div></div>
+      <div class="stat"><div class="stat-val">7</div><div class="stat-lbl">Categories</div></div>
+    </div>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-label">Tags</div>
+    <div class="tag-cloud">
+      <span class="stag" data-tag="architecture">Architecture</span>
+      <span class="stag" data-tag="compose">Compose</span>
+      <span class="stag" data-tag="ci">CI/CD</span>
+      <span class="stag" data-tag="webview">WebView</span>
+      <span class="stag" data-tag="lifecycle">Lifecycle</span>
+      <span class="stag" data-tag="analytics">Analytics</span>
+      <span class="stag" data-tag="strategy">Strategy</span>
+      <span class="stag" data-tag="deeplink">DeepLink</span>
+      <span class="stag" data-tag="navigation">Navigation</span>
+      <span class="stag" data-tag="paging">Paging</span>
+    </div>
+  </div>
+
+  <div style="margin-top:auto;padding:0 4px;">
+    <div style="font-size:0.6rem;color:var(--on-surface-faint);line-height:1.6;">Kurly Android<br>Tech Blog Archive</div>
+  </div>
+</aside>
+
+<!-- ═══ Main ═══ -->
+<main class="main">
+
+  <!-- Top Bar -->
+  <div class="top-bar">
+    <div class="search-wrap">
+      <span class="search-icon">&#x1F50D;</span>
+      <input type="text" class="search-input" id="searchInput" placeholder="검색... ( / )" />
+    </div>
+    <div class="view-toggle">
+      <button class="vt-btn active" data-view="grid">Grid</button>
+      <button class="vt-btn" data-view="list">List</button>
+    </div>
+  </div>
+
+  <!-- ═══ GRID VIEW ═══ -->
+  <div id="gridView" class="active">
+
+    <!-- 2026 -->
+    <div class="year-group" data-year="2026">
+      <div class="year-header">
+        <span class="year-chevron">&#x25BE;</span>
+        <span class="year-text">2026</span>
+        <span class="year-count">7</span>
+        <span class="year-line"></span>
+      </div>
+      <div class="year-content">
+        <div class="grid active">
+
+          <a href="blog-ci-build-optimization.html" class="card blog" data-type="blog" data-tags="ci,architecture" data-search="ci 빌드 성능 최적화 파이프라인 github actions gemini">
+            <div class="card-top">
+              <span class="card-badge">Blog</span>
+              <span class="card-date">2026 Q1</span>
+            </div>
+            <div class="card-title">CI 빌드 성능 최적화 파이프라인</div>
+            <div class="card-desc">불필요한 빌드 건너뛰기 → 실패 원인 자동 분류 → Gemini AI 기반 컴파일 에러 자동 수정</div>
+            <div class="card-stats">
+              <span class="cstat">PR #7235</span>
+              <span class="cstat">PR #7271</span>
+              <span class="cstat">PR #7326</span>
+            </div>
+            <div class="card-bottom">
+              <div class="card-tags"><span class="ctag">CI/CD</span><span class="ctag">GitHub Actions</span></div>
+              <span class="card-arrow">&#x2192;</span>
+            </div>
+          </a>
+
+          <a href="blog-ui-system-cleanup.html" class="card blog" data-type="blog" data-tags="compose,architecture" data-search="산재된 compose 컴포넌트 단일 공유 레이어 통합 refactoring">
+            <div class="card-top">
+              <span class="card-badge">Blog</span>
+              <span class="card-date">2026 Q1</span>
+            </div>
+            <div class="card-title">산재된 Compose 컴포넌트, 단일 공유 레이어로 통합하기</div>
+            <div class="card-desc">각 피처가 독자적으로 구현하던 상태 화면을 :features:core:ui 공유 레이어로 통합하여 818줄 제거</div>
+            <div class="card-stats">
+              <span class="cstat">PR #7315</span>
+              <span class="cstat">-818줄</span>
+            </div>
+            <div class="card-bottom">
+              <div class="card-tags"><span class="ctag">Compose</span><span class="ctag">Refactoring</span></div>
+              <span class="card-arrow">&#x2192;</span>
+            </div>
+          </a>
+
+          <a href="blog-webview-texture-crash.html" class="card blog" data-type="blog" data-tags="webview" data-search="1px 앱 죽였다 저사양 단말 webview 크래시 gpu texture postmortem">
+            <div class="card-top">
+              <span class="card-badge">Blog</span>
+              <span class="card-date">2026 Q1</span>
+            </div>
+            <div class="card-title">1px이 앱을 죽였다 — 저사양 단말 WebView 크래시</div>
+            <div class="card-desc">GPU maxTextureSize 경계 문제 추적 및 LAYER_TYPE_NONE 우회 적용</div>
+            <div class="card-stats"><span class="cstat">PR #6950</span></div>
+            <div class="card-bottom">
+              <div class="card-tags"><span class="ctag">WebView</span><span class="ctag">GPU</span><span class="ctag">Postmortem</span></div>
+              <span class="card-arrow">&#x2192;</span>
+            </div>
+          </a>
+
+          <a href="naver-sa-floating-banner.html" class="card viz" data-type="viz" data-tags="search,abtest,banner" data-search="네이버 SA 플로팅 배너 사용자 상태 분기 naver search ad kma-7434">
+            <div class="card-top">
+              <span class="card-badge">Viz</span>
+              <span class="card-date">KMA-7434</span>
+            </div>
+            <div class="card-title">네이버 SA 플로팅 배너 맞춤 분기</div>
+            <div class="card-desc">사용자 상태(비회원/첫구매/기존회원) 자동 판별 후 조건별 배너 노출</div>
+            <div class="card-stats"><span class="cstat">17 파일</span><span class="cstat">+508줄</span></div>
+            <div class="card-bottom">
+              <div class="card-tags"><span class="ctag">Categorized</span><span class="ctag">PAT-026</span></div>
+              <span class="card-arrow">&#x2192;</span>
+            </div>
+          </a>
+
+          <a href="boot-route-strategy.html" class="card viz" data-type="viz" data-tags="architecture,deeplink" data-search="부팅 라우팅 전략 boot route resolver kma-7446">
+            <div class="card-top">
+              <span class="card-badge">Viz</span>
+              <span class="card-date">KMA-7446</span>
+            </div>
+            <div class="card-title">부팅 라우팅 전략</div>
+            <div class="card-desc">BootRouteResolver 결정 트리 — 4개 플래그 x 6개 라우트 분기</div>
+            <div class="card-stats"><span class="cstat">11 파일</span><span class="cstat">+459줄</span></div>
+            <div class="card-bottom">
+              <div class="card-tags"><span class="ctag">Flow</span><span class="ctag">PAT-024</span></div>
+              <span class="card-arrow">&#x2192;</span>
+            </div>
+          </a>
+
+          <a href="filter-bottomsheet-unification.html" class="card viz" data-type="viz" data-tags="compose" data-search="필터 bottomsheet 통합 kma-7402">
+            <div class="card-top">
+              <span class="card-badge">Viz</span>
+              <span class="card-date">KMA-7402</span>
+            </div>
+            <div class="card-title">필터 BottomSheet 통합</div>
+            <div class="card-desc">XML 리뷰 필터 삭제 → Compose 필터에 EntryPoint.Review 추가하여 재사용</div>
+            <div class="card-stats"><span class="cstat">17 파일</span><span class="cstat">-851줄</span></div>
+            <div class="card-bottom">
+              <div class="card-tags"><span class="ctag">Before/After</span></div>
+              <span class="card-arrow">&#x2192;</span>
+            </div>
+          </a>
+
+          <a href="search-nav3-migration.html" class="card viz" data-type="viz" data-tags="navigation,compose" data-search="검색 탭 navigation3 마이그레이션 kma-7359 fragment navdisplay">
+            <div class="card-top">
+              <span class="card-badge">Viz</span>
+              <span class="card-date">KMA-7359</span>
+            </div>
+            <div class="card-title">검색 탭 Navigation3 마이그레이션</div>
+            <div class="card-desc">Fragment 트랜잭션 → NavDisplay 선언적 라우팅, 상속 구조 제거</div>
+            <div class="card-stats"><span class="cstat">3가지 핵심 변경</span></div>
+            <div class="card-bottom">
+              <div class="card-tags"><span class="ctag">Navigation</span><span class="ctag">Before/After</span></div>
+              <span class="card-arrow">&#x2192;</span>
+            </div>
+          </a>
+
+          <a href="deeplink-routing-simplification.html" class="card viz" data-type="viz" data-tags="deeplink,architecture" data-search="딥링크 라우팅 단순화 kma-6165 appsflyer">
+            <div class="card-top">
+              <span class="card-badge">Viz</span>
+              <span class="card-date">KMA-6165</span>
+            </div>
+            <div class="card-title">딥링크 라우팅 단순화</div>
+            <div class="card-desc">3갈래 조건 분기 → 써드파티 우선 단일 체인 + AppsFlyer 초기화 책임 이동</div>
+            <div class="card-stats"><span class="cstat">4개 변경점</span><span class="cstat">단일 경로</span></div>
+            <div class="card-bottom">
+              <div class="card-tags"><span class="ctag">DeepLink</span><span class="ctag">PAT-024</span></div>
+              <span class="card-arrow">&#x2192;</span>
+            </div>
+          </a>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- 2025 -->
+    <div class="year-group" data-year="2025">
+      <div class="year-header">
+        <span class="year-chevron">&#x25BE;</span>
+        <span class="year-text">2025</span>
+        <span class="year-count">3</span>
+        <span class="year-line"></span>
+      </div>
+      <div class="year-content">
+        <div class="grid active">
+
+          <a href="blog-search-pagination-room-migration.html" class="card blog" data-type="blog" data-tags="architecture,paging" data-search="검색 pagination 캐시 메모리 room remoteMediator 마이그레이션 search kma-5581">
+            <div class="card-top">
+              <span class="card-badge">Blog</span>
+              <span class="card-date">2025 Q3</span>
+            </div>
+            <div class="card-title">검색 Pagination 캐시를 메모리에서 Room으로</div>
+            <div class="card-desc">메모리 캐시 → Room 기반 RemoteMediator 재설계. sealed class 직렬화, sectionPosition 내재화, peek() 최적화</div>
+            <div class="card-stats">
+              <span class="cstat">PR #6419</span>
+              <span class="cstat">95 파일</span>
+            </div>
+            <div class="card-bottom">
+              <div class="card-tags"><span class="ctag">Paging 3</span><span class="ctag">Room</span><span class="ctag">Migration</span></div>
+              <span class="card-arrow">&#x2192;</span>
+            </div>
+          </a>
+
+          <a href="blog-popup-architecture.html" class="card blog" data-type="blog" data-tags="architecture,lifecycle" data-search="메인화면 팝업 노출 구조 개선 chain of responsibility lifecycle">
+            <div class="card-top">
+              <span class="card-badge">Blog</span>
+              <span class="card-date">2025 Q1</span>
+            </div>
+            <div class="card-title">메인화면 팝업 노출 구조 개선</div>
+            <div class="card-desc">God Object에서 Chain of Responsibility로 분리 + Lifecycle 기반 안정성 개선</div>
+            <div class="card-stats">
+              <span class="cstat">PR #5669</span>
+              <span class="cstat">PR #5778</span>
+              <span class="cstat">PR #5853</span>
+            </div>
+            <div class="card-bottom">
+              <div class="card-tags"><span class="ctag">CoR</span><span class="ctag">Lifecycle</span></div>
+              <span class="card-arrow">&#x2192;</span>
+            </div>
+          </a>
+
+          <a href="home-universal-panel.html" class="card viz" data-type="viz" data-tags="architecture" data-search="홈 전시 고도화 universal panel kma-5596 panelcode">
+            <div class="card-top">
+              <span class="card-badge">Viz</span>
+              <span class="card-date">KMA-5596</span>
+            </div>
+            <div class="card-title">홈 전시 고도화 — Universal Panel</div>
+            <div class="card-desc">하드코딩 패널 → 범용 panelCode 기반 전환, ApiCaller 제거, FragmentHost 인프라</div>
+            <div class="card-stats"><span class="cstat">120+ 파일</span><span class="cstat">5개 변경 축</span></div>
+            <div class="card-bottom">
+              <div class="card-tags"><span class="ctag">PAT-026</span><span class="ctag">Hybrid</span></div>
+              <span class="card-arrow">&#x2192;</span>
+            </div>
+          </a>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- 2024 -->
+    <div class="year-group" data-year="2024">
+      <div class="year-header">
+        <span class="year-chevron">&#x25BE;</span>
+        <span class="year-text">2024</span>
+        <span class="year-count">2</span>
+        <span class="year-line"></span>
+      </div>
+      <div class="year-content">
+        <div class="grid active">
+
+          <a href="blog-impression-architecture.html" class="card blog" data-type="blog" data-tags="architecture,analytics,strategy" data-search="impression 이벤트 전송 구조 개선 strategy 패턴 analytics">
+            <div class="card-top">
+              <span class="card-badge">Blog</span>
+              <span class="card-date">2024 Q1</span>
+            </div>
+            <div class="card-title">Impression 이벤트 전송 구조 개선</div>
+            <div class="card-desc">Strategy 패턴 기반 스크롤/노출 정책 분리, ImpressionTracker 프레임워크 구축</div>
+            <div class="card-stats">
+              <span class="cstat">PR #4100</span>
+              <span class="cstat">PR #5122</span>
+            </div>
+            <div class="card-bottom">
+              <div class="card-tags"><span class="ctag">Strategy</span><span class="ctag">Analytics</span></div>
+              <span class="card-arrow">&#x2192;</span>
+            </div>
+          </a>
+
+          <a href="blog-composeview-height-issue.html" class="card blog" data-type="blog" data-tags="compose" data-search="recyclerview composeview 높이 왜 안 바뀌지 deep dive gridlayoutmanager">
+            <div class="card-top">
+              <span class="card-badge">Blog</span>
+              <span class="card-date">2024 Q1</span>
+            </div>
+            <div class="card-title">RecyclerView 안의 ComposeView, 높이가 왜 안 바뀌지?</div>
+            <div class="card-desc">GridLayoutManager + ComposeView 조합에서 ViewHolder 재활용 시 높이 미갱신 문제 추적</div>
+            <div class="card-stats"><span class="cstat">PR #4211</span></div>
+            <div class="card-bottom">
+              <div class="card-tags"><span class="ctag">Compose</span><span class="ctag">Deep Dive</span></div>
+              <span class="card-arrow">&#x2192;</span>
+            </div>
+          </a>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══ LIST VIEW ═══ -->
+  <div id="listView" class="list-wrap">
+
+    <div class="year-group" data-year="2026">
+      <div class="year-header">
+        <span class="year-chevron">&#x25BE;</span>
+        <span class="year-text">2026</span>
+        <span class="year-count">7</span>
+        <span class="year-line"></span>
+      </div>
+      <div class="year-content">
+        <div class="list-head"><span>Type</span><span>Title</span><span>Tags</span><span>Date</span></div>
+        <a href="blog-ci-build-optimization.html" class="list-row blog" data-type="blog" data-tags="ci,architecture" data-search="ci 빌드 성능 최적화">
+          <span class="lr-type blog">Blog</span>
+          <div class="lr-title-wrap"><span class="lr-title">CI 빌드 성능 최적화 파이프라인</span><span class="lr-desc">빌드 건너뛰기 → 실패 분류 → AI 자동 수정</span></div>
+          <div class="lr-tags"><span class="ctag">CI/CD</span><span class="ctag">Actions</span></div>
+          <span class="lr-date">Q1</span>
+        </a>
+        <a href="blog-ui-system-cleanup.html" class="list-row blog" data-type="blog" data-tags="compose,architecture" data-search="compose 컴포넌트 통합">
+          <span class="lr-type blog">Blog</span>
+          <div class="lr-title-wrap"><span class="lr-title">산재된 Compose 컴포넌트 통합</span><span class="lr-desc">:features:core:ui 공유 레이어 · -818줄</span></div>
+          <div class="lr-tags"><span class="ctag">Compose</span><span class="ctag">Refactor</span></div>
+          <span class="lr-date">Q1</span>
+        </a>
+        <a href="blog-webview-texture-crash.html" class="list-row blog" data-type="blog" data-tags="webview" data-search="webview 크래시 1px">
+          <span class="lr-type blog">Blog</span>
+          <div class="lr-title-wrap"><span class="lr-title">1px이 앱을 죽였다 — WebView 크래시</span><span class="lr-desc">GPU maxTextureSize 경계 문제</span></div>
+          <div class="lr-tags"><span class="ctag">WebView</span><span class="ctag">GPU</span></div>
+          <span class="lr-date">Q1</span>
+        </a>
+        <a href="naver-sa-floating-banner.html" class="list-row viz" data-type="viz" data-tags="search,abtest,banner" data-search="네이버 SA 플로팅 배너 사용자 상태 분기">
+          <span class="lr-type viz">Viz</span>
+          <div class="lr-title-wrap"><span class="lr-title">네이버 SA 플로팅 배너 맞춤 분기</span><span class="lr-desc">사용자 상태별 조건 배너 노출</span></div>
+          <div class="lr-tags"><span class="ctag">KMA-7434</span></div>
+          <span class="lr-date">Q2</span>
+        </a>
+        <a href="boot-route-strategy.html" class="list-row viz" data-type="viz" data-tags="architecture,deeplink" data-search="부팅 라우팅 전략">
+          <span class="lr-type viz">Viz</span>
+          <div class="lr-title-wrap"><span class="lr-title">부팅 라우팅 전략</span><span class="lr-desc">4개 플래그 x 6개 라우트 결정 트리</span></div>
+          <div class="lr-tags"><span class="ctag">KMA-7446</span></div>
+          <span class="lr-date">Q1</span>
+        </a>
+        <a href="filter-bottomsheet-unification.html" class="list-row viz" data-type="viz" data-tags="compose" data-search="필터 bottomsheet 통합">
+          <span class="lr-type viz">Viz</span>
+          <div class="lr-title-wrap"><span class="lr-title">필터 BottomSheet 통합</span><span class="lr-desc">XML → Compose 필터 재사용</span></div>
+          <div class="lr-tags"><span class="ctag">KMA-7402</span></div>
+          <span class="lr-date">Q1</span>
+        </a>
+        <a href="search-nav3-migration.html" class="list-row viz" data-type="viz" data-tags="navigation,compose" data-search="검색 navigation3">
+          <span class="lr-type viz">Viz</span>
+          <div class="lr-title-wrap"><span class="lr-title">검색 탭 Navigation3 마이그레이션</span><span class="lr-desc">Fragment → NavDisplay</span></div>
+          <div class="lr-tags"><span class="ctag">KMA-7359</span></div>
+          <span class="lr-date">Q1</span>
+        </a>
+        <a href="deeplink-routing-simplification.html" class="list-row viz" data-type="viz" data-tags="deeplink,architecture" data-search="딥링크 라우팅">
+          <span class="lr-type viz">Viz</span>
+          <div class="lr-title-wrap"><span class="lr-title">딥링크 라우팅 단순화</span><span class="lr-desc">3갈래 → 단일 체인</span></div>
+          <div class="lr-tags"><span class="ctag">KMA-6165</span></div>
+          <span class="lr-date">Q1</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="year-group" data-year="2025">
+      <div class="year-header">
+        <span class="year-chevron">&#x25BE;</span>
+        <span class="year-text">2025</span>
+        <span class="year-count">3</span>
+        <span class="year-line"></span>
+      </div>
+      <div class="year-content">
+        <div class="list-head"><span>Type</span><span>Title</span><span>Tags</span><span>Date</span></div>
+        <a href="blog-search-pagination-room-migration.html" class="list-row blog" data-type="blog" data-tags="architecture,paging" data-search="검색 pagination room">
+          <span class="lr-type blog">Blog</span>
+          <div class="lr-title-wrap"><span class="lr-title">검색 Pagination 캐시를 메모리에서 Room으로</span><span class="lr-desc">RemoteMediator 재설계 · 95 파일</span></div>
+          <div class="lr-tags"><span class="ctag">Paging 3</span><span class="ctag">Room</span></div>
+          <span class="lr-date">Q3</span>
+        </a>
+        <a href="blog-popup-architecture.html" class="list-row blog" data-type="blog" data-tags="architecture,lifecycle" data-search="팝업 구조 개선">
+          <span class="lr-type blog">Blog</span>
+          <div class="lr-title-wrap"><span class="lr-title">메인화면 팝업 노출 구조 개선</span><span class="lr-desc">CoR + Lifecycle + 테스트 100%</span></div>
+          <div class="lr-tags"><span class="ctag">CoR</span><span class="ctag">Lifecycle</span></div>
+          <span class="lr-date">Q1</span>
+        </a>
+        <a href="home-universal-panel.html" class="list-row viz" data-type="viz" data-tags="architecture" data-search="홈 전시 universal panel">
+          <span class="lr-type viz">Viz</span>
+          <div class="lr-title-wrap"><span class="lr-title">홈 전시 고도화 — Universal Panel</span><span class="lr-desc">panelCode 기반 전환</span></div>
+          <div class="lr-tags"><span class="ctag">KMA-5596</span></div>
+          <span class="lr-date">Q1</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="year-group" data-year="2024">
+      <div class="year-header">
+        <span class="year-chevron">&#x25BE;</span>
+        <span class="year-text">2024</span>
+        <span class="year-count">2</span>
+        <span class="year-line"></span>
+      </div>
+      <div class="year-content">
+        <div class="list-head"><span>Type</span><span>Title</span><span>Tags</span><span>Date</span></div>
+        <a href="blog-impression-architecture.html" class="list-row blog" data-type="blog" data-tags="architecture,analytics,strategy" data-search="impression 이벤트">
+          <span class="lr-type blog">Blog</span>
+          <div class="lr-title-wrap"><span class="lr-title">Impression 이벤트 전송 구조 개선</span><span class="lr-desc">Strategy 패턴 기반 분리</span></div>
+          <div class="lr-tags"><span class="ctag">Strategy</span><span class="ctag">Analytics</span></div>
+          <span class="lr-date">Q1</span>
+        </a>
+        <a href="blog-composeview-height-issue.html" class="list-row blog" data-type="blog" data-tags="compose" data-search="composeview 높이">
+          <span class="lr-type blog">Blog</span>
+          <div class="lr-title-wrap"><span class="lr-title">RecyclerView 안의 ComposeView 높이 문제</span><span class="lr-desc">requestLayout() 한 줄 수정</span></div>
+          <div class="lr-tags"><span class="ctag">Compose</span><span class="ctag">Deep Dive</span></div>
+          <span class="lr-date">Q1</span>
+        </a>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="no-results" id="noResults">검색 결과가 없습니다.</div>
+
+</main>
+
 </div>
 
-<div class="articles">
+<script>
+// ── View Toggle ──
+document.querySelectorAll('.vt-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.vt-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const v = btn.dataset.view;
+    document.getElementById('gridView').style.display = v === 'grid' ? '' : 'none';
+    document.getElementById('gridView').classList.toggle('active', v === 'grid');
+    document.getElementById('listView').classList.toggle('active', v === 'list');
+  });
+});
 
-  <!-- CI Build Optimization (2026 Q1) -->
-  <a href="blog-ci-build-optimization.html" class="article-card card-ci">
-    <div class="article-num num-ci">01</div>
-    <div class="article-content">
-      <div class="article-tags">
-        <span class="article-tag tag-ci">CI/CD</span>
-        <span class="article-tag tag-ci">GitHub Actions</span>
-        <span class="article-tag tag-common">빌드 성능</span>
-      </div>
-      <div class="article-title">CI 빌드 성능 최적화 파이프라인</div>
-      <div class="article-desc">불필요한 빌드 건너뛰기 → 실패 원인 자동 분류 → Gemini AI 기반 컴파일 에러 자동 수정까지, 3개 PR이 구성하는 CI 파이프라인 진화 과정</div>
-      <div class="article-stats">
-        <span class="article-stat stat-ci">PR #7235 · 변경 분석 게이트</span>
-        <span class="article-stat stat-ci">PR #7271 · 실패 분류 + 알림</span>
-        <span class="article-stat stat-ci">PR #7326 · Gemini 자동 수정</span>
-      </div>
-      <div class="article-meta">
-        <span class="article-meta-item">📅 2026 Q1</span>
-        <span class="article-meta-item">📊 PAT-024 데이터 흐름도</span>
-        <span class="article-meta-item">⚡ 애니메이션 포함</span>
-      </div>
-    </div>
-    <span class="article-arrow">→</span>
-  </a>
+// ── Year Accordion ──
+document.querySelectorAll('.year-header').forEach(header => {
+  header.addEventListener('click', () => {
+    header.classList.toggle('collapsed');
+    const content = header.nextElementSibling;
+    if (header.classList.contains('collapsed')) {
+      content.classList.add('collapsed');
+    } else {
+      content.classList.remove('collapsed');
+    }
+  });
+});
 
-  <!-- UI System Cleanup (2026 Q1) -->
-  <a href="blog-ui-system-cleanup.html" class="article-card card-compose">
-    <div class="article-num num-compose">02</div>
-    <div class="article-content">
-      <div class="article-tags">
-        <span class="article-tag tag-compose">Compose</span>
-        <span class="article-tag tag-compose">Refactoring</span>
-        <span class="article-tag tag-common">Multi-Module</span>
-      </div>
-      <div class="article-title">산재된 Compose 컴포넌트, 단일 공유 레이어로 통합하기</div>
-      <div class="article-desc">각 피처가 독자적으로 구현하던 상태 화면·상품 이미지·클릭 핸들러를 :features:core:ui 공유 레이어로 통합하여 818줄을 제거한 3-Phase 정비 과정</div>
-      <div class="article-stats">
-        <span class="article-stat stat-compose">PR #7315 · UI 시스템 모듈 정비</span>
-      </div>
-      <div class="article-meta">
-        <span class="article-meta-item">📅 2026 Q1</span>
-        <span class="article-meta-item">📦 43 파일 · -818줄</span>
-        <span class="article-meta-item">📊 Before/After 시각화</span>
-      </div>
-    </div>
-    <span class="article-arrow">→</span>
-  </a>
+// ── Sidebar Nav ──
+let activeNav = 'all';
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+    activeNav = item.dataset.nav;
+    applyFilters();
+  });
+});
 
-  <!-- WebView Texture Crash (2026 Q1) -->
-  <a href="blog-webview-texture-crash.html" class="article-card card-webview">
-    <div class="article-num num-webview">03</div>
-    <div class="article-content">
-      <div class="article-tags">
-        <span class="article-tag tag-webview">WebView</span>
-        <span class="article-tag tag-webview">GPU</span>
-        <span class="article-tag tag-common">Postmortem</span>
-      </div>
-      <div class="article-title">1px이 앱을 죽였다 — 저사양 단말 WebView 크래시의 원인과 대응</div>
-      <div class="article-desc">GPU maxTextureSize가 64의 배수가 아닌 저사양 단말에서 LAYER_SIZE 올림으로 텍스처 한계를 초과하는 경계 문제 추적 및 LAYER_TYPE_NONE 우회 적용</div>
-      <div class="article-stats">
-        <span class="article-stat stat-webview">PR #6950 · 하드웨어 레이어 방어코드</span>
-      </div>
-      <div class="article-meta">
-        <span class="article-meta-item">📅 2026 Q1</span>
-        <span class="article-meta-item">📊 LAYER_SIZE 올림 계산 다이어그램</span>
-      </div>
-    </div>
-    <span class="article-arrow">→</span>
-  </a>
+// ── Sidebar Tags ──
+let activeTags = new Set();
+document.querySelectorAll('.stag').forEach(tag => {
+  tag.addEventListener('click', () => {
+    const t = tag.dataset.tag;
+    if (activeTags.has(t)) { activeTags.delete(t); tag.classList.remove('active'); }
+    else { activeTags.add(t); tag.classList.add('active'); }
+    applyFilters();
+  });
+});
 
-  <!-- Popup Architecture (2025 Q1) -->
-  <a href="blog-popup-architecture.html" class="article-card card-popup">
-    <div class="article-num num-popup">04</div>
-    <div class="article-content">
-      <div class="article-tags">
-        <span class="article-tag tag-popup">Chain of Responsibility</span>
-        <span class="article-tag tag-popup">Lifecycle</span>
-        <span class="article-tag tag-common">Popup</span>
-      </div>
-      <div class="article-title">메인화면 팝업 노출 구조 개선</div>
-      <div class="article-desc">God Object에서 Chain of Responsibility로 분리 + Lifecycle 기반 안정성 개선 — 457줄 모놀리식 팝업 로직을 독립 핸들러 + PopupExecutorService로 재설계</div>
-      <div class="article-stats">
-        <span class="article-stat stat-popup">PR #5669 · CoR 패턴 도입</span>
-        <span class="article-stat stat-popup">PR #5778 · Lifecycle 안정화</span>
-        <span class="article-stat stat-popup">PR #5853 · 테스트 커버리지 100%</span>
-      </div>
-      <div class="article-meta">
-        <span class="article-meta-item">📅 2025 Q1</span>
-        <span class="article-meta-item">📦 56 + 26 파일</span>
-      </div>
-    </div>
-    <span class="article-arrow">→</span>
-  </a>
+// ── Search ──
+const searchInput = document.getElementById('searchInput');
+searchInput.addEventListener('input', applyFilters);
+document.addEventListener('keydown', e => {
+  if (e.key === '/' && document.activeElement !== searchInput) { e.preventDefault(); searchInput.focus(); }
+  if (e.key === 'Escape') searchInput.blur();
+});
 
-  <!-- Impression Event Architecture (2024 Q1) -->
-  <a href="blog-impression-architecture.html" class="article-card card-impression">
-    <div class="article-num num-impression">05</div>
-    <div class="article-content">
-      <div class="article-tags">
-        <span class="article-tag tag-impression">아키텍처</span>
-        <span class="article-tag tag-impression">Strategy 패턴</span>
-        <span class="article-tag tag-common">Analytics</span>
-      </div>
-      <div class="article-title">Impression 이벤트 전송 구조 개선</div>
-      <div class="article-desc">관심사 분리 + 전략 캡슐화 + 사용성 개선 — 산재된 노출 이벤트 로직을 ImpressionTracker 프레임워크로 통합, RecyclerView + Compose 양쪽 지원</div>
-      <div class="article-stats">
-        <span class="article-stat stat-impression">PR #4100 · 인터페이스 통합</span>
-        <span class="article-stat stat-impression">PR #5122 · 프레임워크 구축</span>
-      </div>
-      <div class="article-meta">
-        <span class="article-meta-item">📅 2024 Q1</span>
-        <span class="article-meta-item">📊 PAT-025 + PAT-018 시퀀스 다이어그램</span>
-        <span class="article-meta-item">📦 100+ 파일</span>
-      </div>
-    </div>
-    <span class="article-arrow">→</span>
-  </a>
+// ── Filter Logic ──
+function applyFilters() {
+  const q = searchInput.value.toLowerCase();
+  const allCards = document.querySelectorAll('.card, .list-row');
+  let total = 0;
 
-  <!-- ComposeView Height Issue (2024 Q1) -->
-  <a href="blog-composeview-height-issue.html" class="article-card card-compose">
-    <div class="article-num num-compose">06</div>
-    <div class="article-content">
-      <div class="article-tags">
-        <span class="article-tag tag-compose">Compose</span>
-        <span class="article-tag tag-compose">RecyclerView</span>
-        <span class="article-tag tag-common">Deep Dive</span>
-      </div>
-      <div class="article-title">RecyclerView 안의 ComposeView, 높이가 왜 안 바뀌지?</div>
-      <div class="article-desc">GridLayoutManager + ComposeView 조합에서 ViewHolder 재활용 시 높이가 갱신되지 않는 문제를 Compose 소스 코드 레벨까지 추적하고, 한 줄로 해결한 과정</div>
-      <div class="article-stats">
-        <span class="article-stat stat-compose">PR #4211 · requestLayout() 한 줄 수정</span>
-      </div>
-      <div class="article-meta">
-        <span class="article-meta-item">📅 2024 Q1</span>
-        <span class="article-meta-item">📊 측정 플로우 다이어그램</span>
-        <span class="article-meta-item">🔍 Compose 소스 분석</span>
-      </div>
-    </div>
-    <span class="article-arrow">→</span>
-  </a>
+  allCards.forEach(el => {
+    const type = el.dataset.type;
+    const tags = (el.dataset.tags || '').split(',');
+    const search = (el.dataset.search || '') + ' ' + el.textContent.toLowerCase();
 
-</div>
+    const matchNav = activeNav === 'all' || activeNav === type;
+    const matchTag = activeTags.size === 0 || tags.some(t => activeTags.has(t));
+    const matchSearch = !q || search.includes(q);
 
-<div class="section-header" style="margin-top:48px;">
-  <div class="section-label">📊 시각화 자료</div>
-</div>
+    const show = matchNav && matchTag && matchSearch;
+    el.style.display = show ? '' : 'none';
+    if (show && !el.classList.contains('list-row')) total++;
+  });
 
-<div class="viz-grid">
+  // Year group visibility
+  document.querySelectorAll('.year-group').forEach(group => {
+    const visCards = group.querySelectorAll('.card:not([style*="display: none"]), .list-row:not([style*="display: none"])');
+    group.style.display = visCards.length ? '' : 'none';
+  });
 
-  <!-- Boot Route Strategy (KMA-7446) -->
-  <a href="boot-route-strategy.html" class="viz-card">
-    <div class="viz-card-header">
-      <div class="viz-card-icon">V</div>
-      <span class="viz-card-ticket">KMA-7446</span>
-    </div>
-    <div class="viz-card-title">부팅 라우팅 전략</div>
-    <div class="viz-card-desc">BootRouteResolver 결정 트리 — 4개 플래그 × 6개 라우트 분기, 진입 허용 vs 차단 좌우 대비</div>
-    <div class="viz-card-stats">
-      <span class="viz-card-stat">11 파일</span>
-      <span class="viz-card-stat good">+459줄</span>
-      <span class="viz-card-stat">PAT-024 Flow</span>
-    </div>
-  </a>
+  document.getElementById('noResults').style.display = total === 0 ? 'block' : 'none';
+}
+</script>
 
-  <!-- Filter BottomSheet Unification (KMA-7402) -->
-  <a href="filter-bottomsheet-unification.html" class="viz-card">
-    <div class="viz-card-header">
-      <div class="viz-card-icon">V</div>
-      <span class="viz-card-ticket">KMA-7402</span>
-    </div>
-    <div class="viz-card-title">필터 BottomSheet 통합</div>
-    <div class="viz-card-desc">XML 리뷰 필터 BottomSheet 삭제 → Compose 상품 필터에 EntryPoint.Review 추가하여 재사용</div>
-    <div class="viz-card-stats">
-      <span class="viz-card-stat">17 파일</span>
-      <span class="viz-card-stat good">−851줄</span>
-      <span class="viz-card-stat">Before/After</span>
-    </div>
-  </a>
-
-  <!-- Search Nav3 Migration (KMA-7359) -->
-  <a href="search-nav3-migration.html" class="viz-card">
-    <div class="viz-card-header">
-      <div class="viz-card-icon">V</div>
-      <span class="viz-card-ticket">KMA-7359</span>
-    </div>
-    <div class="viz-card-title">검색 탭 Navigation3 마이그레이션</div>
-    <div class="viz-card-desc">Fragment 트랜잭션 → NavDisplay 선언적 라우팅, 상속 구조 제거 + @Serializable 라우트</div>
-    <div class="viz-card-stats">
-      <span class="viz-card-stat">3가지 핵심 변경</span>
-      <span class="viz-card-stat">Before/After</span>
-    </div>
-  </a>
-
-</div>
-
-<footer class="footer">
-  <p class="footer-text">
-    Generated with <a href="#">Cognitive Visualization Skill</a> — 인지과학 원칙 기반 시각화 시스템
-  </p>
-</footer>
-
-</div>
 </body>
 </html>
