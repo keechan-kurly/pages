@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>딥링크 라우팅 단순화</title>
+  <style>
+    /* ========================================================================
+       BASE CSS — Cognitive Visualization Shared Design Tokens
+       (RULE-C04, RULE-C05, RULE-T04, RULE-S01, RULE-E01)
+       ======================================================================== */
+    :root {
+      /* Slate Dark Theme (RULE-C09) */
+      --color-bg: #0a0e1a;
+      --color-bg-gradient: #0d1225;
+      --color-surface: #1e293b;
+      --color-surface-hover: #253348;
+      --color-surface-inner: #334155;
+      --color-border: rgba(148, 163, 184, 0.15);
+      --color-border-strong: rgba(148, 163, 184, 0.25);
+      --color-on-surface: #f1f5f9;
+      --color-on-surface-body: #94a3b8;
+      --color-on-surface-muted: #64748b;
+
+      /* Semantic Visualization Colors — dark-optimized (RULE-C01, RULE-C09) */
+      --viz-color-add: #4ade80;
+      --viz-color-remove: #94a3b8;
+      --viz-color-move: #60a5fa;
+      --viz-color-emphasis: #a78bfa;
+      --viz-color-merge: #fb923c;
+
+      /* M3 Tokens (fallback) */
+      --md-sys-color-primary: #a78bfa;
+      --md-sys-color-surface: #FFFBFE;
+      --md-sys-color-surface-container: #F3EDF7;
+      --md-sys-color-on-surface: #1C1B1F;
+      --md-sys-color-outline: #79747E;
+      --md-sys-color-outline-variant: #CAC4D0;
+
+      /* Spacing (RULE-S01) */
+      --spacing-xs: 4px;
+      --spacing-sm: 8px;
+      --spacing-md: 16px;
+      --spacing-lg: 24px;
+      --spacing-xl: 32px;
+      --spacing-2xl: 48px;
+
+      /* Shape */
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 20px;
+      --radius-pill: 9999px;
+
+      /* Font */
+      --font-sans: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', Menlo, Consolas, monospace;
+    }
+
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-sans);
+      background: linear-gradient(180deg, var(--color-bg) 0%, var(--color-bg-gradient) 100%);
+      color: var(--color-on-surface);
+      min-height: 100vh;
+      padding: 48px 24px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Container (V-12) ── */
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    /* ── Hero Header (EVAL-0004) ── */
+    .hero {
+      text-align: center;
+      margin-bottom: var(--spacing-2xl);
+      position: relative;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -60px; left: 50%; transform: translateX(-50%);
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, rgba(96, 165, 250, 0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero::after {
+      content: '';
+      position: absolute;
+      top: -40px; right: 20%;
+      width: 300px; height: 300px;
+      background: radial-gradient(circle, rgba(167, 139, 250, 0.06) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      border-radius: var(--radius-pill);
+      background: linear-gradient(135deg, rgba(96, 165, 250, 0.15) 0%, rgba(167, 139, 250, 0.15) 100%);
+      border: 1px solid rgba(96, 165, 250, 0.25);
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--viz-color-move);
+      letter-spacing: 0.05em;
+      margin-bottom: var(--spacing-md);
+    }
+    .hero h1 {
+      font-size: 2.2rem;
+      font-weight: 800;
+      line-height: 1.3;
+      background: linear-gradient(135deg, var(--color-on-surface) 0%, var(--viz-color-move) 50%, var(--viz-color-emphasis) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: var(--spacing-sm);
+    }
+    .hero h1 .accent {
+      background: linear-gradient(135deg, var(--viz-color-move) 0%, var(--viz-color-emphasis) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-desc {
+      font-size: 0.95rem;
+      color: var(--color-on-surface-muted);
+      max-width: 580px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    /* ── Section Label (V-11: pill badge) ── */
+    .section-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 14px;
+      border-radius: var(--radius-pill);
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      margin-bottom: var(--spacing-lg);
+    }
+    .section-label.impact {
+      background: rgba(251, 146, 60, 0.1);
+      border: 1px solid rgba(251, 146, 60, 0.25);
+      color: var(--viz-color-merge);
+    }
+    .section-label.before {
+      background: rgba(148, 163, 184, 0.1);
+      border: 1px solid var(--color-border-strong);
+      color: var(--color-on-surface-body);
+    }
+    .section-label.after {
+      background: rgba(74, 222, 128, 0.1);
+      border: 1px solid rgba(74, 222, 128, 0.25);
+      color: var(--viz-color-add);
+    }
+    .section-label.detail {
+      background: rgba(167, 139, 250, 0.1);
+      border: 1px solid rgba(167, 139, 250, 0.25);
+      color: var(--viz-color-emphasis);
+    }
+
+    /* ── Impact Summary (RULE-CMP03: pre-announce) ── */
+    .impact-section {
+      margin-bottom: var(--spacing-2xl);
+    }
+    .impact-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: var(--spacing-md);
+    }
+    .impact-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .impact-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(148, 163, 184, 0.3);
+    }
+    .impact-card-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      margin-bottom: var(--spacing-sm);
+    }
+    .impact-card-icon.route { background: rgba(96, 165, 250, 0.15); color: var(--viz-color-move); }
+    .impact-card-icon.clean { background: rgba(74, 222, 128, 0.15); color: var(--viz-color-add); }
+    .impact-card-icon.init { background: rgba(167, 139, 250, 0.15); color: var(--viz-color-emphasis); }
+    .impact-card h3 {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--color-on-surface);
+      margin-bottom: 6px;
+    }
+    .impact-card p {
+      font-size: 0.8rem;
+      color: var(--color-on-surface-body);
+      line-height: 1.55;
+    }
+    .impact-card .code-ref {
+      display: inline-block;
+      margin-top: 8px;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--viz-color-emphasis);
+      background: rgba(167, 139, 250, 0.08);
+      padding: 2px 8px;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(167, 139, 250, 0.15);
+    }
+
+    /* ── Flow Section ── */
+    .flow-section {
+      margin-bottom: var(--spacing-2xl);
+    }
+    .flow-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--color-on-surface-body);
+      margin-bottom: var(--spacing-md);
+    }
+
+    /* ── SVG Diagram ── */
+    .diagram-container {
+      width: 100%;
+      margin: 0 auto;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      overflow-x: auto;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .diagram-container:hover {
+      border-color: rgba(148, 163, 184, 0.3);
+    }
+    .diagram-container.before-diagram {
+      border-style: dashed;
+      border-color: var(--color-border-strong);
+    }
+    .diagram-container.after-diagram {
+      border-left: 3px solid var(--viz-color-add);
+      background: var(--color-surface-hover);
+    }
+    .diagram-svg {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    /* SVG Process (rounded rect, purple) */
+    .process rect {
+      fill: var(--color-surface-inner);
+      stroke: var(--viz-color-emphasis);
+      stroke-width: 2;
+      rx: 12; ry: 12;
+    }
+    .process .process-name {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      fill: var(--color-on-surface);
+      text-anchor: middle;
+      dominant-baseline: central;
+    }
+    .process .process-detail {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      font-weight: 400;
+      fill: var(--color-on-surface-body);
+      text-anchor: middle;
+    }
+
+    /* SVG Decision (diamond, orange) */
+    .decision polygon {
+      fill: var(--color-surface-inner);
+      stroke: var(--viz-color-merge);
+      stroke-width: 2;
+    }
+    .decision text {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      fill: var(--viz-color-merge);
+      text-anchor: middle;
+      dominant-baseline: central;
+    }
+
+    /* SVG External Entity (sharp rect, gray) */
+    .external-entity rect {
+      fill: var(--color-surface-inner);
+      stroke: var(--color-on-surface-body);
+      stroke-width: 1.5;
+      rx: 3; ry: 3;
+    }
+    .external-entity text {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 500;
+      fill: var(--color-on-surface-body);
+      text-anchor: middle;
+      dominant-baseline: central;
+    }
+
+    /* SVG Terminal (rounded rect, green for result / gray for app start) */
+    .terminal rect {
+      fill: var(--color-surface-inner);
+      stroke-width: 2;
+      rx: 20; ry: 20;
+    }
+    .terminal.result rect { stroke: var(--viz-color-add); }
+    .terminal.start rect { stroke: var(--color-on-surface-muted); }
+    .terminal text {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      text-anchor: middle;
+      dominant-baseline: central;
+    }
+    .terminal.result text { fill: var(--viz-color-add); }
+    .terminal.start text { fill: var(--color-on-surface-muted); }
+
+    /* SVG Data Flow Arrows */
+    .data-flow { stroke: var(--viz-color-add); stroke-width: 1.5; fill: none; }
+    .data-flow.neutral { stroke: var(--color-on-surface-body); stroke-opacity: 0.6; }
+    .data-flow.decision-path { stroke: var(--viz-color-merge); stroke-dasharray: 6 3; }
+    .data-flow.move-path { stroke: var(--viz-color-move); }
+    .data-flow-label {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      font-weight: 500;
+    }
+    .data-flow-label.green { fill: var(--viz-color-add); }
+    .data-flow-label.orange { fill: var(--viz-color-merge); }
+    .data-flow-label.gray { fill: var(--color-on-surface-body); }
+    .data-flow-label.blue { fill: var(--viz-color-move); }
+
+    .flow-arrow-marker { fill: var(--viz-color-add); }
+    .flow-arrow-marker-neutral { fill: var(--color-on-surface-body); }
+    .flow-arrow-marker-decision { fill: var(--viz-color-merge); }
+    .flow-arrow-marker-move { fill: var(--viz-color-move); }
+
+    /* SVG Side-effect box (dashed) */
+    .side-effect rect {
+      fill: none;
+      stroke: var(--viz-color-emphasis);
+      stroke-width: 1.5;
+      stroke-dasharray: 5 3;
+      rx: 8; ry: 8;
+    }
+    .side-effect text {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      fill: var(--viz-color-emphasis);
+      text-anchor: middle;
+    }
+    .side-effect .se-label {
+      font-size: 8px;
+      fill: var(--color-on-surface-muted);
+      font-weight: 400;
+    }
+
+    /* SVG Parallel block */
+    .parallel rect {
+      fill: rgba(96, 165, 250, 0.08);
+      stroke: var(--viz-color-move);
+      stroke-width: 1;
+      stroke-dasharray: 4 2;
+      rx: 8; ry: 8;
+    }
+    .parallel text {
+      font-family: var(--font-mono);
+      font-size: 8px;
+      fill: var(--viz-color-move);
+      font-weight: 500;
+    }
+
+    /* ── Responsibility Shift — Inline Flow ── */
+    .shift-section {
+      margin-bottom: var(--spacing-2xl);
+    }
+    .shift-flow {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .shift-flow:hover {
+      border-color: rgba(148, 163, 184, 0.3);
+    }
+    .shift-flow-title {
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--color-on-surface);
+      margin-bottom: var(--spacing-lg);
+    }
+    .shift-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .shift-row:last-child { margin-bottom: 0; }
+    .shift-label-before {
+      flex: 1;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      color: var(--color-on-surface-body);
+      padding: 10px 14px;
+      background: rgba(148, 163, 184, 0.06);
+      border: 1px dashed var(--color-border-strong);
+      border-radius: var(--radius-sm);
+      text-decoration: line-through;
+      opacity: 0.7;
+    }
+    .shift-arrow-inline {
+      flex-shrink: 0;
+      font-size: 1.1rem;
+      color: var(--viz-color-add);
+    }
+    .shift-label-after {
+      flex: 1;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      color: var(--viz-color-add);
+      padding: 10px 14px;
+      background: rgba(74, 222, 128, 0.06);
+      border: 1px solid rgba(74, 222, 128, 0.2);
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+    }
+    .shift-label-after.removed {
+      color: var(--color-on-surface-muted);
+      background: rgba(148, 163, 184, 0.04);
+      border-color: var(--color-border);
+      text-decoration: line-through;
+      font-weight: 400;
+    }
+    .shift-summary {
+      margin-top: var(--spacing-md);
+      padding: 14px 18px;
+      background: rgba(74, 222, 128, 0.10);
+      border: 1px solid rgba(74, 222, 128, 0.25);
+      border-left: 4px solid var(--viz-color-add);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--viz-color-add);
+      line-height: 1.5;
+    }
+
+    /* ── Legend ── */
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--spacing-md);
+      justify-content: center;
+      margin-top: var(--spacing-lg);
+      padding: var(--spacing-md) var(--spacing-lg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      background: var(--color-surface);
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--color-on-surface-body);
+    }
+    .legend-shape {
+      width: 24px;
+      height: 14px;
+      border: 2px solid;
+      background: none;
+    }
+    .legend-shape.process-shape { border-color: var(--viz-color-emphasis); border-radius: 6px; }
+    .legend-shape.decision-shape { border-color: var(--viz-color-merge); border-radius: 2px; transform: rotate(45deg); width: 12px; height: 12px; }
+    .legend-shape.entity-shape { border-color: var(--color-on-surface-body); border-radius: 2px; }
+    .legend-shape.terminal-shape { border-color: var(--viz-color-add); border-radius: 10px; }
+    .legend-line { width: 24px; height: 0; border-top: 2px solid var(--viz-color-add); }
+    .legend-line.decision-line { border-top-color: var(--viz-color-merge); border-top-style: dashed; }
+    .legend-line.side-effect-line { border-top-color: var(--viz-color-emphasis); border-top-style: dashed; }
+
+    /* ── Cognitive Rationale ── */
+    .rationale {
+      margin-top: var(--spacing-2xl);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      background: var(--color-surface);
+      max-width: 1100px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .rationale summary {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--color-on-surface-muted);
+      padding: var(--spacing-md) var(--spacing-lg);
+      cursor: pointer;
+      user-select: none;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+    }
+    .rationale summary::before { content: '\25B8'; transition: transform 0.15s; }
+    .rationale[open] summary::before { transform: rotate(90deg); }
+    .rationale-body {
+      padding: 0 var(--spacing-lg) var(--spacing-lg);
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-md);
+    }
+    .rationale-block-label {
+      font-size: 0.625rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--color-on-surface-muted);
+      margin-bottom: var(--spacing-xs);
+    }
+    .rationale-text {
+      font-size: 0.8125rem;
+      color: var(--color-on-surface);
+      line-height: 1.55;
+    }
+    .rationale-rules-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .rationale-rules-list li {
+      font-size: 0.8125rem;
+      color: var(--color-on-surface);
+      line-height: 1.45;
+      padding: 6px 10px;
+      background: rgba(255,255,255,0.03);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--color-border);
+    }
+    .rule-id {
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      font-weight: 700;
+      color: var(--viz-color-emphasis);
+      margin-right: 6px;
+    }
+    .principle-ref {
+      font-family: var(--font-mono);
+      font-size: 0.625rem;
+      color: var(--color-on-surface-muted);
+      margin-left: 4px;
+    }
+    .pattern-selection-log {
+      padding: var(--spacing-md);
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      line-height: 1.6;
+      color: var(--color-on-surface-body);
+      white-space: pre-line;
+    }
+    .eval-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: var(--spacing-sm);
+    }
+    .eval-cell {
+      text-align: center;
+      padding: var(--spacing-sm);
+      background: rgba(255,255,255,0.03);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--color-border);
+    }
+    .eval-score {
+      font-size: 1.125rem;
+      font-weight: 700;
+      color: var(--viz-color-emphasis);
+    }
+    .eval-label {
+      font-size: 0.625rem;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      color: var(--color-on-surface-muted);
+      margin-top: 2px;
+    }
+    .evidence-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .evidence-list li {
+      font-size: 0.75rem;
+      color: var(--color-on-surface-body);
+      line-height: 1.4;
+      padding-left: 12px;
+      position: relative;
+    }
+    .evidence-list li::before {
+      content: '\00B7';
+      position: absolute;
+      left: 0;
+      font-weight: 700;
+    }
+    .evidence-level {
+      font-family: var(--font-mono);
+      font-size: 0.625rem;
+      font-weight: 700;
+      padding: 1px 4px;
+      border-radius: 3px;
+      margin-right: 4px;
+    }
+    .evidence-level.l1 { background: rgba(74, 222, 128, 0.15); color: #4ade80; }
+    .evidence-level.l2 { background: rgba(96, 165, 250, 0.15); color: #60a5fa; }
+    .evidence-level.l3 { background: rgba(251, 146, 60, 0.15); color: #fb923c; }
+    .evidence-level.l4 { background: rgba(167, 139, 250, 0.15); color: #a78bfa; }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      .shift-row { flex-direction: column; gap: 6px; }
+      .shift-label-before { width: 100%; }
+      .shift-arrow-inline { transform: rotate(90deg); }
+      .impact-cards { grid-template-columns: 1fr; }
+      .eval-grid { grid-template-columns: repeat(2, 1fr); }
+      .legend { flex-direction: column; align-items: flex-start; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- HERO HEADER (EVAL-0004) -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <header class="hero">
+      <div class="hero-badge">KMA-6165 &middot; Deep Link</div>
+      <h1>딥링크가 <span class="accent">확실하게</span> 열린다</h1>
+      <p class="hero-desc">
+        마케팅 캠페인(Branch, AppsFlyer) 딥링크가 조건에 따라 다른 경로로 처리되어
+        간헐적으로 열리지 않던 문제를 &ldquo;써드파티 먼저, 실패 시 자체 파서&rdquo; 단일 체인으로 해결
+      </p>
+    </header>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- IMPACT SUMMARY (RULE-CMP03: pre-announce) -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <section class="impact-section">
+      <div class="section-label impact">핵심 변경 요약</div>
+      <div class="impact-cards">
+        <div class="impact-card">
+          <div class="impact-card-icon route">&#x21C4;</div>
+          <h3>3갈래 분기 &rarr; 단일 체인</h3>
+          <p>딥링크 도착 시 &ldquo;Branch extra가 있는가?&rdquo;부터 확인하던 3갈래 조건 분기를, 항상 써드파티를 먼저 시도하는 단일 경로로 전환</p>
+          <span class="code-ref">분기점 3개 &rarr; 2개로 감소</span>
+        </div>
+        <div class="impact-card">
+          <div class="impact-card-icon clean">&#x2212;</div>
+          <h3>병렬 실행 &rarr; 순차 실행</h3>
+          <p>Branch/Facebook/Dynamic/AppsFlyer 4개를 동시 실행(async)하던 것을 순차 실행으로 변경하여 실행 순서 보장</p>
+          <span class="code-ref">결과 예측 가능성 향상</span>
+        </div>
+        <div class="impact-card">
+          <div class="impact-card-icon init">&#x21B7;</div>
+          <h3>AppsFlyer 초기화 시점 정상화</h3>
+          <p>딥링크 처리 후 부수효과로 실행되던 AppsFlyer 초기화를, Branch 결과 획득 직후 올바른 시점으로 이동</p>
+          <span class="code-ref">Activity 의존성 제거</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- BEFORE FLOW (visually sparse — Rule 8: asymmetry) -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <section class="flow-section">
+      <div class="section-label before">Before &mdash; 딥링크 도착 시 3갈래로 갈라지는 흐름</div>
+      <div class="diagram-container before-diagram">
+        <svg class="diagram-svg" viewBox="0 0 960 470" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="arrow-green" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" class="flow-arrow-marker" />
+            </marker>
+            <marker id="arrow-gray" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" class="flow-arrow-marker-neutral" />
+            </marker>
+            <marker id="arrow-orange" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" class="flow-arrow-marker-decision" />
+            </marker>
+            <marker id="arrow-blue" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" class="flow-arrow-marker-move" />
+            </marker>
+          </defs>
+
+          <!-- ═══ ROW 1 (y~80): YES path — ThirdParty parallel ═══ -->
+          <!-- ═══ ROW 2 (y~215): Main axis — Intent → Decision 1 → merge ═══ -->
+          <!-- ═══ ROW 3 (y~350): NO path — Decision 2 → LinkParser / AppStarter ═══ -->
+
+          <!-- External Entity: Intent -->
+          <g class="external-entity" transform="translate(20, 195)">
+            <rect x="0" y="0" width="100" height="45" />
+            <text x="50" y="23">Intent</text>
+          </g>
+
+          <!-- Decision 1: hasBranchExtra? -->
+          <g class="decision" transform="translate(180, 197)">
+            <polygon points="55,0 110,30 55,60 0,30" />
+            <text x="55" y="26">hasBranch</text>
+            <text x="55" y="38" style="font-size:9px">Extra?</text>
+          </g>
+
+          <!-- Arrow: Intent → Decision 1 (orthogonal) -->
+          <path class="data-flow neutral" d="M 120 218 L 180 218" marker-end="url(#arrow-gray)" />
+
+          <!-- ═══ YES PATH (upper) ═══ -->
+
+          <!-- Parallel block: ThirdParty async -->
+          <g class="parallel" transform="translate(350, 40)">
+            <rect x="0" y="0" width="200" height="95" />
+            <text x="100" y="-8" style="font-size:9px;font-weight:700">async { } 병렬 실행</text>
+          </g>
+          <g class="process" transform="translate(360, 48)">
+            <rect x="0" y="0" width="82" height="34" />
+            <text class="process-name" x="41" y="13">Branch</text>
+            <text class="process-detail" x="41" y="26">fetch()</text>
+          </g>
+          <g class="process" transform="translate(360, 90)">
+            <rect x="0" y="0" width="82" height="34" />
+            <text class="process-name" x="41" y="13">Facebook</text>
+            <text class="process-detail" x="41" y="26">fetch()</text>
+          </g>
+          <g class="process" transform="translate(458, 48)">
+            <rect x="0" y="0" width="82" height="34" />
+            <text class="process-name" x="41" y="13">Dynamic</text>
+            <text class="process-detail" x="41" y="26">fetch()</text>
+          </g>
+          <g class="process" transform="translate(458, 90)">
+            <rect x="0" y="0" width="82" height="34" />
+            <text class="process-name" x="41" y="13">AppsFlyer</text>
+            <text class="process-detail" x="41" y="26">fetch()</text>
+          </g>
+
+          <!-- Arrow: Decision 1 → ThirdParty (YES, orthogonal: up then right) -->
+          <path class="data-flow decision-path" d="M 235 197 L 235 82 L 350 82" marker-end="url(#arrow-orange)" />
+          <text class="data-flow-label orange" x="242" y="145">YES</text>
+
+          <!-- Arrow: ThirdParty parallel → SideEffect (orthogonal: right) -->
+          <path class="data-flow" d="M 550 82 L 600 82 L 600 195 L 640 195" marker-end="url(#arrow-green)" />
+
+          <!-- ═══ NO PATH (lower) ═══ -->
+
+          <!-- Decision 2: getValidUri? -->
+          <g class="decision" transform="translate(180, 330)">
+            <polygon points="55,0 110,30 55,60 0,30" />
+            <text x="55" y="26">getValid</text>
+            <text x="55" y="38" style="font-size:9px">Uri?</text>
+          </g>
+
+          <!-- Arrow: Decision 1 → Decision 2 (NO, orthogonal: down) -->
+          <path class="data-flow decision-path" d="M 235 257 L 235 330" marker-end="url(#arrow-orange)" />
+          <text class="data-flow-label orange" x="242" y="298">NO</text>
+
+          <!-- Process: LinkParser (from validUri NOT NULL) -->
+          <g class="process" transform="translate(370, 335)">
+            <rect x="0" y="0" width="150" height="50" />
+            <text class="process-name" x="75" y="20">LinkParser</text>
+            <text class="process-detail" x="75" y="36">parseDeepLink()</text>
+          </g>
+
+          <!-- Arrow: Decision 2 → LinkParser (NOT NULL, orthogonal: right) -->
+          <path class="data-flow decision-path" d="M 290 360 L 370 360" marker-end="url(#arrow-orange)" />
+          <text class="data-flow-label orange" x="300" y="352">NOT NULL</text>
+
+          <!-- Process: ThirdParty fallback (from LinkParser fail) -->
+          <g class="process" transform="translate(370, 420)">
+            <rect x="0" y="0" width="150" height="42" />
+            <text class="process-name" x="75" y="17">ThirdParty</text>
+            <text class="process-detail" x="75" y="32">fallback</text>
+          </g>
+
+          <!-- Arrow: LinkParser → ThirdParty fallback (fail, orthogonal: down) -->
+          <path class="data-flow neutral" d="M 445 385 L 445 420" marker-end="url(#arrow-gray)" />
+          <text class="data-flow-label gray" x="452" y="408">fail</text>
+
+          <!-- Arrow: ThirdParty fallback → SideEffect (orthogonal: right then up) -->
+          <path class="data-flow" d="M 520 441 L 600 441 L 600 235 L 640 235" marker-end="url(#arrow-green)" style="stroke-dasharray: 4 2;" />
+
+          <!-- Terminal: AppStarter (from Decision 2 NULL) -->
+          <g class="terminal start" transform="translate(100, 415)">
+            <rect x="0" y="0" width="120" height="40" />
+            <text x="60" y="21">AppStarter</text>
+          </g>
+
+          <!-- Arrow: Decision 2 → AppStarter (NULL, orthogonal: down-left) -->
+          <path class="data-flow decision-path" d="M 235 390 L 235 435 L 220 435" marker-end="url(#arrow-orange)" />
+          <text class="data-flow-label orange" x="195" y="410">NULL</text>
+
+          <!-- ═══ SIDE EFFECT (right-center) ═══ -->
+
+          <!-- Side Effect box -->
+          <g class="side-effect" transform="translate(640, 165)">
+            <rect x="0" y="0" width="290" height="120" />
+            <text x="145" y="20" style="font-weight:700;font-size:10px">DeepLinkSideEffect</text>
+            <text class="se-label" x="145" y="38">(Activity, DeepLinkResult)</text>
+            <text x="145" y="62" style="font-size:9px;fill:var(--viz-color-merge)">handleAppsFlyer(activity, result)</text>
+            <text x="145" y="78" style="font-size:9px;fill:var(--color-on-surface-body)">CPS 쿠키 처리</text>
+            <text x="145" y="94" style="font-size:9px;fill:var(--color-on-surface-body)">NaverSearchAds 처리</text>
+            <text x="145" y="112" style="font-size:8px;fill:var(--viz-color-merge)">&#x26A0; Activity 의존 + AppsFlyer init</text>
+          </g>
+
+          <!-- Terminal: 딥링크 결과 (from SideEffect) -->
+          <g class="terminal result" transform="translate(660, 320)">
+            <rect x="0" y="0" width="130" height="40" />
+            <text x="65" y="21">딥링크 결과</text>
+          </g>
+
+          <!-- Arrow: SideEffect → 딥링크 결과 (orthogonal: down) -->
+          <path class="data-flow" d="M 785 285 L 785 310 L 725 310 L 725 320" marker-end="url(#arrow-green)" />
+
+        </svg>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- AFTER FLOW (visually rich — Rule 8: asymmetry) -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <section class="flow-section">
+      <div class="section-label after">After &mdash; 써드파티 먼저, 실패 시 자체 파서로 fallback</div>
+      <div class="diagram-container after-diagram">
+        <svg class="diagram-svg" viewBox="0 0 960 450" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="arrow-green2" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" class="flow-arrow-marker" />
+            </marker>
+            <marker id="arrow-gray2" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" class="flow-arrow-marker-neutral" />
+            </marker>
+            <marker id="arrow-orange2" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" class="flow-arrow-marker-decision" />
+            </marker>
+            <marker id="arrow-blue2" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" class="flow-arrow-marker-move" />
+            </marker>
+          </defs>
+
+          <!-- ═══ ROW 1 (y~80): NOT NULL path — needToBoot → terminals ═══ -->
+          <!-- ═══ ROW 2 (y~215): Main axis — Intent → ThirdParty → Decision ═══ -->
+          <!-- ═══ ROW 3 (y~350): NULL path — getValidUri → LinkParser / AppStarter ═══ -->
+
+          <!-- External Entity: Intent -->
+          <g class="external-entity" transform="translate(20, 195)">
+            <rect x="0" y="0" width="100" height="45" />
+            <text x="50" y="23">Intent</text>
+          </g>
+
+          <!-- Step 1: ThirdParty (sequential chain) -->
+          <g class="process" transform="translate(170, 180)">
+            <rect x="0" y="0" width="200" height="75" />
+            <text class="process-name" x="100" y="18">ThirdPartyLinkHandler</text>
+            <text class="process-detail" x="100" y="34">parseIntentFromThirdParty</text>
+            <text class="process-detail" x="100" y="48" style="fill:var(--viz-color-add);font-size:8px">Branch → AppsFlyer.start() → fallback</text>
+            <text class="process-detail" x="100" y="62" style="fill:var(--viz-color-move);font-size:8px">순차 실행 (async 제거)</text>
+          </g>
+
+          <!-- Arrow: Intent → ThirdParty (orthogonal) -->
+          <path class="data-flow" d="M 120 218 L 170 218" marker-end="url(#arrow-green2)" />
+
+          <!-- Decision: ThirdParty result null? -->
+          <g class="decision" transform="translate(430, 197)">
+            <polygon points="55,0 110,30 55,60 0,30" />
+            <text x="55" y="26">result</text>
+            <text x="55" y="38" style="font-size:9px">!= null?</text>
+          </g>
+
+          <!-- Arrow: ThirdParty → Decision (orthogonal: right) -->
+          <path class="data-flow" d="M 370 218 L 430 218" marker-end="url(#arrow-green2)" />
+
+          <!-- ═══ NOT NULL PATH (upper) ═══ -->
+
+          <!-- Decision: needToBoot? -->
+          <g class="decision" transform="translate(620, 60)">
+            <polygon points="55,0 110,30 55,60 0,30" />
+            <text x="55" y="26">needTo</text>
+            <text x="55" y="38" style="font-size:9px">Boot?</text>
+          </g>
+
+          <!-- Arrow: result != null → needToBoot (orthogonal: up then right) -->
+          <path class="data-flow decision-path" d="M 540 210 L 580 210 L 580 90 L 620 90" marker-end="url(#arrow-orange2)" />
+          <text class="data-flow-label orange" x="546" y="202">NOT NULL</text>
+
+          <!-- Terminal: 딥링크 결과 -->
+          <g class="terminal result" transform="translate(800, 45)">
+            <rect x="0" y="0" width="140" height="40" />
+            <text x="70" y="21">딥링크 결과</text>
+          </g>
+
+          <!-- Terminal: AppStarter (boot) -->
+          <g class="terminal start" transform="translate(800, 108)">
+            <rect x="0" y="0" width="140" height="40" />
+            <text x="70" y="21">AppStarter</text>
+          </g>
+
+          <!-- Arrow: needToBoot NO → 딥링크 결과 (orthogonal: right) -->
+          <path class="data-flow decision-path" d="M 730 78 L 765 78 L 765 65 L 800 65" marker-end="url(#arrow-orange2)" />
+          <text class="data-flow-label orange" x="740" y="62">NO</text>
+
+          <!-- Arrow: needToBoot YES → AppStarter (orthogonal: right then down) -->
+          <path class="data-flow decision-path" d="M 730 102 L 765 102 L 765 128 L 800 128" marker-end="url(#arrow-orange2)" />
+          <text class="data-flow-label orange" x="740" y="124">YES</text>
+
+          <!-- ═══ NULL PATH (lower) ═══ -->
+
+          <!-- Decision: getValidUri? -->
+          <g class="decision" transform="translate(430, 330)">
+            <polygon points="55,0 110,30 55,60 0,30" />
+            <text x="55" y="26">getValid</text>
+            <text x="55" y="38" style="font-size:9px">Uri?</text>
+          </g>
+
+          <!-- Arrow: result == null → getValidUri (orthogonal: down) -->
+          <path class="data-flow decision-path" d="M 485 257 L 485 330" marker-end="url(#arrow-orange2)" />
+          <text class="data-flow-label orange" x="492" y="298">NULL</text>
+
+          <!-- Process: LinkParser -->
+          <g class="process" transform="translate(620, 335)">
+            <rect x="0" y="0" width="150" height="50" />
+            <text class="process-name" x="75" y="20">LinkParser</text>
+            <text class="process-detail" x="75" y="36">parseDeepLink()</text>
+          </g>
+
+          <!-- Arrow: getValidUri NOT NULL → LinkParser (orthogonal: right) -->
+          <path class="data-flow decision-path" d="M 540 360 L 620 360" marker-end="url(#arrow-orange2)" />
+          <text class="data-flow-label orange" x="546" y="352">NOT NULL</text>
+
+          <!-- Terminal: 딥링크 결과 (from LinkParser) -->
+          <g class="terminal result" transform="translate(820, 335)">
+            <rect x="0" y="0" width="130" height="40" />
+            <text x="65" y="21">딥링크 결과</text>
+          </g>
+
+          <!-- Arrow: LinkParser → 딥링크 결과 (orthogonal: right) -->
+          <path class="data-flow" d="M 770 360 L 820 360" marker-end="url(#arrow-green2)" />
+
+          <!-- Terminal: AppStarter (from LinkParser fail) -->
+          <g class="terminal start" transform="translate(630, 415)">
+            <rect x="0" y="0" width="130" height="35" />
+            <text x="65" y="19">AppStarter</text>
+          </g>
+
+          <!-- Arrow: LinkParser fail → AppStarter (orthogonal: down) -->
+          <path class="data-flow neutral" d="M 695 385 L 695 415" marker-end="url(#arrow-gray2)" />
+          <text class="data-flow-label gray" x="702" y="406">fail</text>
+
+          <!-- Terminal: AppStarter (from getValidUri NULL) -->
+          <g class="terminal start" transform="translate(420, 415)">
+            <rect x="0" y="0" width="130" height="35" />
+            <text x="65" y="19">AppStarter</text>
+          </g>
+
+          <!-- Arrow: getValidUri NULL → AppStarter (orthogonal: down) -->
+          <path class="data-flow decision-path" d="M 485 390 L 485 415" marker-end="url(#arrow-orange2)" />
+          <text class="data-flow-label orange" x="492" y="410">NULL</text>
+
+          <!-- ═══ SIDE EFFECT (above ThirdParty) ═══ -->
+
+          <g class="side-effect" transform="translate(170, 30)">
+            <rect x="0" y="0" width="200" height="75" />
+            <text x="100" y="18" style="font-weight:700;font-size:10px">DeepLinkSideEffect</text>
+            <text class="se-label" x="100" y="34">(DeepLinkResult)</text>
+            <text x="100" y="52" style="font-size:9px;fill:var(--viz-color-add)">CPS 쿠키 + NaverSearchAds만</text>
+            <text x="100" y="67" style="font-size:8px;fill:var(--viz-color-add)">&#x2713; Activity 의존성 제거</text>
+          </g>
+
+          <!-- Arrow: ThirdParty → SideEffect (orthogonal: up) -->
+          <path class="data-flow move-path" d="M 270 180 L 270 105" marker-end="url(#arrow-blue2)" />
+          <text class="data-flow-label blue" x="276" y="145">result</text>
+
+        </svg>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- RESPONSIBILITY SHIFT (RULE-L03: group related changes) -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <section class="shift-section">
+      <div class="section-label detail">이 변경으로 달라지는 것</div>
+      <div class="shift-flow">
+        <div class="shift-flow-title">딥링크 디버깅이 쉬워진다</div>
+
+        <div class="shift-row">
+          <div class="shift-label-before">딥링크가 안 열릴 때 3갈래 중 어디서 실패했는지 추적 어려움</div>
+          <div class="shift-arrow-inline">&rarr;</div>
+          <div class="shift-label-after">단일 체인이라 실패 지점이 명확 (써드파티 or 자체 파서)</div>
+        </div>
+
+        <div class="shift-row">
+          <div class="shift-label-before">4개 써드파티가 동시 실행되어 실행 순서 예측 불가</div>
+          <div class="shift-arrow-inline">&rarr;</div>
+          <div class="shift-label-after">순차 실행으로 Branch &rarr; AppsFlyer 순서 보장</div>
+        </div>
+
+        <div class="shift-row">
+          <div class="shift-label-before">AppsFlyer 초기화가 부수효과로 실행 &mdash; Activity 참조 필요</div>
+          <div class="shift-arrow-inline">&rarr;</div>
+          <div class="shift-label-after">Branch 결과 직후 초기화 &mdash; Activity 의존성 제거</div>
+        </div>
+
+        <div class="shift-summary">
+          결과: 딥링크 처리 경로가 단순해져서 새 써드파티 핸들러 추가 시 체인에 끼워넣기만 하면 됨
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- LEGEND (RULE-C01) -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <div class="legend">
+      <div class="legend-item"><div class="legend-shape process-shape"></div><span>프로세스</span></div>
+      <div class="legend-item"><div class="legend-shape decision-shape"></div><span>분기 판정</span></div>
+      <div class="legend-item"><div class="legend-shape entity-shape"></div><span>외부 입력</span></div>
+      <div class="legend-item"><div class="legend-shape terminal-shape"></div><span>종단점</span></div>
+      <div class="legend-item"><div class="legend-line"></div><span>데이터 흐름</span></div>
+      <div class="legend-item"><div class="legend-line decision-line"></div><span>조건 분기</span></div>
+      <div class="legend-item"><div class="legend-line side-effect-line"></div><span>부수효과</span></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- COGNITIVE RATIONALE -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <details class="rationale">
+      <summary>Cognitive Rationale &mdash; 이 시각화가 이렇게 생긴 이유</summary>
+      <div class="rationale-body">
+
+        <!-- Inner Style -->
+        <div>
+          <div class="rationale-block-label">Inner Style: Flow</div>
+          <div class="rationale-text">
+            딥링크 도착부터 결과까지의 <strong>경로 변화</strong>가 핵심이므로 Before/After 흐름도로 대비.
+            다이어그램 복잡도 차이(분기점 3개 &rarr; 2개)가 단순화를 시각적으로 즉시 전달한다.
+          </div>
+        </div>
+
+        <!-- Applied Rules -->
+        <div>
+          <div class="rationale-block-label">Applied Rules</div>
+          <ul class="rationale-rules-list">
+            <li><span class="rule-id">RULE-C01</span> 변경 유형별 색상 언어 — 프로세스(보라), 분기(주황), 흐름(초록), 외부(회색) <span class="principle-ref">← PRC-003</span></li>
+            <li><span class="rule-id">RULE-C09</span> Slate 다크 테마 — Deep Navy 배경 + Slate 카드 + 시맨틱 색상 밝기 상향 <span class="principle-ref">← PRC-004, AES-003</span></li>
+            <li><span class="rule-id">RULE-L01</span> 앵커 포인트 유지 — Before/After 양쪽에서 Intent 시작 위치 동일 <span class="principle-ref">← WM-001</span></li>
+            <li><span class="rule-id">RULE-L02</span> 동시 강조 ≤ 2 — Before 흐름도와 After 흐름도를 섹션 분리하여 한 번에 하나씩 집중 <span class="principle-ref">← PRC-005</span></li>
+            <li><span class="rule-id">RULE-L03</span> 관련 변경점 근접 그룹화 — 책임 이동을 별도 섹션으로 그룹화 <span class="principle-ref">← PRC-001</span></li>
+            <li><span class="rule-id">RULE-CMP03</span> 변경 안내 제공 — Impact Summary 카드로 3가지 핵심 변경 사전 예고 <span class="principle-ref">← ATT-002</span></li>
+            <li><span class="rule-id">RULE-T01</span> 화면당 1문장 — 각 섹션 라벨이 해당 섹션의 핵심 메시지를 1문장으로 전달 <span class="principle-ref">← WM-001</span></li>
+            <li><span class="rule-id">RULE-C06</span> WCAG AA 대비 — 다크 배경 텍스트에 --color-on-surface-body(#94a3b8) 사용 <span class="principle-ref">← AES-004</span></li>
+          </ul>
+        </div>
+
+        <!-- Self-Evaluation -->
+        <div>
+          <div class="rationale-block-label">Self-Evaluation</div>
+          <div class="eval-grid">
+            <div class="eval-cell"><div class="eval-score">4/5</div><div class="eval-label">Clarity</div></div>
+            <div class="eval-cell"><div class="eval-score">5/5</div><div class="eval-label">Change Visibility</div></div>
+            <div class="eval-cell"><div class="eval-score">4/5</div><div class="eval-label">Anchor Stability</div></div>
+            <div class="eval-cell"><div class="eval-score">4/5</div><div class="eval-label">Text Economy</div></div>
+          </div>
+        </div>
+
+        <!-- Evidence Trail -->
+        <div>
+          <div class="rationale-block-label">Evidence Trail</div>
+          <ul class="evidence-list">
+            <li><span class="evidence-level l1">L1</span> Cowan (2001) — 작업기억 용량 4&plusmn;1 청크. Decision Gate 수가 Before 3개 → After 2개로 감소하여 인지 부하 절감. → RULE-L02</li>
+            <li><span class="evidence-level l2">L2</span> Cleveland &amp; McGill (1984) — 위치 인코딩이 면적/각도보다 2-3배 정확. 흐름도 노드 위치로 경로 차이 즉시 전달. → RULE-L04</li>
+            <li><span class="evidence-level l2">L2</span> Segel &amp; Heer (2010) — author-driven 시각화가 PR 설명에 최적. Impact Summary → Before → After 순차 안내. → RULE-CMP05</li>
+            <li><span class="evidence-level l3">L3</span> Hullman &amp; Diakopoulos (2011) — 서사적 프레이밍 +23% 이해도. "3갈래 분기 → 단일 체인" 메시지 프레이밍. → RULE-CMP03</li>
+            <li><span class="evidence-level l4">L4</span> Wickens (2008) — 시선 전환 비용 최소화. Before/After를 섹션 분리하여 컨텍스트 스위칭 감소. → RULE-L01</li>
+          </ul>
+        </div>
+
+      </div>
+    </details>
+
+  </div>
+
+</body>
+</html>
