@@ -1,0 +1,1511 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>홈 전시 고도화 — Universal Panel</title>
+<style>
+  /* ── Slate Dark Theme Tokens (RULE-C09) ── */
+  :root {
+    --color-bg: #0a0e1a;
+    --color-surface: #1e293b;
+    --color-surface-inner: #334155;
+    --color-surface-hover: #253348;
+    --color-border: rgba(148, 163, 184, 0.15);
+    --color-border-strong: rgba(148, 163, 184, 0.3);
+    --color-on-surface: #f1f5f9;
+    --color-on-surface-body: #94a3b8;
+    --color-on-surface-muted: #64748b;
+
+    /* Semantic colors (RULE-C01, dark-adjusted) */
+    --viz-color-add: #4ade80;
+    --viz-color-remove: #6b7280;
+    --viz-color-move: #60a5fa;
+    --viz-color-emphasis: #a78bfa;
+    --viz-color-merge: #fb923c;
+
+    /* Category accent colors */
+    --cat1-color: #fb923c;   /* Domain: funnel — orange */
+    --cat2-color: #fb923c;   /* Data: merge — orange */
+    --cat3-color: #60a5fa;   /* Features: layer_shift — blue */
+    --cat4-color: #a78bfa;   /* Amplitude: annotated_diff — purple */
+    --cat5-color: #a78bfa;   /* Sections: annotated_diff — purple */
+
+    --shape-sm: 8px;
+    --shape-md: 12px;
+    --shape-lg: 16px;
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+    --spacing-2xl: 48px;
+    --font-sans: 'Google Sans', 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+    --elevation-1: 0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3);
+    --elevation-2: 0 4px 8px rgba(0,0,0,0.4), 0 2px 4px rgba(0,0,0,0.3);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-sans);
+    background: var(--color-bg);
+    color: var(--color-on-surface);
+    padding: var(--spacing-lg);
+    min-height: 100vh;
+    max-width: 960px;
+    margin: 0 auto;
+    line-height: 1.5;
+  }
+
+  /* ── Hero Section ── */
+  .hero {
+    text-align: center;
+    padding: var(--spacing-2xl) var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+    background: linear-gradient(135deg, rgba(251,146,60,0.06) 0%, rgba(96,165,250,0.06) 50%, rgba(167,139,250,0.06) 100%);
+    border: 1px solid var(--color-border);
+    border-radius: var(--shape-lg);
+  }
+  .hero-tag {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--viz-color-merge);
+    background: rgba(251,146,60,0.12);
+    border: 1px solid rgba(251,146,60,0.25);
+    padding: 4px 12px;
+    border-radius: 20px;
+    margin-bottom: var(--spacing-md);
+  }
+  .hero h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    line-height: 1.3;
+    margin-bottom: var(--spacing-sm);
+  }
+  .hero .subtitle {
+    font-size: 0.88rem;
+    color: var(--color-on-surface-body);
+    max-width: 640px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+
+  /* ── Stats Bar ── */
+  .stats-bar {
+    display: flex;
+    gap: var(--spacing-sm);
+    justify-content: center;
+    margin: var(--spacing-lg) 0;
+    flex-wrap: wrap;
+  }
+  .stat {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    padding: 6px 14px;
+    background: var(--color-surface);
+    border-radius: 20px;
+    border: 1px solid var(--color-border);
+    color: var(--color-on-surface-body);
+  }
+  .stat-value { font-weight: 700; font-family: var(--font-mono); }
+  .stat-value.positive { color: var(--viz-color-add); }
+  .stat-value.negative { color: #f87171; }
+  .stat-value.neutral { color: var(--color-on-surface-body); }
+  .stat-value.accent { color: var(--viz-color-merge); }
+
+  /* ── Key Changes Summary ── */
+  .key-changes {
+    margin-bottom: var(--spacing-xl);
+    padding: var(--spacing-lg);
+    background: var(--color-surface);
+    border-radius: var(--shape-md);
+    border: 1px solid var(--color-border);
+  }
+  .key-changes-title {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--color-on-surface-muted);
+    margin-bottom: var(--spacing-md);
+  }
+  .key-changes ol {
+    padding-left: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .key-changes li {
+    font-size: 0.82rem;
+    line-height: 1.6;
+    color: var(--color-on-surface-body);
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .key-changes li a {
+    color: inherit;
+    text-decoration: none;
+    flex: 1;
+  }
+  .key-changes li a:hover {
+    color: var(--color-on-surface);
+  }
+  .kc-badge {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 10px;
+    border-radius: 10px;
+    font-size: 0.58rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    min-width: 56px;
+  }
+  .kc-badge.funnel { background: rgba(251,146,60,0.12); color: var(--cat1-color); border: 1px solid rgba(251,146,60,0.25); }
+  .kc-badge.merge-b { background: rgba(251,146,60,0.12); color: var(--cat2-color); border: 1px solid rgba(251,146,60,0.25); }
+  .kc-badge.layer { background: rgba(96,165,250,0.12); color: var(--cat3-color); border: 1px solid rgba(96,165,250,0.25); }
+  .kc-badge.diff { background: rgba(167,139,250,0.12); color: var(--cat4-color); border: 1px solid rgba(167,139,250,0.25); }
+
+  /* ── Category ── */
+  .category {
+    margin-bottom: var(--spacing-xl);
+    scroll-margin-top: var(--spacing-lg);
+  }
+  .category-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+  }
+  .category-number {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    font-weight: 800;
+    color: #fff;
+    flex-shrink: 0;
+  }
+  .category-number.cat1 { background: var(--cat1-color); }
+  .category-number.cat2 { background: var(--cat2-color); }
+  .category-number.cat3 { background: var(--cat3-color); }
+  .category-number.cat4 { background: var(--cat4-color); }
+  .category-number.cat5 { background: var(--cat5-color); }
+  .category-title { font-size: 1rem; font-weight: 600; }
+  .category-desc { font-size: 0.75rem; color: var(--color-on-surface-muted); margin-left: auto; }
+  .category-badge {
+    font-size: 0.55rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-left: 8px;
+  }
+  .category-badge.funnel { background: rgba(251,146,60,0.12); color: var(--cat1-color); border: 1px solid rgba(251,146,60,0.25); }
+  .category-badge.merge-viz { background: rgba(251,146,60,0.12); color: var(--cat2-color); border: 1px solid rgba(251,146,60,0.25); }
+  .category-badge.layer-shift { background: rgba(96,165,250,0.12); color: var(--cat3-color); border: 1px solid rgba(96,165,250,0.25); }
+  .category-badge.diff { background: rgba(167,139,250,0.12); color: var(--cat4-color); border: 1px solid rgba(167,139,250,0.25); }
+  .category-insight {
+    font-size: 0.78rem;
+    color: var(--color-on-surface-body);
+    padding: var(--spacing-sm) var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+    background: var(--color-surface);
+    border-radius: var(--shape-sm);
+    border-left: 3px solid var(--color-on-surface-muted);
+    font-style: italic;
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════ */
+  /* Inner Style 1: FUNNEL — many items converging to few                 */
+  /* ══════════════════════════════════════════════════════════════════════ */
+  .funnel-container {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--shape-md);
+    padding: var(--spacing-lg);
+    box-shadow: var(--elevation-1);
+  }
+  .funnel-grid {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: var(--spacing-md);
+    align-items: center;
+  }
+  .funnel-col-label {
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: var(--spacing-sm);
+    padding-left: 2px;
+  }
+  .funnel-col-label.before-label { color: var(--viz-color-remove); }
+  .funnel-col-label.after-label { color: var(--viz-color-add); }
+  .funnel-source { display: flex; flex-direction: column; gap: 4px; }
+  .funnel-item {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    padding: 6px 10px;
+    border-radius: var(--shape-sm);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface-inner);
+  }
+  .funnel-item.concern {
+    border-left: 3px solid var(--viz-color-remove);
+    color: var(--color-on-surface-body);
+    text-decoration: line-through;
+    text-decoration-color: rgba(107,114,128,0.5);
+  }
+  .funnel-item.result {
+    border-left: 3px solid var(--viz-color-add);
+    color: var(--viz-color-add);
+    background: rgba(74,222,128,0.06);
+    font-weight: 600;
+  }
+  .funnel-item.kept {
+    border-left: 3px solid var(--color-on-surface-muted);
+    color: var(--color-on-surface-muted);
+    font-style: italic;
+  }
+  .funnel-arrow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    color: var(--color-on-surface-muted);
+    font-size: 1.6rem;
+    padding: 0 var(--spacing-sm);
+  }
+  .funnel-arrow-label {
+    font-size: 0.58rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--color-on-surface-muted);
+  }
+  .funnel-target { display: flex; flex-direction: column; gap: 4px; }
+  .funnel-note {
+    font-size: 0.72rem;
+    color: var(--color-on-surface-muted);
+    font-style: italic;
+    margin-top: var(--spacing-md);
+    padding: 0 2px;
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════ */
+  /* Inner Style 2: MERGE — two streams joining into one                  */
+  /* ══════════════════════════════════════════════════════════════════════ */
+  .merge-container {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--shape-md);
+    padding: var(--spacing-lg);
+    box-shadow: var(--elevation-1);
+  }
+  .merge-layout { display: flex; flex-direction: column; align-items: center; gap: var(--spacing-md); }
+  .merge-sources { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md); width: 100%; }
+  .merge-source-card {
+    background: var(--color-surface-inner);
+    border: 1px solid var(--color-border);
+    border-radius: var(--shape-sm);
+    padding: var(--spacing-md);
+    border-top: 3px solid var(--viz-color-merge);
+  }
+  .merge-source-title {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--viz-color-merge);
+    margin-bottom: 6px;
+  }
+  .merge-source-detail {
+    font-size: 0.7rem;
+    color: var(--color-on-surface-muted);
+    line-height: 1.5;
+  }
+  .merge-source-detail code {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    background: rgba(251,146,60,0.08);
+    color: var(--viz-color-merge);
+    padding: 1px 4px;
+    border-radius: 3px;
+  }
+  .merge-connector {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    color: var(--color-on-surface-muted);
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .merge-connector::before,
+  .merge-connector::after {
+    content: '';
+    width: 40px;
+    height: 1px;
+    background: var(--color-border-strong);
+  }
+  .merge-result-card {
+    background: rgba(74,222,128,0.04);
+    border: 2px solid var(--viz-color-add);
+    border-radius: var(--shape-sm);
+    padding: var(--spacing-md);
+    width: 100%;
+  }
+  .merge-result-title {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--viz-color-add);
+    margin-bottom: 6px;
+  }
+  .merge-result-detail {
+    font-size: 0.7rem;
+    color: var(--color-on-surface-body);
+    line-height: 1.5;
+  }
+  .merge-result-detail code {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    background: rgba(74,222,128,0.08);
+    color: var(--viz-color-add);
+    padding: 1px 4px;
+    border-radius: 3px;
+  }
+  .merge-tag-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: var(--spacing-sm);
+  }
+  .merge-tag {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: rgba(74,222,128,0.06);
+    border: 1px solid rgba(74,222,128,0.2);
+    color: var(--viz-color-add);
+  }
+  .merge-tag.new { font-weight: 700; }
+  .merge-tag.removed {
+    text-decoration: line-through;
+    color: var(--viz-color-remove);
+    background: rgba(107,114,128,0.06);
+    border-color: rgba(107,114,128,0.2);
+  }
+  .merge-note {
+    font-size: 0.72rem;
+    color: var(--color-on-surface-muted);
+    font-style: italic;
+    margin-top: 8px;
+    text-align: center;
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════ */
+  /* Inner Style 3: LAYER SHIFT — mini architecture with new layer added  */
+  /* ══════════════════════════════════════════════════════════════════════ */
+  .layer-shift-container {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--shape-md);
+    padding: var(--spacing-lg);
+    box-shadow: var(--elevation-1);
+  }
+  .layer-shift-grid {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: var(--spacing-lg);
+    align-items: start;
+  }
+  .layer-stack-label {
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: var(--spacing-sm);
+    padding-left: 4px;
+  }
+  .layer-stack-label.before-label { color: var(--viz-color-remove); }
+  .layer-stack-label.after-label { color: var(--viz-color-add); }
+  .layer-mini-stack { display: flex; flex-direction: column; gap: 0; }
+  .layer-mini {
+    padding: 10px var(--spacing-md);
+    border: 1px solid var(--color-border);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    background: var(--color-surface-inner);
+  }
+  .layer-mini:first-child { border-radius: var(--shape-sm) var(--shape-sm) 0 0; }
+  .layer-mini:last-child { border-radius: 0 0 var(--shape-sm) var(--shape-sm); }
+  .layer-mini:not(:first-child) { border-top: none; }
+  .layer-mini .layer-mini-name {
+    font-weight: 700;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+  }
+  .layer-mini.source-highlight {
+    background: rgba(251,146,60,0.06);
+    border-left: 3px solid var(--viz-color-merge);
+  }
+  .layer-mini.target-highlight {
+    background: rgba(74,222,128,0.06);
+    border-left: 3px solid var(--viz-color-add);
+  }
+  .layer-mini.new-layer {
+    background: rgba(96,165,250,0.08);
+    border-left: 3px solid var(--viz-color-move);
+    border: 2px solid rgba(96,165,250,0.3);
+    position: relative;
+  }
+  .layer-mini.neutral {
+    background: var(--color-surface-inner);
+    color: var(--color-on-surface-muted);
+  }
+  .layer-mini-tag {
+    font-size: 0.6rem;
+    padding: 2px 6px;
+    border-radius: 3px;
+    display: inline-block;
+    margin-top: 3px;
+    margin-right: 4px;
+  }
+  .layer-mini-tag.concern { background: rgba(251,146,60,0.1); color: var(--viz-color-merge); }
+  .layer-mini-tag.added { background: rgba(74,222,128,0.1); color: var(--viz-color-add); }
+  .layer-mini-tag.deleted { background: rgba(107,114,128,0.1); color: var(--viz-color-remove); text-decoration: line-through; }
+  .layer-mini-tag.new-tag { background: rgba(96,165,250,0.12); color: var(--viz-color-move); font-weight: 600; }
+  .shift-arrow-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding-top: 50px;
+  }
+  .shift-arrow-label {
+    font-size: 0.58rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--viz-color-move);
+  }
+  .shift-arrow-line {
+    width: 60px;
+    height: 2px;
+    background: var(--viz-color-move);
+    position: relative;
+  }
+  .shift-arrow-line::after {
+    content: '';
+    position: absolute;
+    right: -1px;
+    top: 50%;
+    transform: translateY(-50%);
+    border-style: solid;
+    border-width: 5px 0 5px 8px;
+    border-color: transparent transparent transparent var(--viz-color-move);
+  }
+  .layer-shift-note {
+    font-size: 0.72rem;
+    color: var(--color-on-surface-muted);
+    font-style: italic;
+    margin-top: var(--spacing-md);
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════ */
+  /* Inner Style 4: ANNOTATED DIFF — old -> new inline replacement        */
+  /* ══════════════════════════════════════════════════════════════════════ */
+  .diff-container {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--shape-md);
+    padding: var(--spacing-lg);
+    box-shadow: var(--elevation-1);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+  }
+  .diff-section-label {
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--color-on-surface-muted);
+    margin-bottom: 4px;
+    margin-top: var(--spacing-sm);
+  }
+  .diff-section-label:first-child { margin-top: 0; }
+  .diff-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: 8px var(--spacing-md);
+    background: var(--color-surface-inner);
+    border: 1px solid var(--color-border);
+    border-radius: var(--shape-sm);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+  }
+  .diff-row.add-only {
+    border-left: 3px solid var(--viz-color-add);
+  }
+  .diff-old {
+    color: var(--viz-color-remove);
+    text-decoration: line-through;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: rgba(107,114,128,0.08);
+    flex-shrink: 1;
+    min-width: 0;
+    word-break: break-all;
+  }
+  .diff-arrow { color: var(--color-on-surface-muted); font-size: 0.8rem; flex-shrink: 0; }
+  .diff-new {
+    color: var(--viz-color-add);
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: rgba(74,222,128,0.06);
+    flex-shrink: 1;
+    min-width: 0;
+    word-break: break-all;
+  }
+  .diff-only-new {
+    color: var(--viz-color-add);
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: rgba(74,222,128,0.06);
+  }
+  .diff-label {
+    font-size: 0.58rem;
+    color: var(--color-on-surface-muted);
+    margin-left: auto;
+    padding: 2px 8px;
+    background: var(--color-surface);
+    border-radius: 4px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .diff-note {
+    font-size: 0.72rem;
+    color: var(--color-on-surface-muted);
+    font-style: italic;
+    margin-top: 4px;
+    padding: 0 4px;
+  }
+
+  /* ── Architecture Before/After ── */
+  .arch-section {
+    margin-top: var(--spacing-xl);
+    padding: var(--spacing-lg);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--shape-md);
+    scroll-margin-top: var(--spacing-lg);
+  }
+  .arch-title {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--color-on-surface-muted);
+    margin-bottom: var(--spacing-lg);
+    text-align: center;
+  }
+  .arch-grid {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: var(--spacing-lg);
+    align-items: center;
+  }
+  .arch-panel {
+    padding: var(--spacing-md);
+    border-radius: var(--shape-sm);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    line-height: 1.8;
+  }
+  .arch-panel.before {
+    background: var(--color-surface-inner);
+    border: 1px solid var(--color-border);
+    color: var(--color-on-surface-muted);
+  }
+  .arch-panel.after {
+    background: rgba(74,222,128,0.04);
+    border: 2px solid rgba(74,222,128,0.2);
+    color: var(--color-on-surface-body);
+    border-left: 3px solid var(--viz-color-add);
+  }
+  .arch-panel-label {
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: var(--spacing-sm);
+  }
+  .arch-panel-label.before-label { color: var(--viz-color-remove); }
+  .arch-panel-label.after-label { color: var(--viz-color-add); }
+  .arch-line { padding-left: 12px; border-left: 2px solid var(--color-border); margin: 2px 0; }
+  .arch-line.highlight-add { border-left-color: var(--viz-color-add); color: var(--viz-color-add); }
+  .arch-line.highlight-remove { border-left-color: var(--viz-color-remove); color: var(--viz-color-remove); text-decoration: line-through; }
+  .arch-connector {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .arch-connector-line {
+    width: 48px;
+    height: 2px;
+    background: var(--viz-color-move);
+    position: relative;
+  }
+  .arch-connector-line::after {
+    content: '';
+    position: absolute;
+    right: -1px;
+    top: 50%;
+    transform: translateY(-50%);
+    border-style: solid;
+    border-width: 5px 0 5px 8px;
+    border-color: transparent transparent transparent var(--viz-color-move);
+  }
+  .arch-connector-label {
+    font-size: 0.55rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--viz-color-move);
+  }
+
+  /* ── Cognitive Rationale ── */
+  .rationale {
+    margin-top: var(--spacing-xl);
+    border: 1px solid var(--color-border);
+    border-radius: var(--shape-md);
+    background: var(--color-surface);
+    box-shadow: var(--elevation-1);
+  }
+  .rationale summary {
+    font-size: 0.72rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--color-on-surface-muted);
+    padding: var(--spacing-md);
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+  }
+  .rationale summary::before { content: '\25B8'; transition: transform 0.15s; }
+  .rationale[open] summary::before { transform: rotate(90deg); }
+  .rationale-body {
+    padding: 0 var(--spacing-md) var(--spacing-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+  }
+  .rationale-block-label {
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--color-on-surface-muted);
+    margin-bottom: var(--spacing-xs);
+  }
+  .rationale-text {
+    font-size: 0.78rem;
+    color: var(--color-on-surface-body);
+    line-height: 1.6;
+  }
+  .rationale-rules-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .rationale-rules-list li {
+    font-size: 0.75rem;
+    padding: 8px 10px;
+    background: var(--color-surface-inner);
+    border-radius: var(--shape-sm);
+    border: 1px solid var(--color-border);
+    color: var(--color-on-surface-body);
+    line-height: 1.5;
+  }
+  .rule-id {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    font-weight: 700;
+    color: var(--viz-color-emphasis);
+    margin-right: 6px;
+  }
+  .principle-ref {
+    font-family: var(--font-mono);
+    font-size: 0.55rem;
+    color: var(--color-on-surface-muted);
+    margin-left: 4px;
+  }
+  .eval-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--spacing-sm);
+  }
+  .eval-cell {
+    text-align: center;
+    padding: var(--spacing-sm);
+    background: var(--color-surface-inner);
+    border-radius: var(--shape-sm);
+    border: 1px solid var(--color-border);
+  }
+  .eval-score { font-size: 1.1rem; font-weight: 700; color: var(--viz-color-emphasis); }
+  .eval-label { font-size: 0.55rem; text-transform: uppercase; letter-spacing: 0.4px; color: var(--color-on-surface-muted); margin-top: 2px; }
+  .evidence-list { list-style: none; display: flex; flex-direction: column; gap: 3px; }
+  .evidence-list li { font-size: 0.7rem; color: var(--color-on-surface-muted); line-height: 1.5; padding-left: 12px; position: relative; }
+  .evidence-list li::before { content: '\00B7'; position: absolute; left: 0; font-weight: 700; }
+  .evidence-level {
+    font-family: var(--font-mono);
+    font-size: 0.55rem;
+    font-weight: 700;
+    padding: 1px 4px;
+    border-radius: 3px;
+    margin-right: 4px;
+  }
+  .evidence-level.l1 { background: rgba(74,222,128,0.12); color: var(--viz-color-add); }
+  .evidence-level.l2 { background: rgba(96,165,250,0.12); color: var(--viz-color-move); }
+
+  /* ── Business Impact Section ── */
+  .biz-impact {
+    margin-bottom: var(--spacing-xl);
+    padding: var(--spacing-lg);
+    background: linear-gradient(135deg, rgba(74,222,128,0.04) 0%, rgba(96,165,250,0.04) 100%);
+    border: 1px solid rgba(74,222,128,0.15);
+    border-radius: var(--shape-md);
+  }
+  .biz-impact-title {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--viz-color-add);
+    margin-bottom: var(--spacing-md);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .biz-impact-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-sm);
+  }
+  .biz-card {
+    padding: var(--spacing-md);
+    background: var(--color-surface);
+    border-radius: var(--shape-sm);
+    border: 1px solid var(--color-border);
+    border-left: 3px solid var(--viz-color-add);
+  }
+  .biz-card-label {
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--viz-color-add);
+    margin-bottom: 4px;
+  }
+  .biz-card-value {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--color-on-surface);
+    line-height: 1.5;
+  }
+  .biz-card-detail {
+    font-size: 0.7rem;
+    color: var(--color-on-surface-muted);
+    margin-top: 2px;
+  }
+  .biz-card.highlight {
+    border-left-color: var(--viz-color-emphasis);
+    background: rgba(167,139,250,0.04);
+  }
+  .biz-card.highlight .biz-card-label { color: var(--viz-color-emphasis); }
+
+  /* ── Journey Flow (Features 인프라 전용) ── */
+  .journey-container {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--shape-md);
+    padding: var(--spacing-lg);
+    box-shadow: var(--elevation-1);
+  }
+  .journey-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-lg);
+  }
+  .journey-col-label {
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: var(--spacing-sm);
+    padding-left: 2px;
+  }
+  .journey-col-label.before-label { color: var(--viz-color-remove); }
+  .journey-col-label.after-label { color: var(--viz-color-add); }
+  .journey-steps { display: flex; flex-direction: column; gap: 0; }
+  .journey-step {
+    padding: 10px var(--spacing-md);
+    border: 1px solid var(--color-border);
+    border-top: none;
+    font-size: 0.72rem;
+    line-height: 1.5;
+    background: var(--color-surface-inner);
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .journey-step:first-child { border-top: 1px solid var(--color-border); border-radius: var(--shape-sm) var(--shape-sm) 0 0; }
+  .journey-step:last-child { border-radius: 0 0 var(--shape-sm) var(--shape-sm); }
+  .journey-step .step-num {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.55rem;
+    font-weight: 800;
+    margin-top: 1px;
+  }
+  .journey-step.pain { border-left: 3px solid var(--viz-color-remove); }
+  .journey-step.pain .step-num { background: rgba(107,114,128,0.2); color: var(--viz-color-remove); }
+  .journey-step.gain { border-left: 3px solid var(--viz-color-add); }
+  .journey-step.gain .step-num { background: rgba(74,222,128,0.15); color: var(--viz-color-add); }
+  .journey-step.gain.highlight {
+    background: rgba(74,222,128,0.06);
+    border-left: 3px solid var(--viz-color-add);
+  }
+  .journey-step.wait {
+    border-left: 3px solid #f59e0b;
+    background: rgba(245,158,11,0.04);
+  }
+  .journey-step.wait .step-num { background: rgba(245,158,11,0.15); color: #f59e0b; }
+  .journey-deeplink {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    padding: 4px 10px;
+    background: rgba(96,165,250,0.08);
+    border: 1px solid rgba(96,165,250,0.2);
+    border-radius: 4px;
+    color: var(--viz-color-move);
+    margin-top: 4px;
+    display: inline-block;
+    word-break: break-all;
+  }
+  .journey-ui-preview {
+    margin-top: 6px;
+    padding: 8px 12px;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.6rem;
+    color: var(--color-on-surface-muted);
+  }
+  .journey-ui-btn {
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface-inner);
+    font-size: 0.55rem;
+    font-weight: 600;
+    color: var(--color-on-surface-muted);
+  }
+  .journey-ui-title {
+    flex: 1;
+    text-align: center;
+    font-weight: 600;
+    color: var(--color-on-surface);
+  }
+  .journey-verdict {
+    margin-top: var(--spacing-md);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-md);
+  }
+  .journey-verdict-card {
+    padding: 10px var(--spacing-md);
+    border-radius: var(--shape-sm);
+    text-align: center;
+    font-size: 0.7rem;
+    font-weight: 600;
+  }
+  .journey-verdict-card.before {
+    background: rgba(107,114,128,0.08);
+    border: 1px solid rgba(107,114,128,0.2);
+    color: var(--viz-color-remove);
+  }
+  .journey-verdict-card.after {
+    background: rgba(74,222,128,0.06);
+    border: 1px solid rgba(74,222,128,0.2);
+    color: var(--viz-color-add);
+  }
+  .journey-verdict-card .verdict-label {
+    font-size: 0.55rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    .journey-grid { grid-template-columns: 1fr; }
+    .journey-verdict { grid-template-columns: 1fr; }
+    .biz-impact-grid { grid-template-columns: 1fr; }
+    .funnel-grid { grid-template-columns: 1fr; }
+    .funnel-arrow { transform: rotate(90deg); padding: var(--spacing-sm) 0; }
+    .merge-sources { grid-template-columns: 1fr; }
+    .layer-shift-grid { grid-template-columns: 1fr; }
+    .shift-arrow-col { padding-top: 0; flex-direction: row; }
+    .shift-arrow-line { width: 2px; height: 40px; }
+    .shift-arrow-line::after { bottom: -1px; top: auto; right: auto; left: 50%; transform: translateX(-50%); border-width: 8px 5px 0 5px; border-color: var(--viz-color-move) transparent transparent transparent; }
+    .arch-grid { grid-template-columns: 1fr; }
+    .arch-connector { flex-direction: row; }
+    .arch-connector-line { width: 2px; height: 40px; }
+    .arch-connector-line::after { bottom: -1px; top: auto; right: auto; left: 50%; transform: translateX(-50%); border-width: 8px 5px 0 5px; border-color: var(--viz-color-move) transparent transparent transparent; }
+    .eval-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 1: HERO + STATS BANNER                                        -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<div class="hero">
+  <div class="hero-tag">KMA-5596 &middot; 전시 고도화 MVP</div>
+  <h1>리빙 &middot; 패션관을 CMS에서 바로 만든다</h1>
+  <p class="subtitle">패널 범용화로 신규 전시 영역(리빙, 패션 등)을 개발자 코드 변경 없이 La-CMS에서 즉시 생성 &middot; 딥링크 &middot; AB 테스트까지 지원하는 서버 주도형 아키텍처 전환</p>
+</div>
+
+<div class="stats-bar">
+  <div class="stat"><span class="stat-value accent">50</span> commits</div>
+  <div class="stat"><span class="stat-value positive">+3,230</span> lines</div>
+  <div class="stat"><span class="stat-value negative">&minus;1,177</span> lines</div>
+  <div class="stat"><span class="stat-value neutral">120+</span> files</div>
+  <div class="stat"><span class="stat-value accent">4</span> change axes</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 1.5: BUSINESS IMPACT                                          -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<div class="biz-impact">
+  <div class="biz-impact-title">&#9650; 이 PR이 가능하게 하는 것</div>
+  <div class="biz-impact-grid">
+    <div class="biz-card">
+      <div class="biz-card-label">전문관 즉시 신설</div>
+      <div class="biz-card-value">리빙/패션관을 La-CMS에서 직접 생성</div>
+      <div class="biz-card-detail">패널 무제한 생성 &middot; 코드/명 중복 방지 &middot; 사이트별 분리</div>
+    </div>
+    <div class="biz-card">
+      <div class="biz-card-label">딥링크 자동 생성</div>
+      <div class="biz-card-value">kurly://panel?site=&amp;code={panelCode}</div>
+      <div class="biz-card-detail">퀵메뉴 &middot; 배너 &middot; 푸시 등 어디서든 패널로 유입 가능</div>
+    </div>
+    <div class="biz-card highlight">
+      <div class="biz-card-label">AB 테스트 기반</div>
+      <div class="biz-card-value">GrowthBook 연동 &middot; HTTP 헤더 기반 실험 분기</div>
+      <div class="biz-card-detail">패널 단위 AB 테스트 환경 구축 (1단계: 홈탭 그로스북 연동)</div>
+    </div>
+    <div class="biz-card">
+      <div class="biz-card-label">섹션 구성 확장</div>
+      <div class="biz-card-value">패널당 섹션 99개 &rarr; 150개</div>
+      <div class="biz-card-detail">17종 범용 섹션 템플릿 &middot; 미사용 템플릿 정리</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 2: KEY CHANGES SUMMARY (with anchor links)                    -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<div class="key-changes">
+  <div class="key-changes-title">4 Change Axes &mdash; 기술 변경이 가능하게 하는 운영 개선</div>
+  <ol>
+    <li>
+      <span class="kc-badge merge-b">API</span>
+      <a href="#cat-data">API 호출 구조 단순화 &mdash; panelCode 기반 API + 응답 헤더에서 AB 테스트 실험 정보 자동 추출</a>
+    </li>
+    <li>
+      <span class="kc-badge layer">진입</span>
+      <a href="#cat-features">패널 진입 경로 구축 &mdash; 패널별 전용 화면 없이 범용 호스팅으로 딥링크 진입 &middot; 타이틀 자동 표시</a>
+    </li>
+    <li>
+      <span class="kc-badge diff">분석</span>
+      <a href="#cat-amplitude">Amplitude 이벤트 이원화 &mdash; 패널 전용 분석 데이터로 전문관 성과 독립 측정 가능</a>
+    </li>
+    <li>
+      <span class="kc-badge diff">확장</span>
+      <a href="#cat-sections">신규 섹션 + 딥링크 &mdash; random_collection_nocache 템플릿 + 패널 딥링크 호스트 추가</a>
+    </li>
+  </ol>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 3: CATEGORY 1 — Data Layer                                    -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<div class="category" id="cat-data">
+  <div class="category-header">
+    <span class="category-number cat1">1</span>
+    <span class="category-title">API 호출 구조 단순화</span>
+    <span class="category-badge merge-viz">Merge</span>
+    <span class="category-desc">중간 래퍼 제거 + panelCode API + AB 테스트 헤더</span>
+  </div>
+  <div class="category-insight">모든 API 호출을 감싸던 ApiCaller 중간 계층을 제거하고, panelCode 기반 신규 API와 HTTP 헤더 기반 AB 테스트 분기를 추가합니다.</div>
+  <div class="journey-container">
+    <div class="journey-grid">
+      <!-- Before -->
+      <div>
+        <div class="journey-col-label before-label">Before &mdash; 패널 정보를 가져오는 과정</div>
+        <div class="journey-steps">
+          <div class="journey-step pain">
+            <span class="step-num">1</span>
+            <div>
+              <code style="font-size:0.65rem;color:var(--viz-color-remove);">apiCaller.callApi { service.getPanelInfo(site) }</code><br>
+              <span style="font-size:0.62rem;color:var(--color-on-surface-muted);">ApiCaller가 모든 API를 감싸는 중간 래퍼</span>
+            </div>
+          </div>
+          <div class="journey-step pain">
+            <span class="step-num">2</span>
+            <div>
+              site 파라미터만 전달 &mdash; <strong>panelCode 개념 없음</strong><br>
+              <span style="font-size:0.62rem;color:var(--color-on-surface-muted);">마켓 or 뷰티, 2가지만 가능</span>
+            </div>
+          </div>
+          <div class="journey-step pain">
+            <span class="step-num">3</span>
+            <div>
+              응답: <code style="font-size:0.65rem;color:var(--viz-color-remove);">SectionResponse&lt;*&gt;</code>만 처리<br>
+              <span style="font-size:0.62rem;color:var(--color-on-surface-muted);">응답 헤더(AB 테스트 정보) 접근 불가</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- After -->
+      <div>
+        <div class="journey-col-label after-label">After &mdash; 패널 정보를 가져오는 과정</div>
+        <div class="journey-steps">
+          <div class="journey-step gain">
+            <span class="step-num">1</span>
+            <div>
+              <code style="font-size:0.65rem;color:var(--viz-color-add);">service.getPanelInfoWithCode(code = "living")</code><br>
+              <span style="font-size:0.62rem;color:var(--color-on-surface-muted);">ApiCaller 제거 &rarr; Retrofit Service 직접 호출</span>
+            </div>
+          </div>
+          <div class="journey-step gain highlight">
+            <span class="step-num">2</span>
+            <div>
+              응답: <code style="font-size:0.65rem;color:var(--viz-color-add);">Response&lt;BasicResponseWrapper&lt;...&gt;&gt;</code><br>
+              <span style="font-size:0.62rem;color:var(--color-on-surface-muted);">전체 Retrofit Response를 받아 <strong>헤더 접근 가능</strong></span>
+            </div>
+          </div>
+          <div class="journey-step gain">
+            <span class="step-num">3</span>
+            <div>
+              <code style="font-size:0.65rem;color:var(--viz-color-move);">ExperimentResolver.resolve(headers)</code><br>
+              <span style="font-size:0.62rem;color:var(--color-on-surface-muted);">HTTP 헤더에서 GrowthBook 실험 정보 자동 추출 &rarr; ExperimentInfo</span>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:8px;padding:8px 12px;background:rgba(74,222,128,0.04);border:1px solid rgba(74,222,128,0.15);border-radius:6px;">
+          <div style="font-size:0.6rem;font-weight:700;color:var(--viz-color-add);margin-bottom:4px;">이 변경으로 가능해지는 것</div>
+          <div style="font-size:0.65rem;color:var(--color-on-surface-body);line-height:1.6;">
+            &bull; CMS에서 등록한 panelCode로 섹션 데이터 자동 조회<br>
+            &bull; 한 번의 API 호출로 섹션 데이터 + AB 테스트 정보 동시 수신<br>
+            &bull; 패널별 독립 AB 테스트 (GrowthBook 실험 분기)
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="journey-verdict">
+      <div class="journey-verdict-card before">
+        <div class="verdict-label">Before</div>
+        ApiCaller 래퍼 + site 기반 + 헤더 접근 불가
+      </div>
+      <div class="journey-verdict-card after">
+        <div class="verdict-label">After</div>
+        직접 호출 + panelCode 기반 + AB 테스트 자동 분기
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 5: CATEGORY 3 — Features Infrastructure (layer_shift)         -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<div class="category" id="cat-features">
+  <div class="category-header">
+    <span class="category-number cat2">2</span>
+    <span class="category-title">패널 진입 경로 구축</span>
+    <span class="category-badge layer-shift">Flow</span>
+    <span class="category-desc">&ldquo;리빙관을 만들려면&rdquo; &mdash; 6단계 &rarr; 2단계</span>
+  </div>
+  <div class="category-insight">퀵메뉴, 배너, 푸시 어디서든 딥링크 하나로 패널에 진입합니다. 패널마다 전용 화면을 개발할 필요 없이 FragmentHostActivity가 자동으로 처리합니다.</div>
+  <div class="journey-container">
+    <div class="journey-grid">
+      <!-- Before journey -->
+      <div>
+        <div class="journey-col-label before-label">Before &mdash; 리빙관 추가 시</div>
+        <div class="journey-steps">
+          <div class="journey-step pain">
+            <span class="step-num">1</span>
+            <span>기획 &rarr; 개발팀에 화면 개발 요청</span>
+          </div>
+          <div class="journey-step pain">
+            <span class="step-num">2</span>
+            <span><code style="font-size:0.65rem;color:var(--viz-color-remove);">LivingPanelActivity.kt</code> 신규 생성</span>
+          </div>
+          <div class="journey-step pain">
+            <span class="step-num">3</span>
+            <span><code style="font-size:0.65rem;color:var(--viz-color-remove);">LivingPanelFragment.kt</code> + Intent 생성 로직 추가</span>
+          </div>
+          <div class="journey-step pain">
+            <span class="step-num">4</span>
+            <span>Section ViewHolder/ViewModel에 panelCode 수동 연동</span>
+          </div>
+          <div class="journey-step pain">
+            <span class="step-num">5</span>
+            <span>QA &rarr; 앱 빌드 &rarr; 스토어 배포</span>
+          </div>
+          <div class="journey-step wait">
+            <span class="step-num">6</span>
+            <span>사용자 앱 업데이트 후 사용 가능</span>
+          </div>
+        </div>
+      </div>
+      <!-- After journey -->
+      <div>
+        <div class="journey-col-label after-label">After &mdash; 리빙관 추가 시</div>
+        <div class="journey-steps">
+          <div class="journey-step gain">
+            <span class="step-num">1</span>
+            <div>
+              <span>La-CMS에서 패널 등록</span><br>
+              <span style="font-size:0.62rem;color:var(--color-on-surface-muted);">사이트: 마켓 &middot; 코드: living &middot; 패널명: 리빙관</span>
+            </div>
+          </div>
+          <div class="journey-step gain highlight">
+            <span class="step-num">2</span>
+            <div>
+              <span>딥링크 자동 생성 &rarr; 즉시 사용 가능</span>
+              <div class="journey-deeplink">kurly://panel?site=market&amp;code=living</div>
+              <!-- Mini UI Preview -->
+              <div class="journey-ui-preview">
+                <span class="journey-ui-btn">&times;</span>
+                <span class="journey-ui-title">리빙관</span>
+                <span class="journey-ui-btn">홈</span>
+                <span class="journey-ui-btn">장바구니</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:8px;padding:8px 12px;background:rgba(74,222,128,0.04);border:1px solid rgba(74,222,128,0.15);border-radius:6px;">
+          <div style="font-size:0.6rem;font-weight:700;color:var(--viz-color-add);margin-bottom:4px;">자동 처리되는 것들</div>
+          <div style="font-size:0.65rem;color:var(--color-on-surface-body);line-height:1.6;">
+            &bull; <code style="font-size:0.6rem;color:var(--viz-color-move);">FragmentHostActivity</code>가 panelCode 기반 화면 자동 구성<br>
+            &bull; <code style="font-size:0.6rem;color:var(--viz-color-move);">PanelIntentGenerator</code>가 딥링크 &rarr; Intent 자동 변환<br>
+            &bull; 종료된 패널 접근 시 &ldquo;현재 페이지는 종료되었습니다&rdquo; 알럿 자동 처리<br>
+            &bull; 사이트(마켓/뷰티)에 따라 자동으로 해당 사이트 테마 적용
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="journey-verdict">
+      <div class="journey-verdict-card before">
+        <div class="verdict-label">Before</div>
+        개발 요청 &rarr; 코드 작성 &rarr; 앱 배포 (수 주)
+      </div>
+      <div class="journey-verdict-card after">
+        <div class="verdict-label">After</div>
+        CMS 등록 &rarr; 즉시 사용 (수 분)
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 6: CATEGORY 4 — Amplitude Bifurcation (annotated_diff)        -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<div class="category" id="cat-amplitude">
+  <div class="category-header">
+    <span class="category-number cat3">3</span>
+    <span class="category-title">패널 전용 분석 이벤트</span>
+    <span class="category-badge diff">Diff</span>
+    <span class="category-desc">전문관별 성과를 독립 측정하는 이벤트 체계</span>
+  </div>
+  <div class="category-insight">리빙관에서 배너를 클릭했는지, 패션관에서 상품을 봤는지를 컬리추천탭과 분리하여 독립적으로 트래킹합니다.</div>
+  <div class="journey-container">
+    <div class="journey-grid">
+      <!-- Before -->
+      <div>
+        <div class="journey-col-label before-label">Before &mdash; 리빙관 성과를 보려면</div>
+        <div class="journey-steps">
+          <div class="journey-step pain">
+            <span class="step-num">1</span>
+            <div>
+              모든 이벤트가 <strong>컬리추천탭 전용</strong><br>
+              <span style="font-size:0.62rem;color:var(--color-on-surface-muted);">ImpressionRecommendation* 시리즈만 존재</span>
+            </div>
+          </div>
+          <div class="journey-step pain">
+            <span class="step-num">2</span>
+            <div>
+              리빙관/패션관 이벤트가 컬리추천탭과 <strong>섞여서 집계</strong><br>
+              <span style="font-size:0.62rem;color:var(--color-on-surface-muted);">전문관별 성과 분리 불가</span>
+            </div>
+          </div>
+          <div class="journey-step pain">
+            <span class="step-num">3</span>
+            <div>
+              panel_id 프로퍼티 없음 &mdash; 어떤 패널에서 발생한 이벤트인지 식별 불가
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- After -->
+      <div>
+        <div class="journey-col-label after-label">After &mdash; 리빙관 성과를 보려면</div>
+        <div class="journey-steps">
+          <div class="journey-step gain">
+            <span class="step-num">1</span>
+            <div>
+              <code style="font-size:0.65rem;color:var(--viz-color-move);">PanelUIType</code>으로 자동 분기<br>
+              <span style="font-size:0.62rem;color:var(--color-on-surface-muted);">컬리추천탭 = recommendation 이벤트 / 전문관 = panel 이벤트</span>
+            </div>
+          </div>
+          <div class="journey-step gain highlight">
+            <span class="step-num">2</span>
+            <div>
+              패널 전용 이벤트 9종으로 독립 트래킹<br>
+              <div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;">
+                <span style="font-size:0.58rem;padding:2px 6px;border-radius:4px;background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.2);color:var(--viz-color-emphasis);">노출: Section</span>
+                <span style="font-size:0.58rem;padding:2px 6px;border-radius:4px;background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.2);color:var(--viz-color-emphasis);">노출: Banner</span>
+                <span style="font-size:0.58rem;padding:2px 6px;border-radius:4px;background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.2);color:var(--viz-color-emphasis);">노출: Product</span>
+                <span style="font-size:0.58rem;padding:2px 6px;border-radius:4px;background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.2);color:var(--viz-color-emphasis);">노출: Button</span>
+                <span style="font-size:0.58rem;padding:2px 6px;border-radius:4px;background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.2);color:var(--viz-color-move);">클릭: Banner</span>
+                <span style="font-size:0.58rem;padding:2px 6px;border-radius:4px;background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.2);color:var(--viz-color-move);">클릭: Product</span>
+                <span style="font-size:0.58rem;padding:2px 6px;border-radius:4px;background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.2);color:var(--viz-color-move);">클릭: Shortcut</span>
+                <span style="font-size:0.58rem;padding:2px 6px;border-radius:4px;background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.2);color:var(--viz-color-move);">클릭: Button</span>
+                <span style="font-size:0.58rem;padding:2px 6px;border-radius:4px;background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.2);color:var(--viz-color-add);">진입: ViewPanel</span>
+              </div>
+            </div>
+          </div>
+          <div class="journey-step gain">
+            <span class="step-num">3</span>
+            <div>
+              모든 이벤트에 <code style="font-size:0.65rem;color:var(--viz-color-add);">panel_id</code> 프로퍼티 포함<br>
+              <span style="font-size:0.62rem;color:var(--color-on-surface-muted);">Amplitude에서 panel_id로 필터링 &rarr; 전문관별 성과 대시보드</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="journey-verdict">
+      <div class="journey-verdict-card before">
+        <div class="verdict-label">Before</div>
+        전문관 이벤트가 컬리추천탭에 섞여서 집계
+      </div>
+      <div class="journey-verdict-card after">
+        <div class="verdict-label">After</div>
+        panel_id로 전문관별 독립 성과 측정
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 7: CATEGORY 5 — New Sections + DeepLink (annotated_diff)      -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<div class="category" id="cat-sections">
+  <div class="category-header">
+    <span class="category-number cat4">4</span>
+    <span class="category-title">패널 노출 확장</span>
+    <span class="category-badge diff">확장</span>
+    <span class="category-desc">신규 템플릿 + 서브탭 진입 + 딥링크 호스트</span>
+  </div>
+  <div class="category-insight">패널이 노출될 수 있는 경로를 확장합니다 — 새 섹션 템플릿, 홈 서브탭 진입, 딥링크 호스트가 추가됩니다.</div>
+  <div class="journey-container">
+    <!-- 3개 카드 그리드 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:var(--spacing-sm);">
+      <!-- Card 1: 신규 템플릿 -->
+      <div style="padding:var(--spacing-md);background:var(--color-surface-inner);border:1px solid var(--color-border);border-radius:var(--shape-sm);border-top:3px solid var(--viz-color-add);">
+        <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--viz-color-add);margin-bottom:6px;">신규 섹션 템플릿</div>
+        <div style="font-size:0.78rem;font-weight:600;color:var(--color-on-surface);margin-bottom:4px;">랜덤 컬렉션 (캐싱 제거)</div>
+        <div style="font-size:0.65rem;color:var(--color-on-surface-body);line-height:1.5;">
+          접속할 때마다 <strong>다른 상품 컬렉션</strong>을 노출.<br>
+          기존 랜덤 컬렉션은 캐싱으로 동일 상품이 반복 노출되었으나, nocache 버전은 매번 새로운 구성.
+        </div>
+        <div class="journey-deeplink" style="margin-top:6px;">random_collection_nocache</div>
+      </div>
+      <!-- Card 2: 서브탭 진입 -->
+      <div style="padding:var(--spacing-md);background:var(--color-surface-inner);border:1px solid var(--color-border);border-radius:var(--shape-sm);border-top:3px solid var(--viz-color-move);">
+        <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--viz-color-move);margin-bottom:6px;">홈 서브탭 진입</div>
+        <div style="font-size:0.78rem;font-weight:600;color:var(--color-on-surface);margin-bottom:4px;">패널을 서브탭으로 노출</div>
+        <div style="font-size:0.65rem;color:var(--color-on-surface-body);line-height:1.5;">
+          서브탭 어드민에서<br>
+          <code style="font-size:0.6rem;color:var(--viz-color-move);">pageKey=panelCode</code><br>
+          <code style="font-size:0.6rem;color:var(--viz-color-move);">type=panel</code><br>
+          로 등록하면 마켓/뷰티 홈 탭에 서브탭으로 노출.
+        </div>
+        <div style="margin-top:6px;font-size:0.6rem;color:var(--color-on-surface-muted);font-style:italic;">원더컬리 등 대형 행사 서브탭으로 활용 예정</div>
+      </div>
+      <!-- Card 3: 딥링크 호스트 -->
+      <div style="padding:var(--spacing-md);background:var(--color-surface-inner);border:1px solid var(--color-border);border-radius:var(--shape-sm);border-top:3px solid var(--viz-color-emphasis);">
+        <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--viz-color-emphasis);margin-bottom:6px;">딥링크 호스트</div>
+        <div style="font-size:0.78rem;font-weight:600;color:var(--color-on-surface);margin-bottom:4px;">어디서든 패널로 유입</div>
+        <div style="font-size:0.65rem;color:var(--color-on-surface-body);line-height:1.5;">
+          퀵메뉴, 배너, 푸시, 외부 URL 등<br>
+          딥링크 하나로 패널 화면에 직접 진입.<br>
+          앱 내 어디서든 패널을 열 수 있는 범용 호스트.
+        </div>
+        <div class="journey-deeplink" style="margin-top:6px;">kurly://panel?site=&amp;code=</div>
+      </div>
+    </div>
+    <div style="margin-top:var(--spacing-md);font-size:0.7rem;color:var(--color-on-surface-muted);font-style:italic;padding:0 2px;">
+      1단계(현재): 앱 서브탭 + 딥링크 &middot; 2단계: 웹 서브탭 지원 &middot; 3단계: 컬리추천탭 범용화
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 8: SUMMARY — 전체 변경 결과 요약                              -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<div style="margin-top:var(--spacing-xl);padding:var(--spacing-lg);background:linear-gradient(135deg, rgba(74,222,128,0.04) 0%, rgba(96,165,250,0.04) 100%);border:1px solid rgba(74,222,128,0.15);border-radius:var(--shape-md);">
+  <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--viz-color-add);margin-bottom:var(--spacing-md);text-align:center;">전문관 신설 &mdash; Before vs After</div>
+  <div class="journey-verdict" style="margin-top:0;">
+    <div class="journey-verdict-card before" style="padding:var(--spacing-md);text-align:left;">
+      <div class="verdict-label" style="margin-bottom:8px;">Before</div>
+      <div style="display:flex;flex-direction:column;gap:6px;font-size:0.68rem;font-weight:400;">
+        <div>&bull; 기획 &rarr; <strong>개발팀에 화면 개발 요청</strong></div>
+        <div>&bull; 전용 Activity/Fragment 코드 작성</div>
+        <div>&bull; API 래퍼 연동 + AB 테스트 코드 추가</div>
+        <div>&bull; QA &rarr; 앱 빌드 &rarr; 스토어 배포</div>
+        <div>&bull; <strong>사용자 앱 업데이트 후</strong> 사용 가능</div>
+        <div style="margin-top:4px;padding-top:6px;border-top:1px solid rgba(107,114,128,0.2);font-weight:600;">소요: 수 주</div>
+      </div>
+    </div>
+    <div class="journey-verdict-card after" style="padding:var(--spacing-md);text-align:left;">
+      <div class="verdict-label" style="margin-bottom:8px;">After</div>
+      <div style="display:flex;flex-direction:column;gap:6px;font-size:0.68rem;font-weight:400;">
+        <div>&bull; La-CMS에서 <strong>패널 등록</strong> (코드/명/사이트)</div>
+        <div>&bull; 섹션 템플릿 배치 (최대 150개)</div>
+        <div>&bull; 딥링크 자동 생성 &rarr; 퀵메뉴/배너/푸시에 배치</div>
+        <div>&bull; AB 테스트는 GrowthBook에서 자동 분기</div>
+        <div>&bull; 패널 전용 이벤트로 <strong>성과 독립 측정</strong></div>
+        <div style="margin-top:4px;padding-top:6px;border-top:1px solid rgba(74,222,128,0.2);font-weight:600;">소요: 수 분 &mdash; 앱 코드 변경 없음</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 9: COGNITIVE RATIONALE (collapsible)                          -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<details class="rationale">
+  <summary>Cognitive Rationale &mdash; why this visualization looks the way it does</summary>
+  <div class="rationale-body">
+
+    <!-- Block 1: Inner Styles -->
+    <div>
+      <div class="rationale-block-label">Inner Styles</div>
+      <div class="rationale-text">
+        4개 카테고리를 기능 효과 관점으로 분류하고, 각각에 최적 inner style을 적용:<br>
+        <strong>Journey</strong>(API 구조 / 패널 진입 / 이벤트) &mdash; Before 단계 vs After 단계 비교로 &ldquo;무엇이 달라지는가&rdquo; 직관 전달.<br>
+        <strong>Card Grid</strong>(패널 노출 확장) &mdash; 순수 추가 항목 3종을 독립 카드로 병렬 제시.
+      </div>
+    </div>
+
+    <!-- Block 2: Applied Rules -->
+    <div>
+      <div class="rationale-block-label">Applied Rules</div>
+      <ul class="rationale-rules-list">
+        <li><span class="rule-id">RULE-C09</span> Slate 다크 테마 &mdash; Deep Navy 배경 + Slate 카드로 Figure-Ground 명확화 <span class="principle-ref">&larr; PRC-004, AES-003</span></li>
+        <li><span class="rule-id">RULE-C01</span> add=#4ade80, remove=#6b7280+취소선, move=#60a5fa, emphasis=#a78bfa, merge=#fb923c &mdash; 전체 시각화에서 색상 언어 일관 <span class="principle-ref">&larr; PRC-003</span></li>
+        <li><span class="rule-id">RULE-C02</span> 의미 색상 3가지: add(초록), remove(회색), move/emphasis(파랑/보라) &mdash; 인지 비용 최소화 <span class="principle-ref">&larr; PRC-005</span></li>
+        <li><span class="rule-id">RULE-L02</span> 카테고리당 1개 시각화 스타일 = 1 cognitive chunk, 동시 강조 &le; 2 <span class="principle-ref">&larr; WM-001, WM-002</span></li>
+        <li><span class="rule-id">RULE-T01</span> 각 카테고리 하단 note가 1문장으로 핵심 메시지 전달 <span class="principle-ref">&larr; IP-001, WM-003</span></li>
+        <li><span class="rule-id">RULE-CMP03</span> Funnel의 수렴 형태, Merge의 &oplus;, Layer Shift의 화살표가 변경 안내 역할 <span class="principle-ref">&larr; ATT-002, ATT-003</span></li>
+        <li><span class="rule-id">RULE-S01</span> 모든 간격은 4dp 배수 (8, 16, 24, 32, 48) <span class="principle-ref">&larr; AES-003</span></li>
+      </ul>
+    </div>
+
+    <!-- Block 3: Inner Style Rationale -->
+    <div>
+      <div class="rationale-block-label">Inner Style Selection Rationale</div>
+      <ul class="rationale-rules-list">
+        <li><span class="rule-id">Journey (Cat 1)</span> API 호출 구조 &mdash; Before 3단계(래퍼+site+헤더 미접근) vs After 3단계(직접호출+panelCode+헤더 추출)로 단순화 과정 직관 전달 <span class="principle-ref">&larr; WM-002</span></li>
+        <li><span class="rule-id">Journey (Cat 2)</span> 패널 진입 경로 &mdash; Before 6단계(개발 요청~배포) vs After 2단계(CMS 등록~즉시)로 운영 효율 개선을 단계 수 대비로 전달 <span class="principle-ref">&larr; IP-001</span></li>
+        <li><span class="rule-id">Journey (Cat 3)</span> 패널 전용 이벤트 &mdash; Before 3단계(섞여서 집계) vs After 3단계(PanelUIType 분기+9종+panel_id)로 분석 독립성 전달 <span class="principle-ref">&larr; ATT-003</span></li>
+        <li><span class="rule-id">Card Grid (Cat 4)</span> 패널 노출 확장 &mdash; Before 없는 순수 추가 3종(템플릿/서브탭/딥링크)을 독립 카드로 병렬 제시하여 스캔 가능성 확보 <span class="principle-ref">&larr; WM-001</span></li>
+      </ul>
+    </div>
+
+    <!-- Block 4: Self-Evaluation -->
+    <div>
+      <div class="rationale-block-label">Self-Evaluation</div>
+      <div class="eval-grid">
+        <div class="eval-cell"><div class="eval-score">4/5</div><div class="eval-label">Clarity</div></div>
+        <div class="eval-cell"><div class="eval-score">5/5</div><div class="eval-label">Change Visibility</div></div>
+        <div class="eval-cell"><div class="eval-score">5/5</div><div class="eval-label">Anchor Stability</div></div>
+        <div class="eval-cell"><div class="eval-score">4/5</div><div class="eval-label">Text Economy</div></div>
+      </div>
+    </div>
+
+    <!-- Evidence Trail -->
+    <div>
+      <div class="rationale-block-label">Evidence Trail</div>
+      <ul class="evidence-list">
+        <li><span class="evidence-level l1">L1</span> Cowan (2001) &mdash; 작업기억 4&plusmn;1 &rarr; 5개 카테고리는 한계 경계, 마지막 카테고리 경량 처리로 보정</li>
+        <li><span class="evidence-level l2">L2</span> Hullman &amp; Diakopoulos (2011) &mdash; 내러티브 프레이밍이 해석에 +23% 이해도 향상 &rarr; inner style이 변경 유형의 "형태"를 프레이밍</li>
+        <li><span class="evidence-level l2">L2</span> Munzner (2014) &mdash; 과제 유형에 따른 시각 인코딩 선택 &rarr; merge에는 수렴, move에는 공간 이동, diff에는 인라인 교체</li>
+        <li><span class="evidence-level l2">L2</span> Rensink et al. (1997) &mdash; 변화 맹시 방지 &rarr; Funnel의 높이 대비, Merge의 &oplus;, Layer Shift의 화살표가 사전 안내</li>
+        <li><span class="evidence-level l2">L2</span> Segel &amp; Heer (2010) &mdash; author-driven 내러티브 + 앵커 링크 = 안내하되 탐색 허용하는 하이브리드 접근</li>
+      </ul>
+    </div>
+
+  </div>
+</details>
+
+</body>
+</html>
