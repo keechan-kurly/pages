@@ -877,6 +877,42 @@ function applyFilters() {
 
   document.getElementById('noResults').style.display = total === 0 ? 'block' : 'none';
 }
+
+// ── Sort items by ticket/PR number (descending) ──
+const SORT_KEYS = {
+  'pr-review-automation.html': 7461,
+  'boot-route-strategy.html': 7446,
+  'naver-sa-floating-banner.html': 7434,
+  'filter-bottomsheet-unification.html': 7402,
+  'search-nav3-migration.html': 7359,
+  'blog-ci-build-optimization.html': 7326,
+  'blog-ui-system-cleanup.html': 7315,
+  'blog-webview-texture-crash.html': 6950,
+  'deeplink-routing-simplification.html': 6165,
+  'blog-search-pagination-room-migration.html': 6419,
+  'blog-popup-architecture.html': 5853,
+  'home-universal-panel.html': 5596,
+  'search-related-product-recommendation.html': 5253,
+  'blog-impression-architecture.html': 5122,
+  'blog-composeview-height-issue.html': 4211,
+};
+
+(function sortItems() {
+  document.querySelectorAll('.year-content').forEach(content => {
+    const grid = content.querySelector('.grid');
+    if (grid) {
+      const cards = [...grid.querySelectorAll('.card')];
+      cards.sort((a, b) => (SORT_KEYS[b.getAttribute('href')] || 0) - (SORT_KEYS[a.getAttribute('href')] || 0));
+      cards.forEach(c => grid.appendChild(c));
+    }
+    const rows = [...content.querySelectorAll('.list-row')];
+    if (rows.length) {
+      const parent = rows[0].parentElement;
+      rows.sort((a, b) => (SORT_KEYS[b.getAttribute('href')] || 0) - (SORT_KEYS[a.getAttribute('href')] || 0));
+      rows.forEach(r => parent.appendChild(r));
+    }
+  });
+})();
 </script>
 
 </body>
