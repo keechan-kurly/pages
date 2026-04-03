@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PR Review Automation</title>
+<style>
+  :root {
+    --color-bg: #0c0f1a;
+    --color-surface: rgba(30,41,59,0.65);
+    --color-surface-high: rgba(51,65,85,0.5);
+    --color-on-surface: #f1f5f9;
+    --color-on-surface-body: #94a3b8;
+    --color-outline: rgba(71,85,105,0.6);
+    --accent-1: #f472b6;
+    --accent-2: #818cf8;
+    --accent-3: #34d399;
+    --glow-1: rgba(244,114,182,0.15);
+    --glow-2: rgba(129,140,248,0.15);
+    --shape-sm: 8px;
+    --shape-md: 12px;
+    --shape-lg: 16px;
+    --font-mono: 'SF Mono', 'Fira Code', Consolas, monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--color-bg);
+    background-image: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(129,140,248,0.08) 0%, transparent 60%);
+    color: var(--color-on-surface);
+    padding: 32px 24px;
+    min-height: 100vh;
+    max-width: 960px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+
+  /* ── Animation ── */
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .ani { opacity: 0; animation: fadeInUp 0.45s ease-out forwards; }
+  .d1 { animation-delay: 0.05s; } .d2 { animation-delay: 0.12s; }
+  .d3 { animation-delay: 0.19s; } .d4 { animation-delay: 0.26s; }
+  .d5 { animation-delay: 0.33s; } .d6 { animation-delay: 0.40s; }
+  .d7 { animation-delay: 0.47s; }
+
+  /* ═══════════════════════════════════════════════════════════════ */
+  /*  HERO                                                         */
+  /* ═══════════════════════════════════════════════════════════════ */
+  .hero { margin-bottom: 40px; }
+  .hero-badge {
+    display: inline-block;
+    font-size: 0.72rem; font-weight: 700;
+    padding: 5px 14px; border-radius: 20px;
+    background: rgba(244,114,182,0.15);
+    color: var(--accent-1);
+    border: 1px solid rgba(244,114,182,0.35);
+    margin-bottom: 12px;
+  }
+  .hero h1 {
+    font-size: 1.5rem; font-weight: 800;
+    letter-spacing: -0.5px;
+    margin-bottom: 8px;
+  }
+  .hero .subtitle {
+    font-size: 0.92rem;
+    color: var(--color-on-surface-body);
+    line-height: 1.6;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════ */
+  /*  SECTION (workflow card)                                       */
+  /* ═══════════════════════════════════════════════════════════════ */
+  .section {
+    background: var(--color-surface);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--color-outline);
+    border-radius: var(--shape-lg);
+    padding: 32px;
+    margin-bottom: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .section::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, var(--section-glow, rgba(244,114,182,0.4)) 50%, transparent 100%);
+  }
+  .section.wf1 { --section-glow: rgba(244,114,182,0.4); }
+  .section.wf2 { --section-glow: rgba(129,140,248,0.4); }
+  .section.wf3 { --section-glow: rgba(52,211,153,0.4); }
+  .section-header {
+    margin-bottom: 24px;
+  }
+  .section-badge {
+    display: inline-block;
+    font-size: 0.62rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.6px;
+    padding: 3px 10px; border-radius: 12px;
+    margin-bottom: 10px;
+  }
+  .section-badge.wf1 { background: rgba(244,114,182,0.12); color: var(--accent-1); border: 1px solid rgba(244,114,182,0.3); }
+  .section-badge.wf2 { background: rgba(129,140,248,0.12); color: var(--accent-2); border: 1px solid rgba(129,140,248,0.3); }
+  .section-title {
+    font-size: 1.15rem; font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .section-desc {
+    font-size: 0.82rem;
+    color: var(--color-on-surface-body);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════ */
+  /*  HORIZONTAL STEP CARDS                                        */
+  /* ═══════════════════════════════════════════════════════════════ */
+  .steps {
+    display: flex;
+    align-items: flex-start;
+    gap: 0;
+  }
+  .step-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 24px 16px;
+    background: rgba(51,65,85,0.35);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(71,85,105,0.5);
+    border-radius: var(--shape-md);
+    min-height: 140px;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .step-card:hover {
+    border-color: rgba(148,163,184,0.4);
+    background: rgba(51,65,85,0.5);
+  }
+  .step-num {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.95rem; font-weight: 800; color: #fff;
+    margin-bottom: 12px;
+    flex-shrink: 0;
+  }
+  .step-num.a1 { background: var(--accent-1); box-shadow: 0 0 16px var(--glow-1), 0 0 4px var(--glow-1); }
+  .step-num.a2 { background: var(--accent-2); box-shadow: 0 0 16px var(--glow-2), 0 0 4px var(--glow-2); }
+  .step-num.a3 { background: var(--accent-3); box-shadow: 0 0 16px rgba(52,211,153,0.15); }
+  .step-title {
+    font-size: 0.88rem; font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .step-title.a1 { color: var(--accent-1); }
+  .step-title.a2 { color: var(--accent-2); }
+  .step-title.a3 { color: var(--accent-3); }
+  .step-desc {
+    font-size: 0.75rem;
+    color: var(--color-on-surface-body);
+    line-height: 1.5;
+  }
+  .step-arrow {
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    color: rgba(148,163,184,0.45);
+    font-size: 1.3rem;
+    flex-shrink: 0;
+    margin-top: 52px;
+  }
+
+  /* Escalation pills inside step card */
+  .esc-pills {
+    display: flex; gap: 4px; flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 8px;
+  }
+  .esc {
+    font-size: 0.58rem; font-weight: 700;
+    padding: 2px 8px; border-radius: 10px;
+    white-space: nowrap;
+  }
+  .esc.l0 { background: rgba(148,163,184,0.15); color: var(--color-on-surface-body); border: 1px solid rgba(148,163,184,0.3); }
+  .esc.l1 { background: rgba(251,202,4,0.18); color: #FBCA04; border: 1px solid rgba(251,202,4,0.4); }
+  .esc.l2 { background: rgba(238,155,0,0.18); color: #EE9B00; border: 1px solid rgba(238,155,0,0.4); }
+  .esc.l3 { background: rgba(229,57,53,0.18); color: #E53935; border: 1px solid rgba(229,57,53,0.4); }
+
+  /* ── Callout bar ── */
+  .callout {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 20px;
+    padding: 12px 16px;
+    background: rgba(148,163,184,0.06);
+    border: 1px solid rgba(148,163,184,0.15);
+    border-left: 3px solid rgba(148,163,184,0.3);
+    border-radius: 0 var(--shape-sm) var(--shape-sm) 0;
+    font-size: 0.78rem;
+    color: var(--color-on-surface-body);
+  }
+  .callout code {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    padding: 1px 5px;
+    background: rgba(148,163,184,0.12);
+    border-radius: 4px;
+    color: var(--color-on-surface);
+  }
+  .callout-icon {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════ */
+  /*  BEFORE / AFTER                                                */
+  /* ═══════════════════════════════════════════════════════════════ */
+  .ba-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .ba-panel {
+    padding: 20px;
+    border-radius: var(--shape-md);
+    border: 1px solid var(--color-outline);
+  }
+  .ba-panel.before {
+    background: var(--color-surface-high);
+    border-left: 3px solid #888;
+  }
+  .ba-panel.after {
+    background: rgba(52,211,153,0.04);
+    border-left: 3px solid var(--accent-3);
+  }
+  .ba-label {
+    font-size: 0.6rem; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 1px;
+    margin-bottom: 10px;
+  }
+  .ba-label.before { color: #888; }
+  .ba-label.after  { color: var(--accent-3); }
+  .ba-list {
+    list-style: none;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .ba-list li {
+    font-size: 0.78rem; line-height: 1.55;
+    color: var(--color-on-surface-body);
+    padding-left: 16px; position: relative;
+  }
+  .ba-list li::before {
+    content: ''; position: absolute; left: 0; top: 8px;
+    width: 5px; height: 5px; border-radius: 50%;
+  }
+  .ba-panel.before .ba-list li::before { background: #888; }
+  .ba-panel.after  .ba-list li::before { background: var(--accent-3); }
+
+  /* ═══════════════════════════════════════════════════════════════ */
+  /*  RATIONALE                                                     */
+  /* ═══════════════════════════════════════════════════════════════ */
+  .rationale {
+    margin-top: 32px;
+    border: 1px solid var(--color-outline);
+    border-radius: var(--shape-md);
+    background: var(--color-surface);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .rationale summary {
+    font-size: 0.7rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.6px;
+    color: var(--color-on-surface-body);
+    padding: 14px 16px;
+    cursor: pointer; user-select: none;
+    list-style: none;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .rationale summary::before { content: '\25B8'; transition: transform 0.15s; }
+  .rationale[open] summary::before { transform: rotate(90deg); }
+  .rationale-body {
+    padding: 0 16px 16px;
+    display: flex; flex-direction: column; gap: 20px;
+  }
+  .r-label {
+    font-size: 0.58rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.6px;
+    color: var(--color-on-surface-body);
+    margin-bottom: 4px;
+  }
+  .r-rules { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+  .r-rules li {
+    font-size: 0.75rem; padding: 8px 12px;
+    background: var(--color-surface-high);
+    border-radius: var(--shape-sm);
+    border: 1px solid var(--color-outline);
+    color: var(--color-on-surface-body);
+  }
+  .rid { font-family: var(--font-mono); font-size: 0.62rem; font-weight: 700; color: #a78bfa; margin-right: 6px; }
+  .eval-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .eval-cell {
+    text-align: center; padding: 8px;
+    background: var(--color-surface-high);
+    border-radius: var(--shape-sm);
+    border: 1px solid var(--color-outline);
+  }
+  .eval-score { font-size: 1.05rem; font-weight: 700; color: #a78bfa; }
+  .eval-lbl { font-size: 0.55rem; text-transform: uppercase; letter-spacing: 0.4px; color: var(--color-on-surface-body); margin-top: 2px; }
+  .r-mono {
+    font-family: var(--font-mono); font-size: 0.7rem;
+    color: var(--color-on-surface-body); line-height: 1.7;
+    white-space: pre-line;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 700px) {
+    .steps { flex-direction: column; align-items: stretch; }
+    .step-arrow { transform: rotate(90deg); padding: 6px 0; margin-top: 0; align-self: center; }
+    .ba-grid { grid-template-columns: 1fr; }
+    .eval-grid { grid-template-columns: repeat(2, 1fr); }
+    .section { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══ HERO ═══ -->
+<div class="hero ani d1">
+  <span class="hero-badge">KMA-7461 · PR #7349</span>
+  <h1>PR 리뷰 자동화</h1>
+  <p class="subtitle">수동 독촉 없이 PR 경과일 라벨과 Slack 자동 알림으로 팀 전체의 리뷰 리드타임을 줄이고 리뷰 문화를 정착시킨다.</p>
+</div>
+
+<!-- ═══ WORKFLOW 1: PR Age Labeler ═══ -->
+<div class="section wf1 ani d2">
+  <div class="section-header">
+    <div class="section-badge wf1">pr_age_labeler.yml</div>
+    <div class="section-title">PR Age Labeler</div>
+    <div class="section-desc">매일 08:00 KST → open PR 경과일 계산 → 색상 라벨 에스컬레이션</div>
+  </div>
+
+  <div class="steps">
+    <div class="step-card">
+      <div class="step-num a1">1</div>
+      <div class="step-title a1">PR 조회</div>
+      <div class="step-desc">open PR 전체 조회<br>draft 자동 제외</div>
+    </div>
+    <div class="step-arrow">→</div>
+    <div class="step-card">
+      <div class="step-num a1">2</div>
+      <div class="step-title a1">경과일 계산</div>
+      <div class="step-desc">created_at 기준<br>일 단위 산출</div>
+    </div>
+    <div class="step-arrow">→</div>
+    <div class="step-card">
+      <div class="step-num a1">3</div>
+      <div class="step-title a1">라벨 결정</div>
+      <div class="step-desc">구간별 에스컬레이션</div>
+      <div class="esc-pills">
+        <span class="esc l1">1-2일</span>
+        <span class="esc l2">3-4일</span>
+        <span class="esc l3">5일+</span>
+      </div>
+    </div>
+    <div class="step-arrow">→</div>
+    <div class="step-card">
+      <div class="step-num a1">4</div>
+      <div class="step-title a1">라벨 교체</div>
+      <div class="step-desc">이전 라벨 제거<br>새 라벨 자동 부착</div>
+    </div>
+  </div>
+
+  <div class="callout">
+    <span class="callout-icon">🏷️</span>
+    <span>라벨 미존재 시 자동 생성 · 당일(0일) PR은 라벨 없음 · <code>workflow_dispatch</code>로 수동 실행 가능</span>
+  </div>
+</div>
+
+<!-- ═══ WORKFLOW 2: Slack Review Digest ═══ -->
+<div class="section wf2 ani d3">
+  <div class="section-header">
+    <div class="section-badge wf2">pr_review_digest.yml</div>
+    <div class="section-title">Slack Review Digest</div>
+    <div class="section-desc">평일 08:00 KST → 미리뷰 PR 수집 → Slack 채널에 다이제스트 전송</div>
+  </div>
+
+  <div class="steps">
+    <div class="step-card">
+      <div class="step-num a2">1</div>
+      <div class="step-title a2">PR 수집</div>
+      <div class="step-desc">GitHub API 조회<br>draft 제외</div>
+    </div>
+    <div class="step-arrow">→</div>
+    <div class="step-card">
+      <div class="step-num a2">2</div>
+      <div class="step-title a2">이모지 매핑</div>
+      <div class="step-desc">경과일별 색상 할당</div>
+      <div class="esc-pills">
+        <span class="esc l0">🟢 0일</span>
+        <span class="esc l1">🟡 1-2일</span>
+        <span class="esc l2">🟠 3-4일</span>
+        <span class="esc l3">🔴 5일+</span>
+      </div>
+    </div>
+    <div class="step-arrow">→</div>
+    <div class="step-card">
+      <div class="step-num a2">3</div>
+      <div class="step-title a2">정렬 · 리뷰어</div>
+      <div class="step-desc">오래된 순 정렬<br>요청된 리뷰어 표시</div>
+    </div>
+    <div class="step-arrow">→</div>
+    <div class="step-card">
+      <div class="step-num a2">4</div>
+      <div class="step-title a2">Slack 전송</div>
+      <div class="step-desc">Block Kit 메시지<br>팀 채널에 자동 전송</div>
+    </div>
+  </div>
+
+  <div class="callout">
+    <span class="callout-icon">💬</span>
+    <span>채널은 <code>vars.PR_REVIEW_SLACK_CHANNEL</code>로 설정 · PR 0개면 축하 메시지 · 토큰 미설정 시 graceful skip</span>
+  </div>
+</div>
+
+<!-- ═══ BEFORE / AFTER ═══ -->
+<div class="section wf3 ani d4">
+  <div class="section-header">
+    <div class="section-badge" style="background:rgba(52,211,153,0.12);color:var(--accent-3);border:1px solid rgba(52,211,153,0.3);">Before → After</div>
+    <div class="section-title">개발 워크플로우 변화</div>
+  </div>
+
+  <div class="ba-grid">
+    <div class="ba-panel before">
+      <div class="ba-label before">Before</div>
+      <ul class="ba-list">
+        <li>매번 GitHub PR 탭을 열어 직접 확인</li>
+        <li>PR 경과일 시각 단서 없음 — 오래된 PR이 묻힘</li>
+        <li>리뷰 독촉은 구두 또는 DM에 의존</li>
+        <li>팀 전체 리뷰 현황 파악 불가</li>
+        <li>반복적인 수동 운영 비용 발생</li>
+      </ul>
+    </div>
+    <div class="ba-panel after">
+      <div class="ba-label after">After</div>
+      <ul class="ba-list">
+        <li>PR 목록에서 색상 라벨로 긴급도 즉시 인지</li>
+        <li>3단계 에스컬레이션 라벨 자동 부착/교체</li>
+        <li>매일 아침 Slack에 리뷰 다이제스트 자동 전송</li>
+        <li>팀 전체가 동일한 리뷰 현황 공유</li>
+        <li>수동 독촉/확인 작업 완전 자동화</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ COGNITIVE RATIONALE ═══ -->
+<details class="rationale ani d5">
+  <summary>Cognitive Rationale</summary>
+  <div class="rationale-body">
+    <div>
+      <div class="r-label">적용 규칙</div>
+      <ul class="r-rules">
+        <li><span class="rid">RULE-L05</span> 가로 스텝 카드로 순차 파이프라인의 자연스러운 읽기 방향(좌→우) 구현</li>
+        <li><span class="rid">RULE-C01</span> 워크플로우별 색상 분리 — 주황(Age Labeler) / 파랑(Slack Digest) / 초록(Before/After)</li>
+        <li><span class="rid">RULE-C04</span> 에스컬레이션 pill에 실제 GitHub 라벨 색상(#FBCA04, #EE9B00, #E53935) 적용</li>
+        <li><span class="rid">RULE-S03</span> side_by_side Before/After로 변화 탐지 극대화</li>
+        <li><span class="rid">RULE-T01</span> 카드당 제목 1개 + 설명 2줄 이내로 텍스트 절약</li>
+      </ul>
+    </div>
+    <div>
+      <div class="r-label">자체 평가</div>
+      <div class="eval-grid">
+        <div class="eval-cell"><div class="eval-score">1/5</div><div class="eval-lbl">인지 부하</div></div>
+        <div class="eval-cell"><div class="eval-score">5/5</div><div class="eval-lbl">변경 가시성</div></div>
+        <div class="eval-cell"><div class="eval-score">5/5</div><div class="eval-lbl">앵커 안정성</div></div>
+        <div class="eval-cell"><div class="eval-score">5/5</div><div class="eval-lbl">텍스트 절약</div></div>
+      </div>
+    </div>
+    <div>
+      <div class="r-label">Inner Style 선택 로그</div>
+      <p class="r-mono">Cat-1 "PR Age Labeler" → 4단계 순차 파이프라인 → horizontal step_cards (에스컬레이션 pill 내장)
+Cat-2 "Slack Review Digest" → 4단계 데이터 변환 → horizontal step_cards (이모지 pill 내장)
+Cat-3 "워크플로우 변화" → Before(수동) vs After(자동) → side_by_side</p>
+    </div>
+  </div>
+</details>
+
+</body>
+</html>
