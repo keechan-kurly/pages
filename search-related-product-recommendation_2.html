@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KMA-5253 검색 연관상품 추천 - Change Visualization</title>
+<style>
+  :root {
+    --cv-add: #0072B2;
+    --cv-del: #D55E00;
+    --cv-mod: #E69F00;
+    --cv-mov: #56B4E9;
+    --cv-bg: #FFFFFF;
+    --cv-text: #1a1a1a;
+    --cv-muted: #6b7280;
+    --cv-border: #e5e7eb;
+    --cv-section-bg: #f9fafb;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: var(--cv-text);
+    background: var(--cv-bg);
+    line-height: 1.6;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 32px 24px;
+  }
+  .cv-header {
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 2px solid var(--cv-border);
+  }
+  .cv-header h1 { font-size: 24px; font-weight: 700; margin-bottom: 8px; letter-spacing: -0.5px; }
+  .cv-header .cv-summary { color: var(--cv-muted); font-size: 15px; }
+  .cv-section { margin-bottom: 48px; }
+  .cv-legend {
+    display: flex; gap: 16px; flex-wrap: wrap;
+    padding: 12px 16px; background: var(--cv-section-bg);
+    border-radius: 8px; margin-bottom: 32px; font-size: 13px;
+  }
+  .cv-legend-item { display: flex; align-items: center; gap: 6px; }
+  .cv-legend-dot { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+  /* Mobile Mock Animation */
+  @keyframes anchorDetailSlide {
+    0%, 6% { transform: translateX(100%); }
+    12%, 30% { transform: translateX(0); }
+    36%, 100% { transform: translateX(100%); }
+  }
+  @keyframes anchorScroll {
+    0%, 52% { transform: translateY(0); }
+    62%, 82% { transform: translateY(-90px); }
+    92%, 100% { transform: translateY(0); }
+  }
+  @keyframes anchorInsert {
+    0%, 38% { max-height: 0; opacity: 0; padding: 0 10px; border-left-width: 0; }
+    48%, 88% { max-height: 120px; opacity: 1; padding: 8px 10px; border-left-width: 2px; }
+    95%, 100% { max-height: 0; opacity: 0; padding: 0 10px; border-left-width: 0; }
+  }
+  @keyframes anchorTapFlash {
+    0%, 5% { background: transparent; }
+    7%, 10% { background: rgba(0,114,178,0.15); }
+    14%, 100% { background: rgba(0,114,178,0.06); }
+  }
+
+  /* Pipeline step highlight — synced with 12s mock animation
+     Timeline: Step1 0-12% | Step2 12-30% | Step3 30-40% | Step4 40-52% | Step5 52-82% | idle 82-100% */
+  .pipe-step {
+    display: flex; gap: 12px; align-items: flex-start;
+    padding: 8px 12px 8px 12px;
+    border-radius: 8px;
+    border-left: 3px solid transparent;
+    animation-duration: 12s;
+    animation-timing-function: ease;
+    animation-iteration-count: infinite;
+  }
+  .pipe-num {
+    flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%;
+    color: #fff; font-size: 13px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    animation-duration: 12s;
+    animation-timing-function: ease;
+    animation-iteration-count: infinite;
+  }
+  .pipe-conn {
+    margin-left: 25px; width: 2px; height: 12px; margin-bottom: 4px;
+    background: #e5e7eb;
+    animation-duration: 12s;
+    animation-timing-function: ease;
+    animation-iteration-count: infinite;
+  }
+  /* Step 1: 0%-12% */
+  @keyframes hl1 {
+    0%,10%  { background:rgba(0,114,178,0.07); border-left-color:var(--cv-add); }
+    14%     { background:transparent; border-left-color:transparent; }
+    100%    { background:transparent; border-left-color:transparent; }
+  }
+  @keyframes rg1 {
+    0%,10%  { box-shadow:0 0 0 4px rgba(0,114,178,0.22); }
+    14%     { box-shadow:0 0 0 0 rgba(0,114,178,0); }
+    100%    { box-shadow:0 0 0 0 rgba(0,114,178,0); }
+  }
+  @keyframes cn1 {
+    10%,12% { background:var(--cv-add); }
+    16%     { background:#e5e7eb; }
+    100%    { background:#e5e7eb; }
+  }
+  /* Step 2: 12%-30% */
+  @keyframes hl2 {
+    0%,10%  { background:transparent; border-left-color:transparent; }
+    14%,28% { background:rgba(0,114,178,0.07); border-left-color:var(--cv-add); }
+    32%     { background:transparent; border-left-color:transparent; }
+    100%    { background:transparent; border-left-color:transparent; }
+  }
+  @keyframes rg2 {
+    0%,10%  { box-shadow:0 0 0 0 rgba(0,114,178,0); }
+    14%,28% { box-shadow:0 0 0 4px rgba(0,114,178,0.22); }
+    32%     { box-shadow:0 0 0 0 rgba(0,114,178,0); }
+    100%    { box-shadow:0 0 0 0 rgba(0,114,178,0); }
+  }
+  @keyframes cn2 {
+    0%,28%  { background:#e5e7eb; }
+    30%,32% { background:var(--cv-add); }
+    36%     { background:#e5e7eb; }
+    100%    { background:#e5e7eb; }
+  }
+  /* Step 3: 30%-40% */
+  @keyframes hl3 {
+    0%,28%  { background:transparent; border-left-color:transparent; }
+    32%,38% { background:rgba(0,114,178,0.07); border-left-color:var(--cv-add); }
+    42%     { background:transparent; border-left-color:transparent; }
+    100%    { background:transparent; border-left-color:transparent; }
+  }
+  @keyframes rg3 {
+    0%,28%  { box-shadow:0 0 0 0 rgba(0,114,178,0); }
+    32%,38% { box-shadow:0 0 0 4px rgba(0,114,178,0.22); }
+    42%     { box-shadow:0 0 0 0 rgba(0,114,178,0); }
+    100%    { box-shadow:0 0 0 0 rgba(0,114,178,0); }
+  }
+  @keyframes cn3 {
+    0%,38%  { background:#e5e7eb; }
+    40%,42% { background:var(--cv-add); }
+    46%     { background:#e5e7eb; }
+    100%    { background:#e5e7eb; }
+  }
+  /* Step 4: 40%-52% */
+  @keyframes hl4 {
+    0%,38%  { background:transparent; border-left-color:transparent; }
+    42%,50% { background:rgba(0,114,178,0.07); border-left-color:var(--cv-add); }
+    54%     { background:transparent; border-left-color:transparent; }
+    100%    { background:transparent; border-left-color:transparent; }
+  }
+  @keyframes rg4 {
+    0%,38%  { box-shadow:0 0 0 0 rgba(45,49,66,0); }
+    42%,50% { box-shadow:0 0 0 4px rgba(45,49,66,0.22); }
+    54%     { box-shadow:0 0 0 0 rgba(45,49,66,0); }
+    100%    { box-shadow:0 0 0 0 rgba(45,49,66,0); }
+  }
+  @keyframes cn4 {
+    0%,50%  { background:#e5e7eb; }
+    52%,54% { background:var(--cv-add); }
+    58%     { background:#e5e7eb; }
+    100%    { background:#e5e7eb; }
+  }
+  /* Step 5: 52%-82% */
+  @keyframes hl5 {
+    0%,50%  { background:transparent; border-left-color:transparent; }
+    54%,80% { background:rgba(0,114,178,0.07); border-left-color:var(--cv-add); }
+    84%     { background:transparent; border-left-color:transparent; }
+    100%    { background:transparent; border-left-color:transparent; }
+  }
+  @keyframes rg5 {
+    0%,50%  { box-shadow:0 0 0 0 rgba(0,114,178,0); }
+    54%,80% { box-shadow:0 0 0 4px rgba(0,114,178,0.22); }
+    84%     { box-shadow:0 0 0 0 rgba(0,114,178,0); }
+    100%    { box-shadow:0 0 0 0 rgba(0,114,178,0); }
+  }
+
+  /* Citations toggle */
+  .cv-citations-toggle {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15px;
+    font-weight: 700;
+    color: #1a1a2e;
+    border: none;
+    background: none;
+    padding: 0;
+    font-family: inherit;
+  }
+  .cv-citations-toggle .arrow {
+    display: inline-block;
+    transition: transform 200ms ease;
+    font-size: 12px;
+    color: #6b7280;
+  }
+  .cv-citations-toggle[aria-expanded="true"] .arrow {
+    transform: rotate(90deg);
+  }
+  .cv-citations-content {
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 300ms ease;
+  }
+  .cv-citations-content.open {
+    max-height: 600px;
+  }
+</style>
+</head>
+<body>
+
+<div class="cv-header">
+  <h1>KMA-5253 검색 연관상품 추천</h1>
+  <p class="cv-summary">검색 결과에서 사용자가 상품을 클릭하면, 연관 상품 추천 섹션을 동적으로 삽입하는 기능. PagingSource를 RemoteMediator + CachePool 패턴으로 전환하여 실시간 데이터 삽입을 지원한다.</p>
+</div>
+
+<div class="cv-legend">
+  <span class="cv-legend-item"><span class="cv-legend-dot" style="background:var(--cv-add)"></span><span>+ 추가</span></span>
+  <span class="cv-legend-item"><span class="cv-legend-dot" style="background:var(--cv-del)"></span><span>- 삭제</span></span>
+  <span class="cv-legend-item"><span class="cv-legend-dot" style="background:var(--cv-mod)"></span><span>~ 수정</span></span>
+  <span class="cv-legend-item"><span class="cv-legend-dot" style="background:var(--cv-mov)"></span><span>&rarr; 이동</span></span>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 1: 페이징 아키텍처 전환 -->
+<!-- ============================================================ -->
+<section class="cv-section">
+  <div style="margin-bottom:24px;">
+    <h2 style="font-size:22px; font-weight:700; color:#1a1a2e; letter-spacing:-0.5px; margin-bottom:8px;">페이징 아키텍처 전환</h2>
+    <p style="font-size:13px; color:#6b7280; line-height:1.6; max-width:720px;">
+      검색 결과에 연관상품을 실시간으로 삽입하기 위해, 직접 API를 호출하던 PagingSource를
+      <strong style="color:var(--cv-add);">RemoteMediator + CachePool + CacheSource</strong> 3계층 구조로 전환했다.
+      CachePool이 중간에 위치하여 데이터를 캐싱하고, 외부에서 연관상품을 삽입/롤백할 수 있는 통로를 제공한다.
+    </p>
+  </div>
+
+  <div style="display:flex; gap:32px; align-items:flex-start;">
+
+    <!-- BEFORE -->
+    <div style="flex:1; min-width:0;">
+      <div style="font-size:15px; font-weight:600; color:#374151; margin-bottom:16px; padding-bottom:8px; border-bottom:2px solid var(--cv-del);">Before</div>
+      <div style="display:flex; flex-direction:column; align-items:center; gap:0;">
+
+        <!-- Network (top) -->
+        <div style="width:100%; background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:12px 16px; text-align:center; box-shadow:0px 1px 3px rgba(0,0,0,0.08), 0px 1px 2px rgba(0,0,0,0.06);">
+          <div style="font-size:11px; font-weight:500; color:#6b7280; text-transform:uppercase; letter-spacing:0.5px;">Network</div>
+          <div style="font-size:13px; color:#374151; margin-top:4px;">SearchService</div>
+        </div>
+
+        <!-- Arrow: Data → Network (data depends on network) -->
+        <div style="display:flex; flex-direction:column; align-items:center; padding:4px 0;">
+          <div style="width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-bottom:7px solid #6b7280;"></div>
+          <div style="width:2px; height:12px; background:#6b7280;"></div>
+        </div>
+
+        <!-- Data Layer — 삭제 대상 -->
+        <div style="width:100%; background:var(--cv-del); border:2px solid var(--cv-del); border-radius:8px; padding:12px 16px; text-align:center; position:relative;">
+          <div style="position:absolute; top:-8px; right:8px; background:var(--cv-del); color:#fff; font-size:11px; font-weight:600; padding:1px 6px; border-radius:4px;">- 삭제</div>
+          <div style="font-size:11px; font-weight:500; color:#fff; text-transform:uppercase; letter-spacing:0.5px;">Data</div>
+          <div style="font-size:13px; color:#fff; margin-top:4px; font-weight:600;">SearchProductPagingSource</div>
+          <div style="font-size:11px; color:rgba(255,255,255,0.85); margin-top:4px;">직접 API 호출 + PagingData 반환</div>
+        </div>
+
+        <!-- Arrow: Data → Domain (data depends on domain) -->
+        <div style="display:flex; flex-direction:column; align-items:center; padding:4px 0;">
+          <div style="width:2px; height:12px; background:#6b7280;"></div>
+          <div style="width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-top:7px solid #6b7280;"></div>
+        </div>
+
+        <!-- Domain -->
+        <div style="width:100%; background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:12px 16px; text-align:center; box-shadow:0px 1px 3px rgba(0,0,0,0.08), 0px 1px 2px rgba(0,0,0,0.06);">
+          <div style="font-size:11px; font-weight:500; color:#6b7280; text-transform:uppercase; letter-spacing:0.5px;">Domain</div>
+          <div style="font-size:13px; color:#374151; margin-top:4px;">SearchRepository (interface)</div>
+        </div>
+
+        <!-- Arrow: Features → Domain (features depends on domain) -->
+        <div style="display:flex; flex-direction:column; align-items:center; padding:4px 0;">
+          <div style="width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-bottom:7px solid #6b7280;"></div>
+          <div style="width:2px; height:12px; background:#6b7280;"></div>
+        </div>
+
+        <!-- Features (bottom) -->
+        <div style="width:100%; background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:12px 16px; text-align:center; box-shadow:0px 1px 3px rgba(0,0,0,0.08), 0px 1px 2px rgba(0,0,0,0.06);">
+          <div style="font-size:11px; font-weight:500; color:#6b7280; text-transform:uppercase; letter-spacing:0.5px;">Features</div>
+          <div style="font-size:13px; color:#374151; margin-top:4px;">ProductListViewModel</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- AFTER -->
+    <div style="flex:1.3; min-width:0;">
+      <div style="font-size:15px; font-weight:600; color:#374151; margin-bottom:16px; padding-bottom:8px; border-bottom:2px solid var(--cv-add);">After</div>
+      <div style="display:flex; flex-direction:column; align-items:center; gap:0;">
+
+        <!-- Network (top) -->
+        <div style="width:100%; background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:12px 16px; text-align:center; box-shadow:0px 1px 3px rgba(0,0,0,0.08), 0px 1px 2px rgba(0,0,0,0.06);">
+          <div style="font-size:11px; font-weight:500; color:#6b7280; text-transform:uppercase; letter-spacing:0.5px;">Network</div>
+          <div style="font-size:13px; color:#374151; margin-top:4px;">SearchService + RecommendService</div>
+        </div>
+
+        <!-- Arrow up (Data depends on Network) -->
+        <div style="display:flex; flex-direction:column; align-items:center; padding:4px 0;">
+          <div style="width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-bottom:7px solid var(--cv-add);"></div>
+          <div style="width:2px; height:8px; background:var(--cv-add);"></div>
+        </div>
+
+        <!-- Data Layer — 3계층 그룹 -->
+        <div style="width:100%; background:rgba(0,114,178,0.04); border:2px solid var(--cv-add); border-radius:12px; padding:16px 16px 12px;">
+          <div style="font-size:11px; font-weight:600; color:var(--cv-add); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px;">+ Data — 새 페이징 계층</div>
+
+          <div style="background:#fff; border:1.5px solid var(--cv-add); border-radius:8px; padding:12px 16px; margin-bottom:8px; position:relative; box-shadow:0px 1px 3px rgba(0,0,0,0.08), 0px 1px 2px rgba(0,0,0,0.06);">
+            <div style="position:absolute; top:-8px; left:12px; background:var(--cv-add); color:#fff; font-size:11px; font-weight:500; padding:1px 6px; border-radius:4px;">+</div>
+            <div style="font-size:13px; font-weight:600; color:#1a1a2e;">SearchProductRemoteMediator</div>
+            <div style="font-size:11px; color:#6b7280; margin-top:2px;">API 호출 &rarr; CachePool에 저장</div>
+          </div>
+
+          <div style="display:flex; flex-direction:column; align-items:center; padding:2px 0;">
+            <div style="width:2px; height:6px; background:var(--cv-add);"></div>
+            <div style="width:0; height:0; border-left:4px solid transparent; border-right:4px solid transparent; border-top:6px solid var(--cv-add);"></div>
+          </div>
+
+          <!-- CachePool 핵심 노드 -->
+          <div style="background:#2d3142; border:2px solid var(--cv-add); border-radius:8px; padding:12px 16px; margin:4px 0 8px; box-shadow:0px 4px 12px rgba(0,0,0,0.10), 0px 1px 3px rgba(0,0,0,0.06); position:relative;">
+            <div style="position:absolute; top:-8px; left:12px; background:var(--cv-add); color:#fff; font-size:11px; font-weight:500; padding:1px 6px; border-radius:4px;">+ 핵심</div>
+            <div style="font-size:13px; font-weight:700; color:#fff;">SearchProductCachePool</div>
+            <div style="font-size:11px; color:rgba(255,255,255,0.8); margin-top:4px; line-height:1.5;">
+              인메모리 캐시 &middot; Mutex 동기화<br>
+              insert / revert / clear 지원<br>
+              <span style="color:var(--cv-mov);">&rarr; 연관상품 실시간 삽입 통로</span>
+            </div>
+          </div>
+
+          <div style="display:flex; flex-direction:column; align-items:center; padding:2px 0;">
+            <div style="width:2px; height:6px; background:var(--cv-add);"></div>
+            <div style="width:0; height:0; border-left:4px solid transparent; border-right:4px solid transparent; border-top:6px solid var(--cv-add);"></div>
+          </div>
+
+          <div style="background:#fff; border:1.5px solid var(--cv-add); border-radius:8px; padding:12px 16px; position:relative; box-shadow:0px 1px 3px rgba(0,0,0,0.08), 0px 1px 2px rgba(0,0,0,0.06);">
+            <div style="position:absolute; top:-8px; left:12px; background:var(--cv-add); color:#fff; font-size:11px; font-weight:500; padding:1px 6px; border-radius:4px;">+</div>
+            <div style="font-size:13px; font-weight:600; color:#1a1a2e;">SearchProductCacheSource</div>
+            <div style="font-size:11px; color:#6b7280; margin-top:2px;">캐시에서 읽는 PagingSource &middot; invalidation으로 UI 갱신</div>
+          </div>
+        </div>
+
+        <!-- Arrow down (Data depends on Domain) -->
+        <div style="display:flex; flex-direction:column; align-items:center; padding:4px 0;">
+          <div style="width:2px; height:12px; background:#6b7280;"></div>
+          <div style="width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-top:7px solid #6b7280;"></div>
+        </div>
+
+        <!-- Domain -->
+        <div style="width:100%; background:#f9fafb; border:1.5px solid var(--cv-mod); border-radius:8px; padding:12px 16px; text-align:center; box-shadow:0px 1px 3px rgba(0,0,0,0.08), 0px 1px 2px rgba(0,0,0,0.06); position:relative;">
+          <div style="position:absolute; top:-8px; right:8px; background:var(--cv-mod); color:#1a1a1a; font-size:11px; font-weight:600; padding:1px 6px; border-radius:4px;">~ 수정</div>
+          <div style="font-size:11px; font-weight:500; color:#6b7280; text-transform:uppercase; letter-spacing:0.5px;">Domain</div>
+          <div style="font-size:13px; color:#374151; margin-top:4px;">SearchRepository (interface)</div>
+          <div style="font-size:11px; color:var(--cv-add); margin-top:2px;">+ InsertRelatedProductUseCase, CreateClickSignalUseCase</div>
+        </div>
+
+        <!-- Arrow up (Features depends on Domain) -->
+        <div style="display:flex; flex-direction:column; align-items:center; padding:4px 0;">
+          <div style="width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-bottom:7px solid #6b7280;"></div>
+          <div style="width:2px; height:12px; background:#6b7280;"></div>
+        </div>
+
+        <!-- Features (bottom) -->
+        <div style="width:100%; background:#f9fafb; border:1.5px solid var(--cv-mod); border-radius:8px; padding:12px 16px; text-align:center; box-shadow:0px 1px 3px rgba(0,0,0,0.08), 0px 1px 2px rgba(0,0,0,0.06); position:relative;">
+          <div style="position:absolute; top:-8px; right:8px; background:var(--cv-mod); color:#1a1a1a; font-size:11px; font-weight:600; padding:1px 6px; border-radius:4px;">~ 수정</div>
+          <div style="font-size:11px; font-weight:500; color:#6b7280; text-transform:uppercase; letter-spacing:0.5px;">Features</div>
+          <div style="font-size:13px; color:#374151; margin-top:4px;">ProductListViewModel</div>
+          <div style="font-size:11px; color:var(--cv-add); margin-top:2px;">+ SearchAnchorHandler, RelatedProductViewHolder</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Hilt 스코프 변경 -->
+  <div style="margin-top:24px; padding:12px 16px; border-left:3px solid var(--cv-mod);">
+    <div style="font-size:11px; font-weight:500; color:#6b7280; text-transform:uppercase; margin-bottom:4px;">~ Hilt 스코프 변경</div>
+    <div style="font-size:13px; color:#374151;">
+      SearchRepository, RecommendRepository에 <code style="font-family:ui-monospace,monospace; font-size:12px; background:#fef7e8; padding:1px 4px; border-radius:3px;">@Singleton</code> 스코프 추가 &mdash;
+      CachePool이 앱 전역에서 단일 인스턴스로 유지되어야 하기 때문.
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION 2: 연관상품 삽입 파이프라인 + 모바일 Mock -->
+<!-- ============================================================ -->
+<section class="cv-section">
+  <div style="margin-bottom:24px;">
+    <h2 style="font-size:22px; font-weight:700; color:#1a1a2e; letter-spacing:-0.5px; margin-bottom:8px;">연관상품 삽입 파이프라인</h2>
+    <p style="font-size:13px; color:#6b7280; line-height:1.6; max-width:720px;">
+      사용자가 검색 결과에서 상품을 클릭하면, Feature Flag 확인 후 추천 API를 호출하여 연관상품 섹션을
+      클릭한 상품 바로 뒤에 동적으로 삽입한다. 검색 화면으로 돌아오면 앵커 스크롤이 삽입된 위치로 안내한다.
+    </p>
+  </div>
+
+  <div style="display:flex; gap:32px; align-items:flex-start;">
+
+    <!-- 좌측: 파이프라인 단계 (12s 애니메이션 동기화) -->
+    <div style="flex:1; min-width:0;">
+
+      <!-- Step 1 -->
+      <div class="pipe-step" style="animation-name:hl1;">
+        <div class="pipe-num" style="background:var(--cv-add); animation-name:rg1;">1</div>
+        <div style="flex:1; min-width:0;">
+          <div style="font-size:13px; font-weight:600; color:#1a1a2e; margin-bottom:2px;">사용자가 검색 결과에서 상품 클릭</div>
+          <div style="font-size:11px; color:#6b7280; margin-bottom:4px;">Feature Flag 확인 후 연관상품 추천 프로세스 시작</div>
+          <code style="font-family:ui-monospace,monospace; font-size:11px; background:#f3f4f6; padding:2px 6px; border-radius:3px; color:#374151;">ProductListViewModel.onClickProduct()</code>
+        </div>
+      </div>
+      <div class="pipe-conn" style="animation-name:cn1;"></div>
+
+      <!-- Step 2 -->
+      <div class="pipe-step" style="animation-name:hl2;">
+        <div class="pipe-num" style="background:var(--cv-add); animation-name:rg2;">2</div>
+        <div style="flex:1; min-width:0;">
+          <div style="font-size:13px; font-weight:600; color:#1a1a2e; margin-bottom:2px;">추천 API로 연관상품 조회</div>
+          <div style="font-size:11px; color:#6b7280; margin-bottom:4px;">클릭한 상품 번호로 연관상품 목록을 서버에서 가져옴</div>
+          <code style="font-family:ui-monospace,monospace; font-size:11px; background:#f3f4f6; padding:2px 6px; border-radius:3px; color:#374151;">InsertRelatedProductUseCase.invoke()</code>
+          <br>
+          <code style="font-family:ui-monospace,monospace; font-size:11px; background:#e8f4f8; padding:2px 6px; border-radius:3px; color:var(--cv-add); margin-top:2px; display:inline-block;">GET recommend/v1/related-products/after-return/{productNo}</code>
+        </div>
+      </div>
+      <div class="pipe-conn" style="animation-name:cn2;"></div>
+
+      <!-- Step 3 -->
+      <div class="pipe-step" style="animation-name:hl3;">
+        <div class="pipe-num" style="background:var(--cv-add); animation-name:rg3;">3</div>
+        <div style="flex:1; min-width:0;">
+          <div style="font-size:13px; font-weight:600; color:#1a1a2e; margin-bottom:2px;">응답을 SectionElement로 변환</div>
+          <div style="font-size:11px; color:#6b7280; margin-bottom:4px;">API 응답을 검색 결과와 동일한 섹션 형태로 매핑</div>
+          <code style="font-family:ui-monospace,monospace; font-size:11px; background:#f3f4f6; padding:2px 6px; border-radius:3px; color:#374151;">RelatedProductSectionMapper.mapping()</code>
+        </div>
+      </div>
+      <div class="pipe-conn" style="animation-name:cn3;"></div>
+
+      <!-- Step 4 -->
+      <div class="pipe-step" style="animation-name:hl4;">
+        <div class="pipe-num" style="background:#2d3142; animation-name:rg4;">4</div>
+        <div style="flex:1; min-width:0;">
+          <div style="font-size:13px; font-weight:600; color:#1a1a2e; margin-bottom:2px;">클릭 상품 바로 뒤에 캐시 삽입</div>
+          <div style="font-size:11px; color:#6b7280; margin-bottom:4px;">이전 삽입을 롤백하고, 새 연관상품을 클릭 위치 바로 다음에 삽입</div>
+          <code style="font-family:ui-monospace,monospace; font-size:11px; background:#f3f4f6; padding:2px 6px; border-radius:3px; color:#374151;">SearchProductCachePool.revert() &rarr; insert(targetId, item)</code>
+        </div>
+      </div>
+      <div class="pipe-conn" style="animation-name:cn4;"></div>
+
+      <!-- Step 5 -->
+      <div class="pipe-step" style="animation-name:hl5;">
+        <div class="pipe-num" style="background:var(--cv-add); animation-name:rg5;">5</div>
+        <div style="flex:1; min-width:0;">
+          <div style="font-size:13px; font-weight:600; color:#1a1a2e; margin-bottom:2px;">PagingSource 무효화로 UI 갱신 + 앵커 스크롤</div>
+          <div style="font-size:11px; color:#6b7280; margin-bottom:4px;">캐시 변경을 감지하여 리스트를 갱신하고, 검색 화면 복귀 시 삽입 위치로 스크롤</div>
+          <code style="font-family:ui-monospace,monospace; font-size:11px; background:#f3f4f6; padding:2px 6px; border-radius:3px; color:#374151;">PagingSourceFactory.invalidate()</code>
+          <br>
+          <code style="font-family:ui-monospace,monospace; font-size:11px; background:#f3f4f6; padding:2px 6px; border-radius:3px; color:#374151; margin-top:2px; display:inline-block;">SearchAnchorHandler.anchorToRelatedProduct()</code>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 우측: 모바일 Mock 애니메이션 -->
+    <div style="flex-shrink:0;">
+      <div style="width:220px; background:#e2e8f0; border-radius:24px; padding:8px; box-shadow:0 8px 32px rgba(0,0,0,0.12), inset 0 0 0 1px rgba(0,0,0,0.06);">
+        <!-- Notch -->
+        <div style="width:80px; height:6px; background:#cbd5e1; border-radius:3px; margin:0 auto 6px;"></div>
+        <!-- Screen -->
+        <div style="background:#ffffff; border-radius:16px; overflow:hidden; height:340px; position:relative;">
+          <!-- Search bar -->
+          <div style="padding:8px 12px; font-size:10px; color:#6b7280; background:#f9fafb; border-bottom:1px solid #e5e7eb; font-family:-apple-system,sans-serif;">검색: 샐러드</div>
+
+          <!-- Scrollable list -->
+          <div style="animation:anchorScroll 12s ease-in-out infinite;">
+            <!-- Item 1 -->
+            <div style="display:flex; align-items:center; gap:8px; padding:10px 12px; border-bottom:1px solid #f3f4f6;">
+              <div style="width:40px; height:40px; border-radius:6px; flex-shrink:0; background:linear-gradient(135deg, rgba(0,114,178,0.12), rgba(86,180,233,0.12));"></div>
+              <div style="display:flex; flex-direction:column; gap:2px;">
+                <div style="font-size:10px; color:#1a1a1a; font-weight:500; font-family:-apple-system,sans-serif;">유기농 샐러드 키트</div>
+                <div style="font-size:9px; color:#6b7280; font-family:ui-monospace,monospace;">8,900원</div>
+              </div>
+            </div>
+
+            <!-- Item 2 (clicked) -->
+            <div style="display:flex; align-items:center; gap:8px; padding:10px 12px; border-bottom:1px solid #f3f4f6; position:relative; animation:anchorTapFlash 12s ease-in-out infinite;">
+              <div style="width:40px; height:40px; border-radius:6px; flex-shrink:0; background:linear-gradient(135deg, rgba(0,114,178,0.15), rgba(86,180,233,0.2));"></div>
+              <div style="display:flex; flex-direction:column; gap:2px;">
+                <div style="font-size:10px; color:#1a1a1a; font-weight:500; font-family:-apple-system,sans-serif;">리코타 치즈 샐러드</div>
+                <div style="font-size:9px; color:#6b7280; font-family:ui-monospace,monospace;">12,500원</div>
+              </div>
+              <div style="position:absolute; top:6px; right:8px; font-size:8px; font-weight:700; padding:1px 5px; border-radius:4px; background:rgba(0,114,178,0.15); color:var(--cv-add); font-family:-apple-system,sans-serif;">클릭</div>
+            </div>
+
+            <!-- Inserted section (animated) -->
+            <div style="background:linear-gradient(135deg, rgba(0,114,178,0.04), rgba(0,114,178,0.08)); border-left:2px solid var(--cv-add); overflow:hidden; animation:anchorInsert 12s ease-in-out infinite;">
+              <div style="font-size:8px; font-weight:700; color:var(--cv-add); display:flex; align-items:center; gap:4px; margin-bottom:6px; font-family:-apple-system,sans-serif;">방금 본 상품과 연관상품</div>
+              <div style="display:flex; gap:6px;">
+                <div style="flex:1; text-align:center; font-size:7px; color:#6b7280; font-family:-apple-system,sans-serif;">
+                  <div style="width:100%; aspect-ratio:1; border-radius:4px; margin-bottom:3px; background:linear-gradient(135deg, rgba(0,114,178,0.1), rgba(0,114,178,0.18));"></div>
+                  그릭 샐러드
+                </div>
+                <div style="flex:1; text-align:center; font-size:7px; color:#6b7280; font-family:-apple-system,sans-serif;">
+                  <div style="width:100%; aspect-ratio:1; border-radius:4px; margin-bottom:3px; background:linear-gradient(135deg, rgba(0,114,178,0.1), rgba(0,114,178,0.18));"></div>
+                  발사믹 드레싱
+                </div>
+                <div style="flex:1; text-align:center; font-size:7px; color:#6b7280; font-family:-apple-system,sans-serif;">
+                  <div style="width:100%; aspect-ratio:1; border-radius:4px; margin-bottom:3px; background:linear-gradient(135deg, rgba(0,114,178,0.1), rgba(0,114,178,0.18));"></div>
+                  모짜렐라 치즈
+                </div>
+              </div>
+            </div>
+
+            <!-- Item 3 -->
+            <div style="display:flex; align-items:center; gap:8px; padding:10px 12px; border-bottom:1px solid #f3f4f6;">
+              <div style="width:40px; height:40px; border-radius:6px; flex-shrink:0; background:linear-gradient(135deg, rgba(0,114,178,0.08), rgba(86,180,233,0.08));"></div>
+              <div style="display:flex; flex-direction:column; gap:2px;">
+                <div style="font-size:10px; color:#1a1a1a; font-weight:500; font-family:-apple-system,sans-serif;">닭가슴살 샐러드</div>
+                <div style="font-size:9px; color:#6b7280; font-family:ui-monospace,monospace;">9,800원</div>
+              </div>
+            </div>
+
+            <!-- Item 4 -->
+            <div style="display:flex; align-items:center; gap:8px; padding:10px 12px; border-bottom:1px solid #f3f4f6;">
+              <div style="width:40px; height:40px; border-radius:6px; flex-shrink:0; background:linear-gradient(135deg, rgba(0,114,178,0.08), rgba(86,180,233,0.08));"></div>
+              <div style="display:flex; flex-direction:column; gap:2px;">
+                <div style="font-size:10px; color:#1a1a1a; font-weight:500; font-family:-apple-system,sans-serif;">연어 포케 샐러드</div>
+                <div style="font-size:9px; color:#6b7280; font-family:ui-monospace,monospace;">15,900원</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Product Detail Overlay -->
+          <div style="position:absolute; top:0; left:0; right:0; bottom:0; z-index:10; background:#ffffff; animation:anchorDetailSlide 12s ease-in-out infinite; transform:translateX(100%);">
+            <div style="padding:10px 12px; font-size:9px; color:var(--cv-add); font-weight:600; font-family:-apple-system,sans-serif;">&larr; 검색결과</div>
+            <div style="width:100%; height:130px; background:linear-gradient(135deg, rgba(0,114,178,0.1), rgba(86,180,233,0.18));"></div>
+            <div style="padding:12px 12px 2px; font-size:12px; font-weight:700; color:#1a1a1a; font-family:-apple-system,sans-serif;">리코타 치즈 샐러드</div>
+            <div style="padding:2px 12px; font-size:11px; font-weight:700; color:var(--cv-add); font-family:ui-monospace,monospace;">12,500원</div>
+            <div style="padding:8px 12px; font-size:8px; color:#6b7280; line-height:1.6; font-family:-apple-system,sans-serif;">신선한 리코타 치즈와 제철 채소로 구성된 프리미엄 샐러드</div>
+            <div style="margin:12px; padding:10px; text-align:center; border-radius:8px; font-size:10px; font-weight:700; background:var(--cv-add); color:#fff; font-family:-apple-system,sans-serif;">장바구니 담기</div>
+          </div>
+
+        </div>
+      </div>
+      <div style="text-align:center; margin-top:8px; font-size:11px; color:#6b7280;">12초 루프 애니메이션</div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- Citations (collapsible) -->
+<!-- ============================================================ -->
+<div style="margin-top:40px; padding-top:24px; border-top:2px solid #e5e7eb;">
+  <button class="cv-citations-toggle" aria-expanded="false" onclick="var c=this.nextElementSibling;var open=c.classList.toggle('open');this.setAttribute('aria-expanded',open);this.querySelector('.arrow').style.transform=open?'rotate(90deg)':'rotate(0deg)';">
+    <span class="arrow">&#9654;</span>
+    적용된 설계 근거
+  </button>
+  <div class="cv-citations-content">
+    <table style="width:100%; border-collapse:collapse; font-size:11px; line-height:1.5; margin-top:16px;">
+      <thead>
+        <tr style="background:#f9fafb;">
+          <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb; font-weight:600; color:#374151; width:60px;">규칙</th>
+          <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb; font-weight:600; color:#374151; width:140px;">원칙</th>
+          <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb; font-weight:600; color:#374151;">학술 근거</th>
+          <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb; font-weight:600; color:#374151;">이 시각화에서의 적용</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid #f3f4f6;">
+          <td style="padding:6px 8px; color:#0072B2; font-weight:600;">COM-01</td>
+          <td style="padding:6px 8px; color:#374151;">동시 요소 &le; 4</td>
+          <td style="padding:6px 8px; color:#6b7280; font-style:italic;">Cowan (2001). The magical number 4. BBS.</td>
+          <td style="padding:6px 8px; color:#374151;">Before 다이어그램 4개 레이어, 파이프라인 5단계 분절</td>
+        </tr>
+        <tr style="border-bottom:1px solid #f3f4f6;">
+          <td style="padding:6px 8px; color:#0072B2; font-weight:600;">COM-06</td>
+          <td style="padding:6px 8px; color:#374151;">Okabe-Ito 팔레트</td>
+          <td style="padding:6px 8px; color:#6b7280; font-style:italic;">Okabe &amp; Ito (2008). Color Universal Design.</td>
+          <td style="padding:6px 8px; color:#374151;">추가=#0072B2, 삭제=#D55E00, 수정=#E69F00으로 변경 유형 구분</td>
+        </tr>
+        <tr style="border-bottom:1px solid #f3f4f6;">
+          <td style="padding:6px 8px; color:#0072B2; font-weight:600;">COM-07</td>
+          <td style="padding:6px 8px; color:#374151;">색상+기호 중복 코딩</td>
+          <td style="padding:6px 8px; color:#6b7280; font-style:italic;">W3C (2023). WCAG 2.2 SC 1.4.1.</td>
+          <td style="padding:6px 8px; color:#374151;">+/-/~ 기호를 모든 뱃지에 병행 표기</td>
+        </tr>
+        <tr style="border-bottom:1px solid #f3f4f6;">
+          <td style="padding:6px 8px; color:#0072B2; font-weight:600;">COM-09</td>
+          <td style="padding:6px 8px; color:#374151;">변경의 "왜" 포함</td>
+          <td style="padding:6px 8px; color:#6b7280; font-style:italic;">Riche et al. (2018). Data-Driven Storytelling. CRC Press.</td>
+          <td style="padding:6px 8px; color:#374151;">각 섹션 소개에 변경 목적(실시간 삽입, Feature Flag 제어) 명시</td>
+        </tr>
+        <tr style="border-bottom:1px solid #f3f4f6;">
+          <td style="padding:6px 8px; color:#0072B2; font-weight:600;">COM-10</td>
+          <td style="padding:6px 8px; color:#374151;">중요 변경 = 높은 현저성</td>
+          <td style="padding:6px 8px; color:#6b7280; font-style:italic;">Itti &amp; Koch (2001). Computational attention. Nat Rev Neurosci.</td>
+          <td style="padding:6px 8px; color:#374151;">CachePool을 다크 accent(#2d3142) 배경으로 최대 시각적 존재감 부여</td>
+        </tr>
+        <tr style="border-bottom:1px solid #f3f4f6;">
+          <td style="padding:6px 8px; color:#0072B2; font-weight:600;">COM-13</td>
+          <td style="padding:6px 8px; color:#374151;">공통 영역 그룹화</td>
+          <td style="padding:6px 8px; color:#6b7280; font-style:italic;">Palmer (1992). Common region. Cognitive Psychology.</td>
+          <td style="padding:6px 8px; color:#374151;">새 페이징 3계층을 공통 테두리 영역으로 그룹화</td>
+        </tr>
+        <tr style="border-bottom:1px solid #f3f4f6;">
+          <td style="padding:6px 8px; color:#0072B2; font-weight:600;">DES-01~17</td>
+          <td style="padding:6px 8px; color:#374151;">디자인 토큰</td>
+          <td style="padding:6px 8px; color:#6b7280; font-style:italic;">Uizard + Material Design 3 + GitHub Primer 교차 분석</td>
+          <td style="padding:6px 8px; color:#374151;">Typography 4단계, Spacing 6단계, Neutral 5단계, Shadow 2단계 적용</td>
+        </tr>
+        <tr style="border-bottom:1px solid #f3f4f6;">
+          <td style="padding:6px 8px; color:#0072B2; font-weight:600;">STR-01,02</td>
+          <td style="padding:6px 8px; color:#374151;">전략 선택</td>
+          <td style="padding:6px 8px; color:#6b7280; font-style:italic;">Segel &amp; Heer (2010). Narrative Visualization. IEEE TVCG.</td>
+          <td style="padding:6px 8px; color:#374151;">STRUCTURE &rarr; Layer Diagram, FLOW &rarr; Data Pipeline 전략 선택</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div style="margin-top:32px; padding-top:16px; border-top:1px solid #e5e7eb; font-size:12px; color:#6b7280;">
+  Generated by change-viz | 2026-04-06
+</div>
+
+</body>
+</html>

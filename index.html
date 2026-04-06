@@ -53,6 +53,7 @@
   .year-group:nth-child(1) { animation-delay: 0.15s; }
   .year-group:nth-child(2) { animation-delay: 0.25s; }
   .year-group:nth-child(3) { animation-delay: 0.35s; }
+  .year-group:nth-child(4) { animation-delay: 0.45s; }
   .card, .list-row { animation: fadeInUp 0.4s ease both; }
   .year-group:nth-child(1) .card:nth-child(1),
   .year-group:nth-child(1) .list-row:nth-child(2) { animation-delay: 0.2s; }
@@ -258,6 +259,17 @@
   .card.blog .cstat { background: var(--blog-dim); color: var(--blog); border: 1px solid var(--blog-border); }
   .card.viz .cstat { background: var(--viz-dim); color: var(--viz); border: 1px solid var(--viz-border); }
 
+  /* Page selector buttons inside card */
+  .card-pages { display: flex; gap: 4px; margin-left: auto; }
+  .card-page-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px; border-radius: 6px;
+    font-size: 0.65rem; font-weight: 700; text-decoration: none;
+    background: var(--surface); border: 1px solid var(--viz-border);
+    color: var(--on-surface-faint); transition: all 0.15s; cursor: pointer;
+  }
+  .card-page-btn:hover { background: var(--viz-dim); color: var(--viz); border-color: var(--viz); text-decoration: none; }
+
   /* ═══ List View ═══ */
   .list-wrap { display: none; padding: 8px 0 20px; }
   .list-wrap.active { display: block; }
@@ -336,9 +348,9 @@
   <div class="sidebar-section">
     <div class="sidebar-label">Overview</div>
     <div class="stats">
-      <div class="stat"><div class="stat-val">14</div><div class="stat-lbl">Total</div></div>
-      <div class="stat"><div class="stat-val">3</div><div class="stat-lbl">Years</div></div>
-      <div class="stat"><div class="stat-val">16</div><div class="stat-lbl">PRs</div></div>
+      <div class="stat"><div class="stat-val">16</div><div class="stat-lbl">Total</div></div>
+      <div class="stat"><div class="stat-val">4</div><div class="stat-lbl">Years</div></div>
+      <div class="stat"><div class="stat-val">17</div><div class="stat-lbl">PRs</div></div>
       <div class="stat"><div class="stat-val">7</div><div class="stat-lbl">Categories</div></div>
     </div>
   </div>
@@ -356,6 +368,7 @@
       <span class="stag" data-tag="deeplink">DeepLink</span>
       <span class="stag" data-tag="navigation">Navigation</span>
       <span class="stag" data-tag="paging">Paging</span>
+      <span class="stag" data-tag="search">Search</span>
     </div>
   </div>
 
@@ -387,7 +400,7 @@
       <div class="year-header">
         <span class="year-chevron">&#x25BE;</span>
         <span class="year-text">2026</span>
-        <span class="year-count">8</span>
+        <span class="year-count">9</span>
         <span class="year-line"></span>
       </div>
       <div class="year-content">
@@ -441,6 +454,7 @@
               <span class="card-arrow">&#x2192;</span>
             </div>
           </a>
+
 
           <a href="pr-review-automation.html" class="card viz" data-type="viz" data-tags="ci,github-actions,slack" data-search="PR 경과일 라벨 리뷰 다이제스트 slack 자동화 kma-7461">
             <div class="card-top">
@@ -526,6 +540,7 @@
             </div>
           </a>
 
+
         </div>
       </div>
     </div>
@@ -590,7 +605,7 @@
             </div>
           </a>
 
-          <a href="search-related-product-recommendation.html" class="card viz" data-type="viz" data-tags="search,paging,recommendation" data-search="검색 연관상품 실시간 추천 삽입 캐시 페이징 앵커링 kma-5253">
+          <div class="card viz" data-type="viz" data-tags="search,paging,recommendation" data-search="검색 연관상품 실시간 추천 삽입 캐시 페이징 앵커링 변경 시각화 kma-5253">
             <div class="card-top">
               <span class="card-badge">Viz</span>
               <span class="card-date">KMA-5253</span>
@@ -600,9 +615,12 @@
             <div class="card-stats"><span class="cstat">78 파일</span><span class="cstat">+2,014줄</span></div>
             <div class="card-bottom">
               <div class="card-tags"><span class="ctag">PAT-026</span><span class="ctag">Hybrid</span></div>
-              <span class="card-arrow">&#x2192;</span>
+              <div class="card-pages">
+                <a href="search-related-product-recommendation.html" class="card-page-btn" title="cognitive-visualization">1</a>
+                <a href="search-related-product-recommendation_2.html" class="card-page-btn" title="diff-visualization">2</a>
+              </div>
             </div>
-          </a>
+          </div>
 
         </div>
       </div>
@@ -613,7 +631,7 @@
       <div class="year-header">
         <span class="year-chevron">&#x25BE;</span>
         <span class="year-text">2024</span>
-        <span class="year-count">2</span>
+        <span class="year-count">1</span>
         <span class="year-line"></span>
       </div>
       <div class="year-content">
@@ -654,6 +672,35 @@
       </div>
     </div>
 
+    <!-- 2023 -->
+    <div class="year-group" data-year="2023">
+      <div class="year-header">
+        <span class="year-chevron">&#x25BE;</span>
+        <span class="year-text">2023</span>
+        <span class="year-count">1</span>
+        <span class="year-line"></span>
+      </div>
+      <div class="year-content">
+        <div class="grid active">
+
+          <a href="blog-search-multi-section-architecture.html" class="card blog" data-type="blog" data-tags="search,sdui,ksp,architecture" data-search="검색 멀티섹션 Server Driven UI KSP Gson TypeAdapter 구매 전환율 kma-2895 pr-3460">
+            <div class="card-top">
+              <span class="card-badge">Blog</span>
+              <span class="card-date">2023 Q4</span>
+            </div>
+            <div class="card-title">검색 지면에 Server Driven UI 적용하기</div>
+            <div class="card-desc">단일 UI 타입 → 멀티섹션: KSP 자동 매퍼 + Gson 커스텀 역직렬화 + 어댑터 통합</div>
+            <div class="card-stats"><span class="cstat">PR #3460</span><span class="cstat">90 파일</span></div>
+            <div class="card-bottom">
+              <div class="card-tags"><span class="ctag">SDUI</span><span class="ctag">KSP</span><span class="ctag">Search</span></div>
+              <span class="card-arrow">&#x2192;</span>
+            </div>
+          </a>
+
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <!-- ═══ LIST VIEW ═══ -->
@@ -663,7 +710,7 @@
       <div class="year-header">
         <span class="year-chevron">&#x25BE;</span>
         <span class="year-text">2026</span>
-        <span class="year-count">8</span>
+        <span class="year-count">9</span>
         <span class="year-line"></span>
       </div>
       <div class="year-content">
@@ -686,6 +733,7 @@
           <div class="lr-tags"><span class="ctag">WebView</span><span class="ctag">GPU</span></div>
           <span class="lr-date">Q1</span>
         </a>
+
         <a href="pr-review-automation.html" class="list-row viz" data-type="viz" data-tags="ci,github-actions,slack" data-search="PR 경과일 라벨 리뷰 다이제스트 slack 자동화">
           <span class="lr-type viz">Viz</span>
           <div class="lr-title-wrap"><span class="lr-title">PR 리뷰 자동화</span><span class="lr-desc">경과일 라벨 + Slack 다이제스트</span></div>
@@ -752,12 +800,15 @@
           <div class="lr-tags"><span class="ctag">KMA-5596</span></div>
           <span class="lr-date">Q1</span>
         </a>
-        <a href="search-related-product-recommendation.html" class="list-row viz" data-type="viz" data-tags="search,paging,recommendation" data-search="검색 연관상품 추천 삽입">
+        <div class="list-row viz" data-type="viz" data-tags="search,paging,recommendation" data-search="검색 연관상품 추천 삽입 변경 시각화">
           <span class="lr-type viz">Viz</span>
           <div class="lr-title-wrap"><span class="lr-title">검색 연관상품 실시간 추천 삽입</span><span class="lr-desc">캐시 페이징 + 앵커링 + A/B 테스트</span></div>
           <div class="lr-tags"><span class="ctag">KMA-5253</span></div>
-          <span class="lr-date">Q2</span>
-        </a>
+          <div class="card-pages">
+            <a href="search-related-product-recommendation.html" class="card-page-btn" title="cognitive-visualization">1</a>
+            <a href="search-related-product-recommendation_2.html" class="card-page-btn" title="diff-visualization">2</a>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -765,7 +816,7 @@
       <div class="year-header">
         <span class="year-chevron">&#x25BE;</span>
         <span class="year-text">2024</span>
-        <span class="year-count">2</span>
+        <span class="year-count">1</span>
         <span class="year-line"></span>
       </div>
       <div class="year-content">
@@ -781,6 +832,24 @@
           <div class="lr-title-wrap"><span class="lr-title">RecyclerView 안의 ComposeView 높이 문제</span><span class="lr-desc">requestLayout() 한 줄 수정</span></div>
           <div class="lr-tags"><span class="ctag">Compose</span><span class="ctag">Deep Dive</span></div>
           <span class="lr-date">Q1</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="year-group" data-year="2023">
+      <div class="year-header">
+        <span class="year-chevron">&#x25BE;</span>
+        <span class="year-text">2023</span>
+        <span class="year-count">1</span>
+        <span class="year-line"></span>
+      </div>
+      <div class="year-content">
+        <div class="list-head"><span>Type</span><span>Title</span><span>Tags</span><span>Date</span></div>
+        <a href="blog-search-multi-section-architecture.html" class="list-row blog" data-type="blog" data-tags="search,sdui,ksp,architecture" data-search="검색 멀티섹션 Server Driven UI KSP">
+          <span class="lr-type blog">Blog</span>
+          <div class="lr-title-wrap"><span class="lr-title">검색 지면에 Server Driven UI 적용하기</span><span class="lr-desc">단일 타입 → 멀티섹션: KSP + Gson TypeAdapter</span></div>
+          <div class="lr-tags"><span class="ctag">PR #3460</span></div>
+          <span class="lr-date">Q4</span>
         </a>
       </div>
     </div>
@@ -889,6 +958,7 @@ const SORT_KEYS = {
   'blog-ui-system-cleanup.html': 7315,
   'blog-webview-texture-crash.html': 6950,
   'deeplink-routing-simplification.html': 6165,
+  'blog-search-multi-section-architecture.html': 3460,
   'blog-search-pagination-room-migration.html': 6419,
   'blog-popup-architecture.html': 5853,
   'home-universal-panel.html': 5596,
