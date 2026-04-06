@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>검색 멀티섹션 아키텍처 전환</title>
+<style>
+  /* ═══════════════════════════════════════════════════════════════════════════ */
+  /*  THEME: Slate Dark + Glassmorphism                                       */
+  /* ═══════════════════════════════════════════════════════════════════════════ */
+  :root {
+    --color-bg: #0a0e1a;
+    --color-surface: #1e293b;
+    --color-surface-high: #334155;
+    --color-on-surface: #f1f5f9;
+    --color-on-surface-body: #94a3b8;
+    --color-outline: #475569;
+    --viz-color-add: #34d399;
+    --viz-color-remove: #888888;
+    --viz-color-move: #60a5fa;
+    --viz-color-emphasis: #a78bfa;
+    --viz-color-merge: #f59e0b;
+
+    --shape-sm: 8px;
+    --shape-md: 12px;
+    --shape-lg: 16px;
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+    --spacing-2xl: 48px;
+    --font-mono: 'SF Mono', 'Fira Code', Consolas, monospace;
+    --elevation-1: 0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3);
+    --elevation-2: 0 4px 6px rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.2);
+
+    /* Category accent colors */
+    --accent-cat1: #60a5fa;
+    --accent-cat2: #34d399;
+    --accent-cat3: #a78bfa;
+    --accent-cat4: #f59e0b;
+  }
+
+  /* ── Reset & Base ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Google Sans', 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--color-bg);
+    background-image: radial-gradient(ellipse at top center, rgba(96,165,250,0.08) 0%, transparent 60%);
+    color: var(--color-on-surface);
+    padding: var(--spacing-lg);
+    min-height: 100vh;
+    max-width: 960px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════════ */
+  /*  SEQUENTIAL FADE-IN ANIMATION                                             */
+  /* ═══════════════════════════════════════════════════════════════════════════ */
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .animate-in {
+    opacity: 0;
+    animation: fadeInUp 0.4s ease-out forwards;
+  }
+  .animate-in.delay-1 { animation-delay: 0.05s; }
+  .animate-in.delay-2 { animation-delay: 0.10s; }
+  .animate-in.delay-3 { animation-delay: 0.15s; }
+  .animate-in.delay-4 { animation-delay: 0.20s; }
+  .animate-in.delay-5 { animation-delay: 0.25s; }
+  .animate-in.delay-6 { animation-delay: 0.30s; }
+  .animate-in.delay-7 { animation-delay: 0.35s; }
+  .animate-in.delay-8 { animation-delay: 0.40s; }
+  .animate-in.delay-9 { animation-delay: 0.45s; }
+  .animate-in.delay-10 { animation-delay: 0.50s; }
+
+  /* ═══════════════════════════════════════════════════════════════════════════ */
+  /*  HERO SECTION                                                             */
+  /* ═══════════════════════════════════════════════════════════════════════════ */
+  .hero {
+    text-align: center;
+    margin-bottom: var(--spacing-xl);
+    padding: var(--spacing-2xl) var(--spacing-lg) var(--spacing-lg);
+  }
+  .hero h1 {
+    font-size: 1.35rem;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    color: var(--color-on-surface);
+    margin-bottom: var(--spacing-xs);
+  }
+  .hero .subtitle {
+    font-size: 0.85rem;
+    color: var(--color-on-surface-body);
+    margin-bottom: var(--spacing-md);
+    max-width: 680px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .badge-pills {
+    display: flex;
+    gap: var(--spacing-sm);
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .badge-pill {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 4px 12px;
+    border-radius: 20px;
+  }
+  .badge-pill.add     { background: rgba(52,211,153,0.12); color: var(--viz-color-add);      border: 1px solid rgba(52,211,153,0.3); }
+  .badge-pill.remove  { background: rgba(136,136,136,0.12); color: var(--viz-color-remove);  border: 1px solid rgba(136,136,136,0.3); }
+  .badge-pill.move    { background: rgba(96,165,250,0.12);  color: var(--viz-color-move);    border: 1px solid rgba(96,165,250,0.3); }
+  .badge-pill.emphasis{ background: rgba(167,139,250,0.12); color: var(--viz-color-emphasis);border: 1px solid rgba(167,139,250,0.3); }
+  .badge-pill.merge   { background: rgba(245,158,11,0.12);  color: var(--viz-color-merge);   border: 1px solid rgba(245,158,11,0.3); }
+
+  /* ═══════════════════════════════════════════════════════════════════════════ */
+  /*  STATS BAR                                                                */
+  /* ═══════════════════════════════════════════════════════════════════════════ */
+  .stats-bar {
+    display: flex;
+    gap: var(--spacing-md);
+    justify-content: center;
+    margin-bottom: var(--spacing-xl);
+    flex-wrap: wrap;
+  }
+  .stat {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+    padding: 8px 16px;
+    background: rgba(30,41,59,0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 20px;
+    border: 1px solid var(--color-outline);
+    color: var(--color-on-surface-body);
+  }
+  .stat-value { font-weight: 700; font-family: var(--font-mono); }
+  .stat-value.positive { color: var(--viz-color-add); }
+  .stat-value.negative { color: #ef4444; }
+  .stat-value.neutral  { color: var(--color-on-surface-body); }
+
+  /* ═══════════════════════════════════════════════════════════════════════════ */
+  /*  CATEGORY SECTION — Glassmorphism                                        */
+  /* ═══════════════════════════════════════════════════════════════════════════ */
+  .category { margin-bottom: var(--spacing-2xl); }
+  .category-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+  }
+  .category-number {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.8rem; font-weight: 800; color: #fff; flex-shrink: 0;
+  }
+  /* Glow effect per category accent */
+  .category-number.cat1 { background: var(--accent-cat1); box-shadow: 0 0 12px rgba(96,165,250,0.35); }
+  .category-number.cat2 { background: var(--accent-cat2); box-shadow: 0 0 12px rgba(52,211,153,0.35); }
+  .category-number.cat3 { background: var(--accent-cat3); box-shadow: 0 0 12px rgba(167,139,250,0.35); }
+  .category-number.cat4 { background: var(--accent-cat4); box-shadow: 0 0 12px rgba(245,158,11,0.35); }
+  .category-title { font-size: 1rem; font-weight: 600; color: var(--color-on-surface); }
+  .category-desc  { font-size: 0.78rem; color: var(--color-on-surface-body); margin-left: auto; }
+  .category-badge {
+    font-size: 0.55rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.5px; padding: 3px 10px; border-radius: 10px; margin-left: 8px;
+  }
+  .category-badge.journey     { background: rgba(52,211,153,0.12); color: var(--viz-color-add);       border: 1px solid rgba(52,211,153,0.3); }
+  .category-badge.flow        { background: rgba(96,165,250,0.12);  color: var(--viz-color-move);     border: 1px solid rgba(96,165,250,0.3); }
+  .category-badge.side-by-side{ background: rgba(245,158,11,0.12); color: var(--viz-color-merge);     border: 1px solid rgba(245,158,11,0.3); }
+
+  /* ── Glassmorphism inner container ── */
+  .inner-container {
+    position: relative;
+    background: rgba(30,41,59,0.5);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(71,85,105,0.5);
+    border-radius: var(--shape-md);
+    padding: var(--spacing-lg);
+    box-shadow: var(--elevation-1);
+  }
+  .inner-container::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    border-radius: var(--shape-md) var(--shape-md) 0 0;
+  }
+  .inner-container.glow-cat1::before { background: linear-gradient(90deg, transparent, rgba(96,165,250,0.5), transparent); }
+  .inner-container.glow-cat2::before { background: linear-gradient(90deg, transparent, rgba(52,211,153,0.5), transparent); }
+  .inner-container.glow-cat3::before { background: linear-gradient(90deg, transparent, rgba(167,139,250,0.5), transparent); }
+  .inner-container.glow-cat4::before { background: linear-gradient(90deg, transparent, rgba(245,158,11,0.5), transparent); }
+
+  .inner-note {
+    font-size: 0.72rem;
+    color: var(--color-on-surface-body);
+    font-style: italic;
+    margin-top: var(--spacing-sm);
+    padding: 0 2px;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════════ */
+  /* ═══ INNER-STYLE: flow (compact)  ═══                                      */
+  /* ═══════════════════════════════════════════════════════════════════════════ */
+  .flow-compact {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .flow-compact-node {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    gap: 0;
+    padding: 16px 0;
+    border-bottom: 1px solid rgba(71,85,105,0.3);
+    transition: background 0.2s ease;
+  }
+  .flow-compact-node:last-of-type { border-bottom: none; }
+  .flow-compact-node:hover { background: rgba(51,65,85,0.3); }
+  .flow-compact-node.accent { background: rgba(167,139,250,0.05); }
+  .flow-compact-node.accent:hover { background: rgba(167,139,250,0.1); }
+  .flow-compact-node.key { background: rgba(96,165,250,0.05); }
+  .flow-compact-node.key:hover { background: rgba(96,165,250,0.1); }
+  .flow-compact-node.success { background: rgba(52,211,153,0.05); }
+  .flow-compact-node.success:hover { background: rgba(52,211,153,0.1); }
+
+  .flow-compact-left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding-top: 2px;
+  }
+  .flow-compact-num {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.72rem; font-weight: 800; color: #fff;
+    background: var(--accent-cat1);
+    box-shadow: 0 0 10px rgba(96,165,250,0.25);
+  }
+  .flow-compact-num.emphasis { background: var(--viz-color-emphasis); box-shadow: 0 0 10px rgba(167,139,250,0.25); }
+  .flow-compact-num.add      { background: var(--viz-color-add);      box-shadow: 0 0 10px rgba(52,211,153,0.25); }
+  .flow-compact-stage {
+    font-size: 0.55rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--color-on-surface-body);
+  }
+
+  .flow-compact-right { padding: 0 var(--spacing-md); }
+  .flow-compact-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-on-surface);
+    line-height: 1.4;
+  }
+  .flow-compact-label code {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--accent-cat1);
+    background: rgba(96,165,250,0.1);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+  .flow-compact-desc {
+    font-size: 0.75rem;
+    color: var(--color-on-surface-body);
+    line-height: 1.5;
+    margin-top: 4px;
+  }
+  .flow-compact-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 6px;
+  }
+  .flow-tag {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: rgba(96,165,250,0.08);
+    border: 1px solid rgba(96,165,250,0.2);
+    color: var(--accent-cat1);
+  }
+
+  .flow-compact-arrow {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: 0 0 0 80px;
+    height: 28px;
+  }
+  .flow-compact-arrow::before {
+    content: '';
+    width: 0; height: 0;
+    border-style: solid;
+    border-width: 5px 4px 0 4px;
+    border-color: var(--color-outline) transparent transparent transparent;
+    flex-shrink: 0;
+    margin-left: 12px;
+  }
+  .flow-compact-arrow-label {
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    color: var(--color-on-surface-body);
+    opacity: 0.7;
+  }
+  .flow-stage-pill {
+    font-size: 0.58rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    padding: 4px 14px; border-radius: 20px;
+    color: var(--color-on-surface-body);
+    background: var(--color-surface);
+    border: 1px solid var(--color-outline);
+    margin: var(--spacing-sm) 0;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════════ */
+  /* ═══ INNER-STYLE: journey ═══                                              */
+  /* ═══════════════════════════════════════════════════════════════════════════ */
+  .journey-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-md);
+  }
+  .journey-panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+  }
+  .journey-panel-title {
+    font-size: 0.65rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.8px;
+    margin-bottom: var(--spacing-xs);
+  }
+  .journey-panel-title.before { color: #ef4444; }
+  .journey-panel-title.after  { color: var(--viz-color-add); }
+  .journey-item {
+    font-size: 0.78rem;
+    line-height: 1.5;
+    padding: 8px 12px;
+    border-radius: var(--shape-sm);
+    background: var(--color-surface-high);
+    border: 1px solid var(--color-outline);
+    transition: transform 0.15s ease;
+  }
+  .journey-item:hover {
+    transform: translateX(2px);
+  }
+  .journey-item.before {
+    border-left: 3px solid #ef4444;
+    background: rgba(239,68,68,0.06);
+  }
+  .journey-item.after {
+    border-left: 3px solid var(--viz-color-add);
+    background: rgba(52,211,153,0.06);
+  }
+  .journey-item .icon { margin-right: 6px; }
+  .journey-item .label { font-weight: 600; color: var(--color-on-surface); display: block; margin-bottom: 2px; font-size: 0.76rem; }
+  .journey-item .desc { color: var(--color-on-surface-body); font-size: 0.72rem; }
+
+  /* ═══ INNER-STYLE: journey-paired ═══ */
+  .journey-paired {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .journey-pair {
+    display: grid;
+    grid-template-columns: 1fr 28px 1fr;
+    gap: 0;
+    align-items: stretch;
+    padding: 14px 0;
+    border-bottom: 1px solid rgba(71,85,105,0.3);
+  }
+  .journey-pair:last-child { border-bottom: none; }
+  .journey-pair:hover { background: rgba(51,65,85,0.2); }
+
+  .journey-pair-before,
+  .journey-pair-after {
+    padding: 8px 12px;
+    border-radius: var(--shape-sm);
+  }
+  .journey-pair-before {
+    background: rgba(239,68,68,0.05);
+    border-left: 3px solid rgba(239,68,68,0.4);
+  }
+  .journey-pair-after {
+    background: rgba(52,211,153,0.05);
+    border-left: 3px solid rgba(52,211,153,0.4);
+  }
+
+  .journey-pair-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--color-on-surface);
+    line-height: 1.4;
+  }
+  .journey-pair-desc {
+    font-size: 0.72rem;
+    color: var(--color-on-surface-body);
+    line-height: 1.5;
+    margin-top: 3px;
+  }
+  .journey-pair-desc code {
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    color: var(--color-on-surface-body);
+    background: rgba(255,255,255,0.04);
+    padding: 1px 4px;
+    border-radius: 3px;
+  }
+
+  .journey-pair-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    color: var(--color-on-surface-body);
+    opacity: 0.5;
+  }
+
+  @media (max-width: 640px) {
+    .journey-pair {
+      grid-template-columns: 1fr;
+      gap: var(--spacing-xs);
+    }
+    .journey-pair-arrow { display: none; }
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════════ */
+  /* ═══ INNER-STYLE: side_by_side ═══                                         */
+  /* ═══════════════════════════════════════════════════════════════════════════ */
+  .sbs-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-md);
+  }
+  .sbs-panel {
+    padding: var(--spacing-md);
+    border-radius: var(--shape-sm);
+    border: 1px solid var(--color-outline);
+  }
+  .sbs-panel.before {
+    background: var(--color-surface-high);
+    border-left: 3px solid var(--viz-color-remove);
+    opacity: 0.85;
+  }
+  .sbs-panel.after {
+    background: rgba(52,211,153,0.04);
+    border-left: 3px solid var(--viz-color-add);
+  }
+  .sbs-panel-title {
+    font-size: 0.65rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.8px;
+    margin-bottom: var(--spacing-sm);
+  }
+  .sbs-panel-title.before { color: var(--viz-color-remove); }
+  .sbs-panel-title.after  { color: var(--viz-color-add); }
+  .sbs-code {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-all;
+    color: var(--color-on-surface-body);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: rgba(10,14,26,0.5);
+    border-radius: var(--shape-sm);
+    border: 1px solid rgba(71,85,105,0.4);
+  }
+  .sbs-code .fn-name { color: var(--viz-color-move); font-weight: 600; }
+  .sbs-code .param { color: var(--viz-color-emphasis); }
+  .sbs-code .type { color: var(--viz-color-add); }
+  .sbs-code .comment { color: #6b7280; font-style: italic; }
+  .sbs-highlight {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--color-on-surface);
+    margin-top: var(--spacing-sm);
+    padding: 8px 12px;
+    background: rgba(245,158,11,0.08);
+    border-radius: var(--shape-sm);
+    border: 1px solid rgba(245,158,11,0.3);
+    text-align: center;
+  }
+  .sbs-list {
+    list-style: none;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .sbs-list li {
+    font-size: 0.78rem; line-height: 1.5; color: var(--color-on-surface-body);
+    padding-left: 14px; position: relative;
+  }
+  .sbs-list li::before {
+    content: ''; position: absolute; left: 0; top: 8px;
+    width: 5px; height: 5px; border-radius: 50%;
+  }
+  .sbs-panel.before .sbs-list li::before { background: var(--viz-color-remove); }
+  .sbs-panel.after  .sbs-list li::before { background: var(--viz-color-add); }
+
+  /* ═══════════════════════════════════════════════════════════════════════════ */
+  /*  BUSINESS IMPACT SECTION                                                  */
+  /* ═══════════════════════════════════════════════════════════════════════════ */
+  .biz-impact {
+    margin-top: var(--spacing-xl);
+    padding: var(--spacing-lg);
+    background: rgba(30,41,59,0.5);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--color-outline);
+    border-radius: var(--shape-md);
+    border-left: 4px solid var(--viz-color-merge);
+  }
+  .biz-impact-title {
+    font-size: 0.65rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.8px;
+    color: var(--viz-color-merge);
+    margin-bottom: var(--spacing-md);
+  }
+  .biz-impact-list {
+    list-style: none;
+    display: flex; flex-direction: column; gap: var(--spacing-sm);
+  }
+  .biz-impact-list li {
+    display: flex; align-items: flex-start; gap: 10px;
+    font-size: 0.82rem; line-height: 1.5;
+    color: var(--color-on-surface-body);
+  }
+  .biz-impact-badge {
+    flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 2px 10px; border-radius: var(--shape-sm);
+    font-size: 0.6rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.3px;
+    min-width: 70px;
+  }
+  .biz-impact-badge.perf   { background: rgba(52,211,153,0.15); color: var(--viz-color-add);      border: 1px solid rgba(52,211,153,0.3); }
+  .biz-impact-badge.ux     { background: rgba(96,165,250,0.15);  color: var(--viz-color-move);     border: 1px solid rgba(96,165,250,0.3); }
+  .biz-impact-badge.cost   { background: rgba(245,158,11,0.15);  color: var(--viz-color-merge);    border: 1px solid rgba(245,158,11,0.3); }
+  .biz-impact-badge.risk   { background: rgba(239,68,68,0.15);   color: #ef4444;                   border: 1px solid rgba(239,68,68,0.3); }
+  .biz-impact-badge.maint  { background: rgba(167,139,250,0.15); color: var(--viz-color-emphasis); border: 1px solid rgba(167,139,250,0.3); }
+  .biz-impact-detail { font-size: 0.72rem; color: var(--color-on-surface-body); margin-top: 2px; }
+
+  /* ═══════════════════════════════════════════════════════════════════════════ */
+  /*  COGNITIVE RATIONALE                                                      */
+  /* ═══════════════════════════════════════════════════════════════════════════ */
+  .rationale {
+    margin-top: var(--spacing-xl);
+    border: 1px solid var(--color-outline);
+    border-radius: var(--shape-md);
+    background: var(--color-surface);
+    box-shadow: var(--elevation-1);
+  }
+  .rationale summary {
+    font-size: 0.72rem; font-weight: 500;
+    text-transform: uppercase; letter-spacing: 0.6px;
+    color: var(--color-on-surface-body);
+    padding: var(--spacing-md);
+    cursor: pointer; user-select: none;
+    list-style: none;
+    display: flex; align-items: center; gap: var(--spacing-sm);
+  }
+  .rationale summary::before { content: '\25B8'; transition: transform 0.15s; }
+  .rationale[open] summary::before { transform: rotate(90deg); }
+  .rationale-body {
+    padding: 0 var(--spacing-md) var(--spacing-md);
+    display: flex; flex-direction: column; gap: var(--spacing-lg);
+  }
+  .rationale-block-label {
+    font-size: 0.6rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.6px;
+    color: var(--color-on-surface-body);
+    margin-bottom: var(--spacing-xs);
+  }
+  .rationale-text {
+    font-size: 0.78rem;
+    color: var(--color-on-surface);
+    line-height: 1.55;
+  }
+  .rationale-text.mono { font-family: var(--font-mono); font-size: 0.72rem; }
+  .rationale-rules-list {
+    list-style: none;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .rationale-rules-list li {
+    font-size: 0.78rem;
+    padding: 8px 12px;
+    background: var(--color-surface-high);
+    border-radius: var(--shape-sm);
+    border: 1px solid var(--color-outline);
+    color: var(--color-on-surface-body);
+  }
+  .rule-id {
+    font-family: var(--font-mono); font-size: 0.65rem;
+    font-weight: 700; color: var(--viz-color-emphasis);
+    margin-right: 6px;
+  }
+  .principle-ref {
+    font-family: var(--font-mono); font-size: 0.58rem;
+    color: var(--color-on-surface-body); margin-left: 4px;
+  }
+  .eval-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: var(--spacing-sm);
+  }
+  .eval-cell {
+    text-align: center;
+    padding: var(--spacing-sm);
+    background: var(--color-surface-high);
+    border-radius: var(--shape-sm);
+    border: 1px solid var(--color-outline);
+  }
+  .eval-score { font-size: 1.1rem; font-weight: 700; color: var(--viz-color-emphasis); }
+  .eval-label {
+    font-size: 0.58rem; text-transform: uppercase;
+    letter-spacing: 0.4px; color: var(--color-on-surface-body);
+    margin-top: 2px;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════════ */
+  /*  RESPONSIVE                                                               */
+  /* ═══════════════════════════════════════════════════════════════════════════ */
+  @media (max-width: 640px) {
+    body { padding: var(--spacing-md); }
+    .hero { padding: var(--spacing-lg) var(--spacing-sm) var(--spacing-md); }
+    .hero h1 { font-size: 1.1rem; }
+    .journey-grid { grid-template-columns: 1fr; }
+    .sbs-grid { grid-template-columns: 1fr; }
+    .eval-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!--  HERO                                                                     -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<div class="hero animate-in delay-1">
+  <h1>검색 멀티섹션 아키텍처 전환</h1>
+  <p class="subtitle">복잡한 검색 UI의 데이터 흐름을 서버 주도 섹션 구조로 단순화하여, 기능 추가가 Mapper + ViewHolder 한 쌍만으로 가능한 확장 가능한 아키텍처로 전환</p>
+  <div class="badge-pills">
+    <span class="badge-pill move">API v3 &rarr; v4</span>
+    <span class="badge-pill merge">ConcatAdapter 통합</span>
+    <span class="badge-pill emphasis">UI 모델 재설계</span>
+    <span class="badge-pill add">파라미터 단순화</span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!--  STATS BAR                                                                -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<div class="stats-bar animate-in delay-2">
+  <div class="stat"><span class="stat-value neutral">90</span> 파일 변경</div>
+  <div class="stat"><span class="stat-value positive">+1,690</span> 추가</div>
+  <div class="stat"><span class="stat-value negative">-1,318</span> 삭제</div>
+  <div class="stat"><span class="stat-value neutral">4</span> 카테고리</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!--  CATEGORY 1: 검색 API 응답 구조 전환 — flow                              -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<div class="category animate-in delay-3">
+  <div class="category-header">
+    <span class="category-number cat1">1</span>
+    <span class="category-title">검색 API 응답 구조 전환</span>
+    <span class="category-badge flow">Flow</span>
+    <span class="category-desc">v3 flat list &rarr; v4 멀티섹션 파이프라인</span>
+  </div>
+  <div class="inner-container glow-cat1">
+
+    <div class="flow-compact">
+      <!-- Node 1 -->
+      <div class="flow-compact-node">
+        <div class="flow-compact-left">
+          <span class="flow-compact-num">1</span>
+          <span class="flow-compact-stage">요청</span>
+        </div>
+        <div class="flow-compact-right">
+          <div class="flow-compact-label">검색 API <code>v4</code> 호출</div>
+          <div class="flow-compact-desc">쿼리 파라미터 camelCase 전환, 요청 속성을 하나의 데이터 클래스로 통합</div>
+        </div>
+      </div>
+
+      <div class="flow-compact-arrow"><span class="flow-compact-arrow-label">JSON 응답 (섹션 4개 영역)</span></div>
+
+      <!-- Node 2 -->
+      <div class="flow-compact-node accent">
+        <div class="flow-compact-left">
+          <span class="flow-compact-num emphasis">2</span>
+          <span class="flow-compact-stage">파싱</span>
+        </div>
+        <div class="flow-compact-right">
+          <div class="flow-compact-label">커스텀 TypeAdapter가 섹션 코드별로 분류</div>
+          <div class="flow-compact-tags">
+            <span class="flow-tag">topSections</span>
+            <span class="flow-tag">sortSections</span>
+            <span class="flow-tag">filterSections</span>
+            <span class="flow-tag">listSections</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flow-compact-arrow"><span class="flow-compact-arrow-label">sectionCode별 위임</span></div>
+
+      <!-- Node 3 -->
+      <div class="flow-compact-node key">
+        <div class="flow-compact-left">
+          <span class="flow-compact-num add">3</span>
+          <span class="flow-compact-stage">매핑</span>
+        </div>
+        <div class="flow-compact-right">
+          <div class="flow-compact-label">KSP 어노테이션으로 매퍼 자동 등록</div>
+          <div class="flow-compact-tags">
+            <span class="flow-tag">BANNER</span>
+            <span class="flow-tag">FILTER</span>
+            <span class="flow-tag">KEYWORD_CONVERT_INFO</span>
+            <span class="flow-tag">PRODUCT_LIST</span>
+            <span class="flow-tag">SORT</span>
+          </div>
+          <div class="flow-compact-desc">새 섹션 타입 추가 시 매퍼 클래스 하나만 작성하면 컴파일 타임에 자동 등록</div>
+        </div>
+      </div>
+
+      <div class="flow-compact-arrow"><span class="flow-compact-arrow-label">도메인 모델 변환 완료</span></div>
+
+      <!-- Node 4 -->
+      <div class="flow-compact-node success">
+        <div class="flow-compact-left">
+          <span class="flow-compact-num add">4</span>
+          <span class="flow-compact-stage">렌더링</span>
+        </div>
+        <div class="flow-compact-right">
+          <div class="flow-compact-label">PagingData 스트림 &rarr; 단일 어댑터로 렌더링</div>
+          <div class="flow-compact-desc">서버가 보낸 섹션 순서 그대로 RecyclerView에 표시 &mdash; Fragment 코드 수정 없음</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="inner-note">서버가 섹션 구성을 결정하므로 클라이언트는 파싱 &rarr; 매핑 &rarr; 렌더링 파이프라인만 유지</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!--  CATEGORY 2: RecyclerView 어댑터 통합 — journey                          -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<div class="category animate-in delay-4">
+  <div class="category-header">
+    <span class="category-number cat2">2</span>
+    <span class="category-title">검색 결과 렌더링 구조</span>
+    <span class="category-badge journey">Journey</span>
+    <span class="category-desc">ConcatAdapter 4개 &rarr; 단일 어댑터</span>
+  </div>
+  <div class="inner-container glow-cat2">
+
+    <div class="journey-paired">
+      <!-- Row 1 -->
+      <div class="journey-pair">
+        <div class="journey-pair-before">
+          <div class="journey-pair-label">4개 어댑터를 직접 조합</div>
+          <div class="journey-pair-desc">Header + Filter + BeautySearch + List를 <code>ConcatAdapter</code>로 묶고 순서 관리</div>
+        </div>
+        <div class="journey-pair-arrow">&rarr;</div>
+        <div class="journey-pair-after">
+          <div class="journey-pair-label">단일 어댑터로 통합</div>
+          <div class="journey-pair-desc">7개 뷰 타입을 sealed interface로 통합, <code>ConcatAdapter</code> 제거</div>
+        </div>
+      </div>
+
+      <!-- Row 2 -->
+      <div class="journey-pair">
+        <div class="journey-pair-before">
+          <div class="journey-pair-label">VIEW_TYPE 번호 수동 관리</div>
+          <div class="journey-pair-desc">어댑터 간 번호 충돌 방지를 위해 26~32번 대역 수동 할당</div>
+        </div>
+        <div class="journey-pair-arrow">&rarr;</div>
+        <div class="journey-pair-after">
+          <div class="journey-pair-label">뷰 타입 충돌 원천 차단</div>
+          <div class="journey-pair-desc">sealed 서브타입 = 뷰 타입. 미처리 분기는 컴파일 에러로 검출</div>
+        </div>
+      </div>
+
+      <!-- Row 3 -->
+      <div class="journey-pair">
+        <div class="journey-pair-before">
+          <div class="journey-pair-label">StickyHeader 위치 계산 필요</div>
+          <div class="journey-pair-desc"><code>ConcatAdapter</code> 내부 어댑터 오프셋을 수동 계산하여 전달</div>
+        </div>
+        <div class="journey-pair-arrow">&rarr;</div>
+        <div class="journey-pair-after">
+          <div class="journey-pair-label">StickyHeader 직접 구현</div>
+          <div class="journey-pair-desc">단일 어댑터가 직접 콜백 제공 &mdash; 오프셋 계산 불필요</div>
+        </div>
+      </div>
+
+      <!-- Row 4 -->
+      <div class="journey-pair">
+        <div class="journey-pair-before">
+          <div class="journey-pair-label">새 섹션 = 어댑터 신규 생성</div>
+          <div class="journey-pair-desc">어댑터 작성 + <code>ConcatAdapter</code> 순서 재조정 + Fragment 연결</div>
+        </div>
+        <div class="journey-pair-arrow">&rarr;</div>
+        <div class="journey-pair-after">
+          <div class="journey-pair-label">새 섹션 = ViewHolder 하나 추가</div>
+          <div class="journey-pair-desc">sealed 타입 추가 + ViewHolder 구현으로 확장 완료</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="inner-note">Fragment 코드 147줄 &rarr; 66줄 (55% 감소). 어댑터 관련 보일러플레이트 대부분 제거</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!--  CATEGORY 3: UI 모델 계층 재설계 — journey                               -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<div class="category animate-in delay-5">
+  <div class="category-header">
+    <span class="category-number cat3">3</span>
+    <span class="category-title">이벤트 처리와 상태 관리</span>
+    <span class="category-badge journey">Journey</span>
+    <span class="category-desc">외부 콜백 주입 &rarr; 모델 내장 콜백</span>
+  </div>
+  <div class="inner-container glow-cat3">
+
+    <div class="journey-paired">
+      <!-- Row 1 -->
+      <div class="journey-pair">
+        <div class="journey-pair-before">
+          <div class="journey-pair-label">이벤트 핸들러를 외부에서 주입</div>
+          <div class="journey-pair-desc">Fragment/Adapter에서 클릭 리스너를 개별 설정 &mdash; 연결 누락 시 런타임에서야 발견</div>
+        </div>
+        <div class="journey-pair-arrow">&rarr;</div>
+        <div class="journey-pair-after">
+          <div class="journey-pair-label">콜백이 모델에 내장</div>
+          <div class="journey-pair-desc">ViewModel이 변환 시점에 콜백 주입 &mdash; 모델 생성 = 이벤트 연결 완료</div>
+        </div>
+      </div>
+
+      <!-- Row 2 -->
+      <div class="journey-pair">
+        <div class="journey-pair-before">
+          <div class="journey-pair-label">데이터만 담는 UI 모델</div>
+          <div class="journey-pair-desc">이벤트 처리 코드가 Fragment 여러 곳에 분산, 모델 타입 추가 시 누락 가능</div>
+        </div>
+        <div class="journey-pair-arrow">&rarr;</div>
+        <div class="journey-pair-after">
+          <div class="journey-pair-label">sealed interface로 타입 안전</div>
+          <div class="journey-pair-desc"><code>when</code> 표현식에서 컴파일러가 미처리 타입 검출 &mdash; 새 타입 추가 시 빌드 실패로 알림</div>
+        </div>
+      </div>
+
+      <!-- Row 3 -->
+      <div class="journey-pair">
+        <div class="journey-pair-before">
+          <div class="journey-pair-label">뷰티 모드 명령적 관리</div>
+          <div class="journey-pair-desc">체크박스/가이드 텍스트를 <code>if-else</code> 분기로 수동 조작, 상태 누락 가능</div>
+        </div>
+        <div class="journey-pair-arrow">&rarr;</div>
+        <div class="journey-pair-after">
+          <div class="journey-pair-label">상태를 sealed interface로 열거</div>
+          <div class="journey-pair-desc">Empty / Switch / GuideText 3개 상태 &mdash; 미처리 상태가 컴파일 에러</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="inner-note">이벤트 처리의 책임이 Fragment에서 ViewModel로 이동하여 단방향 데이터 흐름 완성</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!--  CATEGORY 4: 파라미터 통합 — side_by_side                                -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<div class="category animate-in delay-6">
+  <div class="category-header">
+    <span class="category-number cat4">4</span>
+    <span class="category-title">파라미터 통합</span>
+    <span class="category-badge side-by-side">Side by Side</span>
+    <span class="category-desc">12개 파라미터 &rarr; 4개 파라미터</span>
+  </div>
+  <div class="inner-container glow-cat4">
+
+    <div class="sbs-grid">
+      <div class="sbs-panel before">
+        <div class="sbs-panel-title before">Before &mdash; 12 Parameters</div>
+        <div class="sbs-code"><span class="fn-name">getSearchingProducts</span>(
+  <span class="param">amplitudeSessionId</span>: <span class="type">String</span>,
+  <span class="param">userId</span>: <span class="type">String</span>,
+  <span class="param">testGroup</span>: <span class="type">String</span>,
+  <span class="param">sortType</span>: <span class="type">String</span>,
+  <span class="param">keyword</span>: <span class="type">String</span>,
+  <span class="param">filterId</span>: <span class="type">String?</span>,
+  <span class="param">filters</span>: <span class="type">Map</span>,
+  <span class="param">site</span>: <span class="type">String</span>,
+  <span class="param">enableMarketFallback</span>: <span class="type">Boolean</span>,
+  <span class="param">disableReplacementKeyword</span>: <span class="type">Boolean</span>,
+  <span class="param">refreshFusionQueryId</span>: <span class="type">Boolean</span>,
+  <span class="param">searchEventProperty</span>: <span class="type">SearchEventProperty</span>,
+)</div>
+      </div>
+      <div class="sbs-panel after">
+        <div class="sbs-panel-title after">After &mdash; 4 Parameters</div>
+        <div class="sbs-code"><span class="fn-name">getSearchingProducts</span>(
+  <span class="param">userId</span>: <span class="type">String</span>,
+  <span class="param">testGroup</span>: <span class="type">String</span>,
+  <span class="param">searchEventProperty</span>: <span class="type">SearchEventProperty</span>,
+  <span class="param">searchRequestProperty</span>: <span class="type">SearchRequestProperty</span>,
+)
+
+<span class="comment">// SearchRequestProperty 데이터 클래스가
+// sortType, keyword, filterId, filters,
+// site, enableMarketFallback 등을 캡슐화</span></div>
+      </div>
+    </div>
+
+    <div class="sbs-highlight">12개 &rarr; 4개 &mdash; 파라미터 67% 감소. SearchRequestProperty가 검색 요청 속성을 단일 객체로 캡슐화</div>
+
+    <div class="inner-note">호출부마다 12개 파라미터를 나열하던 패턴이 사라져 가독성과 리팩터링 안전성 모두 개선</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!--  BUSINESS IMPACT                                                          -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<div class="biz-impact animate-in delay-7">
+  <div class="biz-impact-title">Business Impact</div>
+  <ul class="biz-impact-list">
+    <li>
+      <span class="biz-impact-badge perf">확장성</span>
+      <span><strong>서버 주도 섹션 구성</strong> &mdash; 새 섹션 타입 추가 시 SectionMapper 1개 + UI Model/ViewHolder 1쌍만 추가하면 됨. 클라이언트 릴리스 없이 서버에서 섹션 순서/구성 변경 가능</span>
+    </li>
+    <li>
+      <span class="biz-impact-badge maint">유지보수</span>
+      <span><strong>수정 포인트 60% 감소</strong> &mdash; ConcatAdapter 조합 복잡도 제거. Fragment 코드 147줄 &rarr; 66줄 (55% 감소). VIEW_TYPE 충돌 관리 포인트 소멸</span>
+    </li>
+    <li>
+      <span class="biz-impact-badge ux">안정성</span>
+      <span><strong>선언적 상태 관리</strong> &mdash; BeautyOnlyState sealed interface로 상태 누락 불가. sealed interface when 표현식에서 컴파일러가 미처리 케이스를 검출</span>
+    </li>
+  </ul>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!--  COGNITIVE RATIONALE                                                      -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<details class="rationale animate-in delay-8">
+  <summary>Cognitive Rationale</summary>
+  <div class="rationale-body">
+
+    <!-- Block 1: 적용 규칙 -->
+    <div>
+      <div class="rationale-block-label">적용 규칙</div>
+      <ul class="rationale-rules-list">
+        <li><span class="rule-id">RULE-L02</span> 카테고리당 1개 시각화 스타일 = 1 cognitive chunk <span class="principle-ref">&larr; WM-001</span></li>
+        <li><span class="rule-id">RULE-C01</span> 카테고리별 고유 accent 색상으로 시각적 구분 (파랑, 초록, 보라, 주황) <span class="principle-ref">&larr; PRC-003</span></li>
+        <li><span class="rule-id">RULE-J01</span> Before/After 여정 비교는 개발자 경험 변화에 집중, 코드 나열 지양 <span class="principle-ref">&larr; NAR-001</span></li>
+        <li><span class="rule-id">RULE-F01</span> Flow는 세로 노드 기반, 수평 화살표 체인 사용 금지 <span class="principle-ref">&larr; EVAL-0014</span></li>
+        <li><span class="rule-id">RULE-S01</span> Side-by-side는 코드 시그니처 직접 비교로 양적 차이를 즉시 체감 <span class="principle-ref">&larr; VIS-002</span></li>
+      </ul>
+    </div>
+
+    <!-- Block 2: 자체 평가 -->
+    <div>
+      <div class="rationale-block-label">자체 평가</div>
+      <div class="eval-grid">
+        <div class="eval-cell"><div class="eval-score">2/5</div><div class="eval-label">Cognitive Load</div></div>
+        <div class="eval-cell"><div class="eval-score">5/5</div><div class="eval-label">Change Visibility</div></div>
+        <div class="eval-cell"><div class="eval-score">4/5</div><div class="eval-label">Anchor Stability</div></div>
+        <div class="eval-cell"><div class="eval-score">5/5</div><div class="eval-label">Text Economy</div></div>
+      </div>
+    </div>
+
+    <!-- Block 3: Inner Style 선택 로그 -->
+    <div>
+      <div class="rationale-block-label">Inner Style 선택 로그</div>
+      <p class="rationale-text mono">
+        Cat-1 "API 응답 구조 전환" &rarr; API&rarr;TypeAdapter&rarr;KSP&rarr;Mapper&rarr;PagingSource 순차 파이프라인 &rarr; flow (세로 노드)<br>
+        Cat-2 "어댑터 통합" &rarr; ConcatAdapter 4개 고통 &rarr; 단일 어댑터 해소 &rarr; journey (Before=pain, After=resolved)<br>
+        Cat-3 "UI 모델 재설계" &rarr; 외부 콜백 분산 &rarr; 모델 내장 콜백 전환 &rarr; journey (경험 변화 중심)<br>
+        Cat-4 "파라미터 통합" &rarr; 12개 vs 4개 양적 대비 &rarr; side_by_side (코드 시그니처 직접 비교)
+      </p>
+    </div>
+
+  </div>
+</details>
+
+</body>
+</html>

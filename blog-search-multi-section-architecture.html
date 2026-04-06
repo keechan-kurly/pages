@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>검색 지면에 Server Driven UI 적용하기: 단일 타입에서 멀티섹션으로</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    --grey-50: #f9fafb;
+    --grey-100: #f2f4f6;
+    --grey-200: #e5e8eb;
+    --grey-300: #d1d6db;
+    --grey-400: #b0b8c1;
+    --grey-500: #8b95a1;
+    --grey-600: #6b7684;
+    --grey-700: #4e5968;
+    --grey-800: #333d4b;
+    --grey-900: #191f28;
+    --toss-blue: #0064FF;
+    --toss-blue-light: rgba(0, 100, 255, 0.08);
+    --toss-blue-border: rgba(0, 100, 255, 0.2);
+    --bg: #ffffff;
+    --bg-elevated: var(--grey-50);
+    --bg-highlight: #ffc34236;
+    --bg-code: var(--grey-100);
+    --text-primary: var(--grey-900);
+    --text-secondary: var(--grey-700);
+    --text-tertiary: var(--grey-500);
+    --border-light: var(--grey-200);
+    --border-blockquote: var(--grey-800);
+    --content-width: 680px;
+    --wide-width: 780px;
+    --radius: 16px;
+    --radius-sm: 10px;
+    --font-body: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --font-code: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text-primary);
+    line-height: 1.8;
+    font-size: 16.5px;
+    -webkit-font-smoothing: antialiased;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+}
+::selection { background: rgba(0, 100, 255, 0.15); color: var(--grey-900); }
+a { color: var(--toss-blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.article { max-width: var(--content-width); margin: 0 auto; padding: 0 24px; }
+.article-wide { max-width: var(--wide-width); margin: 0 auto; padding: 0 24px; }
+.hero { padding: 80px 24px 48px; max-width: var(--content-width); margin: 0 auto; }
+.hero-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 24px; font-size: 0.875rem; color: var(--text-tertiary); }
+.hero-meta .author { color: var(--text-secondary); font-weight: 600; }
+.hero-meta .dot { color: var(--grey-300); }
+.hero-title { font-size: 2.2rem; font-weight: 800; line-height: 1.3; color: var(--text-primary); margin-bottom: 16px; letter-spacing: -0.02em; }
+.hero-subtitle { font-size: 1.1rem; line-height: 1.7; color: var(--text-secondary); max-width: 580px; }
+.hero-tags { display: flex; gap: 8px; margin-top: 20px; flex-wrap: wrap; }
+.hero-tag { padding: 4px 12px; border-radius: var(--radius-sm); background: var(--toss-blue-light); border: 1px solid var(--toss-blue-border); font-size: 0.8rem; font-weight: 600; color: var(--toss-blue); }
+.toc { margin: 0 0 48px 0; padding: 24px 28px; background: var(--bg-elevated); border-radius: var(--radius); border: 1px solid var(--border-light); }
+.toc-label { font-size: 0.75rem; font-weight: 700; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px; }
+.toc-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.toc-list a { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 0.92rem; color: var(--text-secondary); transition: color 0.2s; }
+.toc-list a:hover { color: var(--toss-blue); text-decoration: none; }
+.toc-num { width: 24px; height: 24px; border-radius: 7px; background: var(--grey-200); display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; color: var(--text-secondary); flex-shrink: 0; }
+.article h2 { font-size: 1.55rem; font-weight: 800; line-height: 1.35; color: var(--text-primary); margin: 56px 0 20px 0; letter-spacing: -0.01em; }
+.article h2:first-child { margin-top: 0; }
+.article h3 { font-size: 1.2rem; font-weight: 700; line-height: 1.4; color: var(--text-primary); margin: 40px 0 14px 0; }
+.article p { margin: 0 0 20px 0; color: var(--text-primary); }
+.article strong { font-weight: 700; color: var(--grey-900); }
+.article blockquote { margin: 28px 0; padding: 0 0 0 20px; border-left: 2.5px solid var(--border-blockquote); font-size: 1.05rem; font-weight: 600; line-height: 1.7; color: var(--text-primary); }
+.article blockquote p { margin: 0; }
+.highlight-box { margin: 28px 0; padding: 20px 24px; background: var(--bg-highlight); border-radius: var(--radius); font-weight: 600; line-height: 1.7; color: var(--text-primary); }
+.content-box { margin: 28px 0; padding: 24px 28px; background: var(--bg-elevated); border-radius: var(--radius); border: 1px solid var(--border-light); }
+.content-box-title { font-size: 0.95rem; font-weight: 700; color: var(--text-primary); margin-bottom: 12px; }
+.article code { font-family: var(--font-code); font-size: 0.88em; padding: 2px 6px; background: var(--bg-code); border-radius: 5px; color: var(--grey-800); }
+.article pre { margin: 24px 0; padding: 24px; background: var(--grey-900); border-radius: var(--radius); overflow-x: auto; line-height: 1.6; }
+.article pre code { font-family: var(--font-code); font-size: 0.85rem; background: none; padding: 0; color: #abb2bf; border-radius: 0; }
+.kw { color: #c678dd; }
+.str { color: #98c379; }
+.cmt { color: #5c6370; font-style: italic; }
+.typ { color: #e5c07b; }
+.fn { color: #61afef; }
+.ann { color: #d19a66; }
+.op { color: #56b6c2; }
+.article ul, .article ol { margin: 0 0 20px 0; padding-left: 24px; }
+.article li { margin-bottom: 10px; line-height: 1.7; }
+.article li::marker { color: var(--text-tertiary); }
+.metrics-table { width: 100%; border-collapse: collapse; margin: 24px 0; font-size: 0.9rem; }
+.metrics-table th { text-align: left; padding: 12px 16px; background: var(--bg-elevated); border-bottom: 2px solid var(--border-light); font-weight: 700; font-size: 0.8rem; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.04em; }
+.metrics-table td { padding: 12px 16px; border-bottom: 1px solid var(--border-light); color: var(--text-secondary); }
+.metrics-table .metric-label { color: var(--text-primary); font-weight: 600; }
+.metrics-table .metric-good { color: #16a34a; font-weight: 700; }
+.metrics-table .metric-bad { color: #dc2626; font-weight: 600; }
+.delta { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 6px; font-size: 0.78rem; font-weight: 700; }
+.delta-good { background: rgba(22, 163, 74, 0.1); color: #16a34a; }
+.delta-bad { background: rgba(220, 38, 38, 0.1); color: #dc2626; }
+.delta-neutral { background: var(--grey-100); color: var(--text-tertiary); }
+.summary-box { margin: 36px 0; padding: 24px 28px; background: var(--toss-blue-light); border: 1px solid var(--toss-blue-border); border-radius: var(--radius); }
+.summary-box-title { font-size: 0.82rem; font-weight: 700; color: var(--toss-blue); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.06em; }
+.summary-box p, .summary-box li { color: var(--text-primary); font-size: 0.95rem; }
+.summary-box ul { margin: 8px 0 0 0; padding-left: 20px; }
+.compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 28px 0; }
+.compare-card { padding: 20px; border-radius: var(--radius); border: 1px solid var(--border-light); background: var(--bg); }
+.compare-card-label { font-size: 0.72rem; font-weight: 700; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+.compare-before { border-left: 3px solid var(--grey-400); }
+.compare-after { border-left: 3px solid var(--toss-blue); }
+.compare-card pre { margin: 12px 0 0 0; padding: 14px; font-size: 0.8rem; }
+.compare-card p { margin: 0 0 8px 0; font-size: 0.9rem; }
+.checklist { list-style: none; padding: 0; counter-reset: check; }
+.checklist li { counter-increment: check; display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border-light); }
+.checklist li:last-child { border-bottom: none; }
+.checklist-num { width: 28px; height: 28px; border-radius: 8px; background: var(--toss-blue); display: flex; align-items: center; justify-content: center; font-size: 0.78rem; font-weight: 700; color: white; flex-shrink: 0; margin-top: 2px; }
+.credits { margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border-light); font-size: 0.85rem; color: var(--text-tertiary); }
+.credits-role { font-weight: 700; color: var(--text-secondary); margin-right: 4px; }
+.article hr { border: none; height: 1px; background: var(--border-light); margin: 48px 0; }
+.footnotes { margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--border-light); font-size: 0.82rem; color: var(--text-tertiary); line-height: 1.8; }
+.footnote-ref { font-size: 0.75em; vertical-align: super; color: var(--toss-blue); font-weight: 600; }
+.article-footer { margin-top: 56px; padding: 32px 0; text-align: center; color: var(--text-tertiary); font-size: 0.82rem; }
+.share-buttons { display: flex; justify-content: center; gap: 12px; margin-top: 16px; }
+.share-btn { padding: 8px 20px; border-radius: var(--radius-sm); background: var(--bg-elevated); border: 1px solid var(--border-light); font-size: 0.82rem; font-weight: 600; color: var(--text-secondary); cursor: pointer; transition: all 0.2s; }
+.share-btn:hover { background: var(--grey-200); color: var(--text-primary); }
+
+/* Architecture Diagram */
+.arch-diagram { margin: 28px 0; padding: 32px 24px; background: var(--bg-elevated); border-radius: var(--radius); border: 1px solid var(--border-light); overflow-x: auto; }
+.arch-diagram svg { display: block; margin: 0 auto; }
+.arch-flow { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; font-family: var(--font-code); font-size: 0.82rem; }
+.arch-box { padding: 10px 16px; border-radius: var(--radius-sm); border: 1px solid var(--border-light); background: var(--bg); font-weight: 600; text-align: center; white-space: nowrap; }
+.arch-box.highlight { background: var(--toss-blue-light); border-color: var(--toss-blue-border); color: var(--toss-blue); }
+.arch-arrow { color: var(--grey-400); font-size: 1.2rem; }
+.arch-flow-vertical { display: flex; flex-direction: column; align-items: center; gap: 8px; font-family: var(--font-code); font-size: 0.82rem; }
+.arch-flow-vertical .arch-box { min-width: 280px; }
+.arch-flow-vertical .arch-arrow { display: block; }
+
+@media (max-width: 768px) {
+    .hero { padding: 48px 20px 32px; }
+    .hero-title { font-size: 1.7rem; }
+    .article, .article-wide { padding: 0 20px; }
+    .article h2 { font-size: 1.35rem; margin-top: 40px; }
+    .article h3 { font-size: 1.1rem; }
+    .compare-grid { grid-template-columns: 1fr; }
+    .article pre { padding: 16px; margin-left: -8px; margin-right: -8px; border-radius: 12px; }
+    .arch-flow { flex-direction: column; }
+    .arch-arrow { transform: rotate(90deg); }
+}
+@media print {
+    body { font-size: 11pt; }
+    .hero { padding: 24px 0; }
+    .article pre { white-space: pre-wrap; }
+    .toc, .share-buttons, .article-footer { display: none; }
+}
+</style>
+</head>
+<body>
+
+<header class="hero">
+    <div class="hero-meta">
+        <span class="author">홍기찬</span>
+        <span class="dot">&middot;</span>
+        <span>Android Engineer</span>
+        <span class="dot">&middot;</span>
+        <time>2023. 10</time>
+    </div>
+    <h1 class="hero-title">검색 지면에 Server Driven UI 적용하기: 단일 타입에서 멀티섹션으로</h1>
+    <p class="hero-subtitle">구매 전환율 향상을 위해 검색 API를 v3 flat response에서 v4 multi-section 구조로 전환하고, KSP 기반 자동 매핑과 어댑터 통합으로 클라이언트 아키텍처를 재설계한 과정을 다룬다.</p>
+    <div class="hero-tags">
+        <span class="hero-tag">Server Driven UI</span>
+        <span class="hero-tag">KSP</span>
+        <span class="hero-tag">Gson TypeAdapter</span>
+        <span class="hero-tag">Android</span>
+        <span class="hero-tag">Clean Architecture</span>
+    </div>
+</header>
+
+<nav class="article">
+    <div class="toc">
+        <div class="toc-label">목차</div>
+        <ol class="toc-list">
+            <li><a href="#section-1"><span class="toc-num">1</span> 왜 바꿨나</a></li>
+            <li><a href="#section-2"><span class="toc-num">2</span> 기존 구조 — v3 Flat Response</a></li>
+            <li><a href="#section-3"><span class="toc-num">3</span> 설계 전략 — Server Driven Multi-Section</a></li>
+            <li><a href="#section-4"><span class="toc-num">4</span> 구현 여정</a></li>
+            <li><a href="#section-5"><span class="toc-num">5</span> Before/After</a></li>
+            <li><a href="#section-6"><span class="toc-num">6</span> 남긴 것들</a></li>
+        </ol>
+    </div>
+</nav>
+
+<article class="article">
+
+    <!-- ════════════════════════════════════════
+         Hook — HOOK-005 Constraint Declaration
+         ════════════════════════════════════════ -->
+    <p>검색 지면의 구매 전환율을 높여야 한다. 서버가 배너, 키워드 캐스팅(keyword casting), 필터, 상품을 자유롭게 조합할 수 있어야 한다. 클라이언트는 이 조합을 사전에 알 수 없다.</p>
+
+    <p>이 세 가지 제약이 검색 API v3&rarr;v4 마이그레이션의 출발점이었다. 이 글에서는 단일 UI 타입만 노출하던 검색 지면을 멀티섹션 구조로 전환한 과정 &mdash; 커스텀 역직렬화(deserialization), KSP 기반 매퍼 자동 발견, 어댑터 아키텍처 통합 &mdash; 을 다룬다.</p>
+
+    <!-- ════════════════════════════════════════
+         Section 1: 왜 바꿨나
+         ════════════════════════════════════════ -->
+    <h2 id="section-1">왜 바꿨나</h2>
+
+    <p>기존 검색 지면은 상품 리스트라는 단일 UI 타입만을 노출했다. 사용자가 검색어를 입력하면 상품 목록이 나오고, 필터와 정렬은 화면 상단에 고정된 헤더로 제공되었다. 이 구조는 "검색 = 상품 나열"이라는 요구사항에는 충분히 잘 동작했다.</p>
+
+    <p>그러나 구매 전환율을 높이려면 검색 결과에 다양한 맥락을 함께 보여줘야 했다. 검색어에 맞는 프로모션 배너, 오타 교정(keyword casting), 뷰티컬리 전용 필터 등 &mdash; 서버가 검색어와 사용자 상황에 따라 UI 구성을 동적으로 결정할 수 있어야 했다.</p>
+
+    <p>문제는 기존 구조에서 새 UI 타입을 추가하려면 <strong>클라이언트 릴리즈가 필수</strong>였다는 점이다. 배너 섹션을 넣으려면 <code>ProductPagingHeaderAdapter</code>를 수정하고, VIEW_TYPE 상수 충돌을 확인하고, Fragment에서 데이터를 바인딩하는 코드를 추가해야 했다. "새 섹션 타입 = 앱 릴리즈"라는 종속이 서버 팀의 실험 속도를 제한하고 있었다.</p>
+
+    <div class="highlight-box">Server Driven UI의 핵심은 "서버가 무엇을 보여줄지 결정하고, 클라이언트는 그것을 어떻게 그릴지만 담당한다"는 역할 분리다. 검색 지면에 이 원칙을 적용하면, 서버가 새 섹션 타입을 내려보내는 것만으로 UI 실험이 가능해진다.</div>
+
+    <!-- ════════════════════════════════════════
+         Section 2: 기존 구조
+         ════════════════════════════════════════ -->
+    <h2 id="section-2">기존 구조 &mdash; v3 Flat Response</h2>
+
+    <p>v3 검색 API는 상품 리스트를 flat한 배열로 내려보냈다. 응답의 핵심 구조는 <code>List&lt;ContentProductListItemResponse&gt;</code> + 별도의 meta/banner 필드였다.</p>
+
+    <p>클라이언트에서는 이 flat 응답을 <code>ConcatAdapter</code>로 조립했다. <code>ProductPagingHeaderAdapter</code>가 배너, 필터, 키워드 캐스팅을 담당하고, <code>ProductPagingListAdapter</code>가 상품 리스트를 담당했다. 두 어댑터를 <code>ConcatAdapter</code>로 합쳐서 하나의 RecyclerView에 표시하는 구조였다.</p>
+
+    <div class="arch-diagram">
+        <div class="arch-flow-vertical">
+            <div class="arch-box">v3 API Response</div>
+            <span class="arch-arrow">&darr;</span>
+            <div class="arch-box">ProductPagingHeaderAdapter<br><small style="color:var(--text-tertiary)">(배너 + 필터 + 키워드캐스팅)</small></div>
+            <span class="arch-arrow">+</span>
+            <div class="arch-box">ProductPagingListAdapter<br><small style="color:var(--text-tertiary)">(상품 리스트)</small></div>
+            <span class="arch-arrow">&darr;</span>
+            <div class="arch-box">ConcatAdapter</div>
+        </div>
+    </div>
+
+    <p>이 구조의 한계는 세 가지였다.</p>
+
+    <p><strong>첫째, 헤더 어댑터의 비대화.</strong> 배너, 필터, 키워드 캐스팅, 정렬 &mdash; 서로 다른 관심사를 하나의 <code>ProductPagingHeaderAdapter</code>가 모두 관리했다. VIEW_TYPE 상수가 26번부터 32번까지 퍼져 있었고, 새 타입 추가 시 충돌 여부를 수동으로 확인해야 했다.</p>
+
+    <p><strong>둘째, 클라이언트 주도 조립.</strong> 어떤 섹션을 어떤 순서로 보여줄지를 클라이언트가 결정했다. 배너 삽입 위치, 키워드 캐스팅 표시 조건 등의 로직이 <code>SearchProductPagingSource</code>에 하드코딩되어 있었다.</p>
+
+    <p><strong>셋째, Fragment 비대화.</strong> <code>ProductPagingListFragment</code>가 두 어댑터의 데이터 바인딩, StickyHeader 설정, 메타 데이터 렌더링을 모두 담당하여 코드가 복잡해지고 있었다.</p>
+
+    <!-- ════════════════════════════════════════
+         Section 3: 설계 전략
+         ════════════════════════════════════════ -->
+    <h2 id="section-3">설계 전략 &mdash; Server Driven Multi-Section</h2>
+
+    <p>v4 API는 응답 구조 자체를 바꿨다. flat한 상품 배열 대신, <strong>섹션(section)</strong> 단위로 데이터를 내려보낸다. 각 섹션에는 <code>view.templateType</code> 필드가 있어서, 클라이언트가 어떤 UI로 그릴지 판단할 수 있다.</p>
+
+<pre><code><span class="cmt">// v4 응답 구조 (개념적 표현)</span>
+{
+  <span class="str">"data"</span>: {
+    <span class="str">"topSections"</span>:    [{ <span class="str">"view"</span>: { <span class="str">"templateType"</span>: <span class="str">"BANNER"</span> }, <span class="str">"data"</span>: { ... } }],
+    <span class="str">"sortSections"</span>:   [{ <span class="str">"view"</span>: { <span class="str">"templateType"</span>: <span class="str">"SORT"</span> },   <span class="str">"data"</span>: { ... } }],
+    <span class="str">"filterSections"</span>: [{ <span class="str">"view"</span>: { <span class="str">"templateType"</span>: <span class="str">"FILTER"</span> }, <span class="str">"data"</span>: { ... } }],
+    <span class="str">"listSections"</span>:   [{ <span class="str">"view"</span>: { <span class="str">"templateType"</span>: <span class="str">"SEARCH_ORGANIC_PRODUCT"</span> }, ... }]
+  }
+}</code></pre>
+
+    <p>이 구조를 클라이언트에서 처리하기 위해 세 가지 설계 결정을 내렸다.</p>
+
+    <h3>결정 1: Gson 커스텀 역직렬화</h3>
+
+    <p>섹션마다 <code>data.items</code>의 스키마가 다르다. 배너 섹션은 <code>BannerResponse</code>를, 상품 섹션은 <code>ContentProductListItemResponse</code>를 담고 있다. Gson의 기본 역직렬화로는 이 다형성(polymorphism)을 처리할 수 없다.</p>
+
+    <p><code>SearchSectionTypeAdapter</code>라는 커스텀 <code>JsonDeserializer</code>를 만들어, <code>templateType</code> 값을 기준으로 적절한 매퍼에게 파싱을 위임하는 구조를 설계했다.</p>
+
+    <h3>결정 2: Mapper 패턴으로 파싱 로직 분리</h3>
+
+    <p>모든 섹션의 파싱 로직을 TypeAdapter에 넣으면 단일 클래스가 비대해진다. 대신 <code>SearchSectionMapper</code> 추상 클래스를 정의하고, 섹션 타입별로 독립적인 매퍼를 구현했다.</p>
+
+    <h3>결정 3: KSP로 매퍼 자동 발견</h3>
+
+    <p>매퍼를 추가할 때마다 TypeAdapter에 수동 등록하면, 기존 구조의 "새 타입 = 여러 파일 수정" 문제가 반복된다. KSP(Kotlin Symbol Processing)로 <code>@SearchSectionBinder</code> 어노테이션이 붙은 매퍼를 빌드 시점에 자동 수집하도록 했다.</p>
+
+    <div class="arch-diagram">
+        <div class="arch-flow-vertical">
+            <div class="arch-box">v4 API Response</div>
+            <span class="arch-arrow">&darr;</span>
+            <div class="arch-box highlight">SearchSectionTypeAdapter<br><small>(커스텀 역직렬화)</small></div>
+            <span class="arch-arrow">&darr;</span>
+            <div class="arch-box highlight">SearchSectionMapper &times; N<br><small>(KSP 자동 발견)</small></div>
+            <span class="arch-arrow">&darr;</span>
+            <div class="arch-box">List&lt;SearchPagingModel&gt;</div>
+        </div>
+    </div>
+
+    <!-- ════════════════════════════════════════
+         Section 4: 구현 여정
+         ════════════════════════════════════════ -->
+    <h2 id="section-4">구현 여정</h2>
+
+    <h3>4-1. Data Layer: 동적 파싱</h3>
+
+    <p><code>SearchSectionTypeAdapter</code>의 핵심은 <code>deserialize()</code> 메서드다. 4개의 섹션 배열(<code>topSections</code>, <code>sortSections</code>, <code>filterSections</code>, <code>listSections</code>)을 순회하면서, 각 요소의 <code>templateType</code>에 매칭되는 매퍼를 찾아 파싱을 위임한다.</p>
+
+<pre><code><span class="kw">override fun</span> <span class="fn">deserialize</span>(
+    json: <span class="typ">JsonElement</span>?, typeOfT: <span class="typ">Type</span>?, context: <span class="typ">JsonDeserializationContext</span>?,
+): <span class="typ">SearchSectionResponse</span> {
+    <span class="kw">val</span> sections: <span class="typ">List</span>&lt;<span class="typ">SearchPagingModel</span>&gt; = <span class="fn">whenSectionsReceived</span>(json) {
+        mapper
+            .<span class="fn">find</span> { it.templateType == <span class="kw">this</span>.<span class="fn">getTemplateType</span>() }
+            ?.<span class="fn">mapping</span>(<span class="fn">getItems</span>())
+            ?: <span class="fn">emptyList</span>()
+    }
+
+    <span class="kw">val</span> meta: <span class="typ">MetaResponse</span>? = <span class="fn">whenMetaReceived</span>(json) { <span class="cmt">/* ... */</span> }
+    <span class="kw">val</span> pagination: <span class="typ">PaginationResponse</span>? = <span class="fn">whenPaginationReceived</span>(json) { <span class="cmt">/* ... */</span> }
+
+    <span class="kw">return</span> <span class="typ">SearchSectionResponse</span>(sections, meta, pagination)
+}</code></pre>
+
+    <p>여기서 <code>mapper</code>는 모든 <code>SearchSectionMapper</code> 인스턴스의 리스트다. 각 매퍼는 자신이 담당하는 <code>templateType</code>을 선언하고, JSON 요소를 도메인 모델로 변환하는 <code>mapping()</code> 함수를 구현한다.</p>
+
+    <p>중요한 설계 포인트는 <strong>섹션별 실패 격리</strong>다. <code>whenSectionsReceived()</code>는 전체를 <code>runCatching</code>으로 감싸고, 개별 매퍼도 내부에서 <code>runCatching</code>을 사용한다. 하나의 섹션 파싱이 실패해도 나머지 섹션은 정상적으로 표시된다.</p>
+
+    <h3>4-2. Mapper 패턴: 섹션 타입별 분리</h3>
+
+    <p><code>SearchSectionMapper</code> 추상 클래스가 매퍼의 계약을 정의한다.</p>
+
+<pre><code><span class="kw">abstract class</span> <span class="typ">SearchSectionMapper</span> {
+    <span class="kw">abstract val</span> templateType: <span class="typ">String</span>
+    <span class="kw">abstract fun</span> <span class="fn">mapping</span>(elements: <span class="typ">List</span>&lt;<span class="typ">JsonElement</span>&gt;): <span class="typ">List</span>&lt;<span class="typ">SearchPagingModel</span>&gt;
+
+    <span class="kw">protected val</span> gson = <span class="typ">Gson</span>()
+
+    <span class="kw">protected inline fun</span> &lt;<span class="kw">reified</span> <span class="typ">T</span>&gt; <span class="typ">JsonElement</span>.<span class="fn">fromJson</span>(): <span class="typ">T</span> {
+        <span class="kw">return</span> gson.<span class="fn">fromJson</span>(<span class="kw">this</span>, <span class="typ">T</span>::<span class="kw">class</span>.java)
+    }
+}</code></pre>
+
+    <p>배너 섹션 매퍼를 예로 보면, 구현이 간결하다.</p>
+
+<pre><code><span class="ann">@SearchSectionBinder</span>
+<span class="kw">object</span> <span class="typ">BannerSectionMapper</span> : <span class="typ">SearchSectionMapper</span>() {
+
+    <span class="kw">override val</span> templateType: <span class="typ">String</span>
+        <span class="kw">get</span>() = <span class="str">"BANNER"</span>
+
+    <span class="kw">override fun</span> <span class="fn">mapping</span>(elements: <span class="typ">List</span>&lt;<span class="typ">JsonElement</span>&gt;): <span class="typ">List</span>&lt;<span class="typ">SearchPagingModel</span>&gt; {
+        <span class="kw">return</span> elements
+            .<span class="fn">runCatching</span> {
+                <span class="fn">firstOrNull</span>()
+                    ?.<span class="fn">fromJson</span>&lt;<span class="typ">BannerResponse</span>&gt;()
+                    ?.<span class="fn">toDomainModel</span>()
+                    ?.<span class="fn">let</span> { <span class="fn">listOf</span>(<span class="typ">SearchPagingModel</span>.<span class="typ">SearchPagingBanner</span>(it)) }
+            }.<span class="fn">getOrNull</span>()
+            ?: <span class="fn">emptyList</span>()
+    }
+}</code></pre>
+
+    <p>각 매퍼가 <code>object</code>로 선언되어 싱글톤이며, <code>@SearchSectionBinder</code> 어노테이션으로 KSP에 등록된다. 새 섹션 타입을 추가하려면 이와 같은 매퍼 클래스 하나만 만들면 된다.</p>
+
+    <p>이 PR에서 구현한 매퍼는 5종이다.</p>
+
+    <table class="metrics-table">
+        <thead>
+            <tr><th>매퍼</th><th>templateType</th><th>출력 모델</th></tr>
+        </thead>
+        <tbody>
+            <tr><td class="metric-label">SearchProductSectionMapper</td><td><code>SEARCH_ORGANIC_PRODUCT</code></td><td>SearchPagingProduct</td></tr>
+            <tr><td class="metric-label">BannerSectionMapper</td><td><code>BANNER</code></td><td>SearchPagingBanner</td></tr>
+            <tr><td class="metric-label">KeywordCastingSectionMapper</td><td><code>NOTICE_REPLACE_SEARCH</code></td><td>SearchKeywordCasting</td></tr>
+            <tr><td class="metric-label">FilterSectionMapper</td><td><code>FILTER</code></td><td>SearchPagingFilter</td></tr>
+            <tr><td class="metric-label">SortSectionMapper</td><td><code>SORT</code></td><td>SearchPagingSort</td></tr>
+        </tbody>
+    </table>
+
+    <h3>4-3. KSP: 빌드 시점 매퍼 수집</h3>
+
+    <p>매퍼가 5개일 때는 수동 등록도 가능하다. 그러나 Server Driven UI의 본질은 섹션 타입이 <strong>계속 늘어난다</strong>는 점이다. 매퍼를 추가할 때마다 TypeAdapter의 리스트를 수정해야 한다면, 등록 누락이 곧 파싱 실패로 이어진다.</p>
+
+    <p><code>@SearchSectionBinder</code> 어노테이션과 KSP 프로세서로 이 문제를 해결했다.</p>
+
+<pre><code><span class="cmt">// 어노테이션 정의 (annotations/search 모듈)</span>
+<span class="ann">@Target</span>(<span class="typ">AnnotationTarget</span>.CLASS)
+<span class="kw">annotation class</span> <span class="typ">SearchSectionBinder</span></code></pre>
+
+    <p>프로세서는 빌드 시점에 <code>@SearchSectionBinder</code>가 붙은 클래스를 모두 수집하여 <code>SearchSectionMapperFactory</code>를 자동 생성한다.</p>
+
+<pre><code><span class="cmt">// KSP 프로세서 핵심 로직</span>
+<span class="kw">override fun</span> <span class="fn">process</span>(resolver: <span class="typ">Resolver</span>): <span class="typ">List</span>&lt;<span class="typ">KSAnnotated</span>&gt; {
+    <span class="kw">val</span> symbols = resolver
+        .<span class="fn">getSymbolsWithAnnotation</span>(<span class="typ">SearchSectionBinder</span>::<span class="kw">class</span>.java.name)
+        .<span class="fn">filterIsInstance</span>&lt;<span class="typ">KSClassDeclaration</span>&gt;()
+
+    <span class="cmt">// SearchSectionMapperFactory 파일 생성</span>
+    <span class="kw">val</span> mapperList = symbols
+        .<span class="fn">map</span> { it.simpleName.<span class="fn">asString</span>() }
+        .<span class="fn">joinToString</span>(separator = <span class="str">",\n            "</span>)
+
+    <span class="cmt">// → object SearchSectionMapperFactory {</span>
+    <span class="cmt">//       operator fun invoke(): List&lt;SearchSectionMapper&gt; = listOf(...)</span>
+    <span class="cmt">//   }</span>
+    <span class="cmt">// 가 자동 생성된다.</span>
+    <span class="kw">return</span> symbols.<span class="fn">filterNot</span> { it.<span class="fn">validate</span>() }.<span class="fn">toList</span>()
+}</code></pre>
+
+    <p>이로써 <code>SearchSectionTypeAdapter</code>에서 매퍼 리스트를 하드코딩할 필요가 사라졌다.</p>
+
+<pre><code><span class="cmt">// TypeAdapter에서의 사용</span>
+<span class="kw">private val</span> mapper: <span class="typ">List</span>&lt;<span class="typ">SearchSectionMapper</span>&gt; = <span class="typ">SearchSectionMapperFactory</span>()</code></pre>
+
+    <h3>4-4. UI Layer: 어댑터 통합</h3>
+
+    <p>Data Layer의 변경이 UI Layer에 파급 효과를 만들었다. v4 응답은 모든 섹션을 <code>List&lt;SearchPagingModel&gt;</code>이라는 <strong>단일 스트림</strong>으로 내려보낸다. 배너, 필터, 키워드 캐스팅이 더 이상 헤더 영역의 별도 데이터가 아니라, 상품과 동일한 스트림의 일부가 된 것이다.</p>
+
+    <p>이 변화로 <code>ProductPagingHeaderAdapter</code>의 존재 이유가 사라졌다. 156줄의 헤더 어댑터를 삭제하고, 모든 섹션 타입을 <code>ProductPagingListAdapter</code> 하나에서 처리하도록 통합했다.</p>
+
+    <div class="compare-grid">
+        <div class="compare-card compare-before">
+            <div class="compare-card-label">Before (v3)</div>
+            <p><strong>ConcatAdapter 구성:</strong></p>
+            <p style="font-size:0.85rem; color:var(--text-secondary);">
+                ProductPagingHeaderAdapter<br>
+                &nbsp;&nbsp;+ ProductPagingListAdapter<br>
+                &nbsp;&nbsp;= ConcatAdapter
+            </p>
+            <p style="font-size:0.85rem; margin:0;">헤더/상품 데이터를 각각 별도로 전달</p>
+        </div>
+        <div class="compare-card compare-after">
+            <div class="compare-card-label">After (v4)</div>
+            <p><strong>단일 어댑터:</strong></p>
+            <p style="font-size:0.85rem; color:var(--text-secondary);">
+                ProductPagingListAdapter<br>
+                &nbsp;&nbsp;(모든 섹션 타입 처리)
+            </p>
+            <p style="font-size:0.85rem; margin:0;">PagingData&lt;ContentItemUIModel&gt; 단일 스트림</p>
+        </div>
+    </div>
+
+    <p>Domain Layer에서는 <code>SearchPagingModel</code> sealed interface를 확장하여 새 섹션 타입들을 추가했다. <code>SearchKeywordCasting</code>은 검색어 교정 로직을 캡슐화하는 좋은 예다.</p>
+
+<pre><code><span class="kw">data class</span> <span class="typ">SearchKeywordCasting</span>(
+    <span class="kw">private val</span> header: <span class="typ">Header</span>,
+    <span class="kw">private val</span> footer: <span class="typ">Footer</span>,
+) : <span class="typ">SearchPagingModel</span> {
+
+    <span class="kw">val</span> keywordCastingType: <span class="typ">KeywordCastingType</span>
+        <span class="kw">get</span>() = <span class="typ">KeywordCastingType</span>.<span class="fn">create</span>(header.keyword, footer.keyword)
+
+    <span class="cmt">// footerKeyword가 null이면 대체 제안, 있으면 오타 교정</span>
+}</code></pre>
+
+    <p><code>KeywordCastingType</code>은 <code>footerKeyword</code>의 null 여부로 오타 교정(<code>SPELLING_CORRECTION</code>)과 키워드 대체(<code>ALTERNATIVE_SUGGESTION</code>)를 구분한다. 이 로직이 도메인 모델에 캡슐화되어 있으므로, ViewModel과 UI는 타입만 확인하면 된다.</p>
+
+    <!-- ════════════════════════════════════════
+         Section 5: Before/After
+         ════════════════════════════════════════ -->
+    <h2 id="section-5">Before/After</h2>
+
+    <table class="metrics-table">
+        <thead>
+            <tr><th>항목</th><th>Before (v3)</th><th>After (v4)</th><th>변화</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="metric-label">어댑터 수 (ConcatAdapter)</td>
+                <td>2개</td>
+                <td>1개</td>
+                <td><span class="delta delta-good">-50%</span></td>
+            </tr>
+            <tr>
+                <td class="metric-label">ProductPagingHeaderAdapter</td>
+                <td>156줄</td>
+                <td>삭제</td>
+                <td><span class="delta delta-good">-156줄</span></td>
+            </tr>
+            <tr>
+                <td class="metric-label">Fragment 데이터 바인딩</td>
+                <td>헤더 + 리스트 각각 전달</td>
+                <td>단일 PagingData 스트림</td>
+                <td><span class="delta delta-good">단순화</span></td>
+            </tr>
+            <tr>
+                <td class="metric-label">새 섹션 타입 추가 시 변경 파일</td>
+                <td>4+ 파일</td>
+                <td>1 파일 (매퍼)</td>
+                <td><span class="delta delta-good">-75%</span></td>
+            </tr>
+            <tr>
+                <td class="metric-label">섹션 조합 변경 주체</td>
+                <td>클라이언트 (하드코딩)</td>
+                <td>서버 (동적)</td>
+                <td><span class="delta delta-good">SDUI</span></td>
+            </tr>
+            <tr>
+                <td class="metric-label">빌드 설정 복잡도</td>
+                <td>기본</td>
+                <td>KSP 모듈 2개 추가</td>
+                <td><span class="delta delta-bad">+복잡</span></td>
+            </tr>
+            <tr>
+                <td class="metric-label">역직렬화 디버깅</td>
+                <td>Gson 기본 에러</td>
+                <td>커스텀 TypeAdapter 내부</td>
+                <td><span class="delta delta-bad">+복잡</span></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <p>빌드 설정 복잡도가 늘어난 것은 사실이다. <code>annotations/search</code>와 <code>processor/search</code> 두 모듈이 추가되었고, 빌드 변형(variant)별로 KSP 생성 코드의 소스셋을 설정해야 했다. 또한 커스텀 <code>JsonDeserializer</code>는 Gson 기본 역직렬화보다 디버깅이 까다롭다 &mdash; JSON 구조가 예상과 다를 때 에러 메시지가 덜 직관적이다.</p>
+
+    <p>이 트레이드오프를 감수한 이유는 명확하다. 검색 지면의 실험 속도가 클라이언트 릴리즈 주기에 묶이지 않게 되었고, 새 섹션 타입 추가의 비용이 "매퍼 클래스 하나"로 수렴했다.</p>
+
+    <!-- ════════════════════════════════════════
+         Section 6: 남긴 것들
+         ════════════════════════════════════════ -->
+    <h2 id="section-6">남긴 것들</h2>
+
+    <div class="summary-box">
+        <div class="summary-box-title">핵심 요약</div>
+        <ul>
+            <li><strong>Server Driven UI는 "실험 속도"가 병목일 때 도입하라.</strong> 검색처럼 섹션 조합이 자주 바뀌는 지면에 적합하다. 레이아웃이 고정된 화면에는 과잉 설계다.</li>
+            <li><strong>커스텀 역직렬화에는 반드시 섹션별 실패 격리를 확보하라.</strong> <code>runCatching</code>으로 개별 섹션의 파싱 실패가 전체 응답을 무효화하지 않도록 해야 한다. 서버가 새 섹션 타입을 내려보냈는데 클라이언트에 매퍼가 없는 경우에도 나머지 섹션은 정상 표시되어야 한다.</li>
+            <li><strong>KSP는 boilerplate 제거 이상의 가치가 있다.</strong> 매퍼 자동 수집은 "등록 누락 = 파싱 실패"라는 위험을 빌드 시점에 제거한다. 새 타입 추가의 진입 장벽을 낮춰서, 팀원 누구나 매퍼 하나만 만들면 새 섹션을 지원할 수 있게 된다.</li>
+        </ul>
+    </div>
+
+    <p>이 마이그레이션은 90개 파일, 42개 커밋에 걸친 작업이었다. 단순히 API 버전을 올린 것이 아니라, "서버가 UI 구성을 결정한다"는 원칙을 클라이언트 아키텍처 전반에 반영하는 과정이었다.</p>
+
+    <p>여러분의 앱에서 "새 UI 타입 = 클라이언트 릴리즈"인 지면을 찾아보라. 그 지면에서 서버 팀이 얼마나 자주 실험을 요청하는지 확인하면, Server Driven UI 도입이 필요한지 판단할 수 있다.</p>
+
+    <p>한 가지 주의할 점이 있다. Server Driven UI는 클라이언트의 유연성을 높이는 대신, 서버와 클라이언트 간의 <strong>계약(contract)</strong>을 더 엄밀하게 관리해야 한다. <code>templateType</code> 문자열 하나의 오타가 파싱 실패로 이어지므로, 서버-클라이언트 간 섹션 타입 정의를 공유하는 메커니즘이 함께 필요하다.</p>
+
+    <hr>
+
+    <div class="summary-box">
+        <div class="summary-box-title">시각화 자료</div>
+        <p>이 글의 핵심 아키텍처 다이어그램을 한 페이지로 정리한 시각화 문서를 제공한다.<br>
+        <a href="search-multi-section-architecture.html">&rarr; 시각화 페이지 보기</a></p>
+    </div>
+
+</article>
+
+<div class="article">
+    <div class="footnotes">
+        <p>[1] PR: <a href="https://github.com/thefarmersfront/kurly-android/pull/3460">thefarmersfront/kurly-android#3460</a> &mdash; KMA-2895 검색 멀티섹션 구조 변경 대응 (90 files, +1690 / -1318)</p>
+        <p>[2] KSP(Kotlin Symbol Processing)는 Kotlin 컴파일러 플러그인으로, kapt 대비 빌드 속도가 빠르고 Kotlin 네이티브 API를 제공한다.</p>
+    </div>
+</div>
+
+<footer class="article-footer">
+    <div class="share-buttons">
+        <button class="share-btn" onclick="navigator.clipboard.writeText(location.href)">링크 복사</button>
+    </div>
+</footer>
+
+</body>
+</html>
