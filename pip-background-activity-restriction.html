@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KMA-5572 라이브커머스 상품 선택 시 상세 화면으로 전환되지 않는 이슈 수정 - Change Visualization</title>
+<style>
+/* diff-viz: glass theme
+ * Glassmorphism — 반투명 블러 카드, 배경 그라데이션 비침, 프리미엄 오버레이 느낌.
+ * 다크 배경 + 컬러풀 그라데이션 위에 frosted glass 카드를 올린다.
+ */
+
+:root {
+  --cv-add: #60a5fa;
+  --cv-del: #fb923c;
+  --cv-mod: #fbbf24;
+  --cv-mov: #38bdf8;
+  --cv-bg: #0c0a1a;
+  --cv-text: #f1f5f9;
+  --cv-text-secondary: #c1c7d0;
+  --cv-muted: #8892a4;
+  --cv-border: rgba(255,255,255,0.10);
+  --cv-surface: rgba(255,255,255,0.04);
+  --cv-card-bg: rgba(255,255,255,0.06);
+  --cv-code-bg: rgba(0,0,0,0.35);
+  --cv-add-surface: rgba(96,165,250,0.08);
+  --cv-del-surface: rgba(251,146,60,0.08);
+  --cv-mod-surface: rgba(251,191,36,0.06);
+  --cv-mov-surface: rgba(56,189,248,0.08);
+
+  --glass-blur: 16px;
+  --glass-saturation: 180%;
+  --glass-border: rgba(255,255,255,0.12);
+  --glass-border-hover: rgba(255,255,255,0.20);
+  --glass-radius: 16px;
+  --glass-radius-lg: 24px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  color: var(--cv-text);
+  background: var(--cv-bg);
+  line-height: 1.7;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 48px 32px;
+  -webkit-font-smoothing: antialiased;
+  position: relative;
+}
+
+/* ── Ambient Background Gradient ── */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background:
+    radial-gradient(ellipse 50% 40% at 20% 20%, rgba(99,102,241,0.15) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 50% at 80% 30%, rgba(236,72,153,0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 50% 80%, rgba(56,189,248,0.08) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+body > * { position: relative; z-index: 1; }
+
+/* ── HERO ── */
+.cv-hero {
+  position: relative;
+  padding: 64px 40px 56px;
+  margin-bottom: 48px;
+  border-radius: var(--glass-radius-lg);
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(24px) saturate(var(--glass-saturation));
+  -webkit-backdrop-filter: blur(24px) saturate(var(--glass-saturation));
+  border: 1px solid var(--glass-border);
+  overflow: hidden;
+  box-shadow:
+    0 8px 32px rgba(0,0,0,0.2),
+    inset 0 1px 0 rgba(255,255,255,0.06);
+}
+.cv-hero::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%);
+}
+.cv-hero__title {
+  font-size: 32px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 16px;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  position: relative;
+}
+.cv-hero__subtitle {
+  font-size: 16px;
+  color: var(--cv-muted);
+  margin: 0;
+  line-height: 1.6;
+  position: relative;
+  max-width: 640px;
+}
+.cv-hero__glow {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.cv-hero__glow--tr {
+  top: -80px; right: -60px;
+  width: 260px; height: 260px;
+  background: radial-gradient(circle, rgba(99,102,241,0.20) 0%, transparent 60%);
+}
+.cv-hero__glow--bl {
+  bottom: -60px; left: -40px;
+  width: 200px; height: 200px;
+  background: radial-gradient(circle, rgba(236,72,153,0.12) 0%, transparent 60%);
+}
+
+/* ── Legend ── */
+.cv-legend {
+  display: flex; gap: 20px; flex-wrap: wrap;
+  padding: 14px 20px;
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  border: 1px solid var(--cv-border);
+  border-radius: var(--glass-radius);
+  margin-bottom: 32px;
+  font-size: 13px;
+  color: var(--cv-muted);
+}
+.cv-legend__item { display: flex; align-items: center; gap: 8px; }
+.cv-legend__dot {
+  width: 10px; height: 10px; border-radius: 50%; display: inline-block;
+  box-shadow: 0 0 10px currentColor, 0 0 20px currentColor;
+}
+
+/* ── Section ── */
+.cv-section { margin-bottom: 48px; animation: cv-fade-in 500ms ease-out both; }
+.cv-section:nth-child(2) { animation-delay: 60ms; }
+.cv-section:nth-child(3) { animation-delay: 120ms; }
+.cv-section:nth-child(4) { animation-delay: 180ms; }
+
+/* ── Card (Glass) ── */
+.cv-card {
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius);
+  padding: 20px 24px;
+  margin-bottom: 16px;
+  transition: border-color 250ms ease, box-shadow 250ms ease, transform 250ms ease;
+  box-shadow:
+    0 4px 16px rgba(0,0,0,0.15),
+    inset 0 1px 0 rgba(255,255,255,0.04);
+}
+.cv-card:hover {
+  border-color: var(--glass-border-hover);
+  box-shadow:
+    0 8px 32px rgba(0,0,0,0.2),
+    inset 0 1px 0 rgba(255,255,255,0.06);
+  transform: translateY(-1px);
+}
+.cv-card--add {
+  border-color: rgba(96,165,250,0.20);
+  background: rgba(96,165,250,0.06);
+  box-shadow:
+    0 4px 16px rgba(0,0,0,0.15),
+    0 0 24px rgba(96,165,250,0.06),
+    inset 0 1px 0 rgba(96,165,250,0.08);
+}
+.cv-card--del {
+  border-color: rgba(251,146,60,0.20);
+  background: rgba(251,146,60,0.06);
+}
+.cv-card--mod {
+  border-color: rgba(251,191,36,0.15);
+  background: rgba(251,191,36,0.04);
+}
+.cv-card--why {
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  border: 1px solid var(--cv-border);
+  border-left: 3px solid var(--cv-mod);
+  border-radius: 0 var(--glass-radius) var(--glass-radius) 0;
+}
+.cv-card__header {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--cv-text);
+  margin-bottom: 10px;
+}
+.cv-card__body {
+  font-size: 14px;
+  color: var(--cv-text-secondary);
+  line-height: 1.7;
+}
+
+/* ── Columns ── */
+.cv-columns {
+  display: flex;
+  gap: 20px;
+  align-items: stretch;
+  flex-wrap: wrap;
+  margin-bottom: 32px;
+}
+.cv-column { flex: 1; min-width: 280px; }
+.cv-column__label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--cv-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+}
+
+/* ── Arrow ── */
+.cv-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  flex-shrink: 0;
+  font-size: 20px;
+  color: var(--cv-muted);
+  font-weight: 400;
+}
+
+/* ── Badge ── */
+.cv-badge {
+  display: inline-flex; align-items: center;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--cv-muted);
+  border: 1px solid var(--cv-border);
+}
+.cv-badge--add { background: rgba(96,165,250,0.10); color: var(--cv-add); border-color: rgba(96,165,250,0.15); }
+.cv-badge--del { background: rgba(251,146,60,0.10); color: var(--cv-del); border-color: rgba(251,146,60,0.15); }
+.cv-badge--mod { background: rgba(251,191,36,0.08); color: var(--cv-mod); border-color: rgba(251,191,36,0.12); }
+.cv-badge--new { background: var(--cv-add); color: #0c0a1a; font-weight: 600; border-color: transparent; }
+
+/* ── Code ── */
+.cv-code { border-radius: var(--glass-radius); overflow: hidden; margin-bottom: 20px; }
+.cv-code__label { font-size: 11px; font-weight: 600; letter-spacing: 0.5px; margin-bottom: 6px; }
+.cv-code--before .cv-code__label { color: var(--cv-del); }
+.cv-code--after .cv-code__label { color: var(--cv-add); }
+
+.cv-code pre {
+  background: rgba(0,0,0,0.35);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--cv-text);
+  border-radius: var(--glass-radius);
+  padding: 16px 20px;
+  font-size: 13px;
+  font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+  line-height: 1.6;
+  margin: 0;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  border: 1px solid var(--cv-border);
+}
+
+/* ── Typography ── */
+.cv-h2 { font-size: 20px; font-weight: 600; color: var(--cv-text); letter-spacing: -0.01em; margin-bottom: 12px; }
+.cv-h3 { font-size: 15px; font-weight: 600; color: var(--cv-text); margin-bottom: 8px; }
+.cv-body { font-size: 14px; color: var(--cv-text-secondary); line-height: 1.7; }
+.cv-muted { font-size: 12px; color: var(--cv-muted); }
+
+.cv-text-add { color: var(--cv-add); }
+.cv-text-del { color: var(--cv-del); }
+.cv-text-mod { color: var(--cv-mod); }
+.cv-text-mov { color: var(--cv-mov); }
+
+/* ── Citations ── */
+.cv-citations { margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--cv-border); }
+.cv-citations__toggle { background: none; border: none; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--cv-muted); padding: 0; display: flex; align-items: center; gap: 8px; transition: color 200ms ease; }
+.cv-citations__toggle:hover { color: var(--cv-text-secondary); }
+.cv-citations__content { overflow: hidden; max-height: 0; transition: max-height 300ms ease; }
+.cv-citations__content.open { max-height: 600px; }
+
+/* ── Footer ── */
+.cv-footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--cv-border); font-size: 12px; color: var(--cv-muted); }
+
+/* ── Animation ── */
+@keyframes cv-fade-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+</style>
+</head>
+<body>
+
+<!-- HERO Header -->
+<div class="cv-hero">
+  <div class="cv-hero__glow cv-hero__glow--tr"></div>
+  <div class="cv-hero__glow cv-hero__glow--bl"></div>
+  <h1 class="cv-hero__title">KMA-5572 라이브커머스 PiP 화면 전환 이슈 수정</h1>
+  <p class="cv-hero__subtitle">Samsung One UI 보안 패치로 백그라운드 Activity 시작이 제한되어, PiP 모드에서 상품 상세 화면 전환이 차단되는 문제를 Activity 시작 타이밍 변경으로 해결</p>
+</div>
+
+<!-- Legend -->
+<div class="cv-legend">
+  <span class="cv-legend__item">
+    <span class="cv-legend__dot" style="color:var(--cv-add);"></span>
+    <span>+ 추가</span>
+  </span>
+  <span class="cv-legend__item">
+    <span class="cv-legend__dot" style="color:var(--cv-del);"></span>
+    <span>- 삭제</span>
+  </span>
+  <span class="cv-legend__item">
+    <span class="cv-legend__dot" style="color:var(--cv-mod);"></span>
+    <span>~ 수정</span>
+  </span>
+  <span class="cv-legend__item">
+    <span class="cv-legend__dot" style="color:var(--cv-mov);"></span>
+    <span>&#8594; 이동</span>
+  </span>
+</div>
+
+<!-- strategy: navigation-flow -->
+<section class="cv-section">
+
+  <h2 class="cv-h2">PiP 모드 Activity 시작 타이밍 변경</h2>
+  <p class="cv-body" style="margin-bottom: 24px;">Samsung One UI 보안 패치로 백그라운드 Activity 시작이 제한되어, 라이브커머스 PiP 모드에서 상품 상세 화면 전환이 차단되는 이슈를 해결한다.</p>
+
+  <!-- WHY 카드 -->
+  <div class="cv-card cv-card--why" style="margin-bottom: 28px;">
+    <div class="cv-card__header">왜 변경했는가?</div>
+    <div class="cv-card__body">
+      Samsung One UI 보안 패치가 백그라운드 Activity 시작 제한 정책을 강화했다.
+      기존 방식은 PiP 전환 완료(= 백그라운드 상태) 후 <code style="font-family:'JetBrains Mono','SF Mono',monospace;font-size:13px;background:rgba(0,0,0,0.25);padding:2px 6px;border-radius:4px;">startActivity</code>를 호출하므로,
+      보안 정책에 의해 상세 화면 전환이 차단된다.
+      포그라운드 상태에서 먼저 Activity를 시작하면 정책에 걸리지 않는다.
+    </div>
+  </div>
+
+  <!-- Before / After 2열 비교 -->
+  <div class="cv-columns">
+
+    <!-- Before 열 -->
+    <div class="cv-column">
+      <div class="cv-column__label">Before</div>
+
+      <!-- Step 1 -->
+      <div class="cv-card" style="text-align: center;">
+        <div class="cv-card__header">1. 상품 클릭</div>
+        <div class="cv-card__body">사용자가 라이브커머스에서 상품 선택</div>
+      </div>
+
+      <div class="cv-arrow">&#8595;</div>
+
+      <!-- Step 2: nextIntent 저장 -->
+      <div class="cv-card cv-card--del" style="text-align: center;">
+        <div class="cv-card__header"><span class="cv-badge cv-badge--del">- 삭제</span> nextIntent에 저장</div>
+        <div class="cv-card__body">
+          Intent를 <code style="font-family:'JetBrains Mono','SF Mono',monospace;font-size:12px;background:rgba(0,0,0,0.25);padding:2px 6px;border-radius:4px;">nextIntent</code> 필드에 보관만 함
+          <br><span class="cv-muted">startActivityWithChangePipMode()</span>
+        </div>
+      </div>
+
+      <div class="cv-arrow">&#8595;</div>
+
+      <!-- Step 3: PiP 진입 -->
+      <div class="cv-card" style="text-align: center;">
+        <div class="cv-card__header">2. PiP 모드 진입</div>
+        <div class="cv-card__body">
+          <code style="font-family:'JetBrains Mono','SF Mono',monospace;font-size:12px;background:rgba(0,0,0,0.25);padding:2px 6px;border-radius:4px;">enterPipMode()</code> 호출
+          <br><span class="cv-muted">앱이 백그라운드 상태로 전환</span>
+        </div>
+      </div>
+
+      <div class="cv-arrow">&#8595;</div>
+
+      <!-- Step 4: 지연 실행 (차단됨) -->
+      <div class="cv-card cv-card--del" style="text-align: center;">
+        <div class="cv-card__header">
+          <span class="cv-badge cv-badge--del">- 삭제</span> 3. 상세 화면 전환 (지연 실행)
+        </div>
+        <div class="cv-card__body">
+          <code style="font-family:'JetBrains Mono','SF Mono',monospace;font-size:12px;background:rgba(0,0,0,0.25);padding:2px 6px;border-radius:4px;">onPictureInPictureModeChanged</code> 콜백에서
+          <br><code style="font-family:'JetBrains Mono','SF Mono',monospace;font-size:12px;background:rgba(0,0,0,0.25);padding:2px 6px;border-radius:4px;">startActivity(nextIntent)</code> 호출
+        </div>
+        <div style="margin-top: 12px;">
+          <span class="cv-badge cv-badge--del" style="font-size: 13px; padding: 6px 14px; box-shadow: 0 0 12px rgba(251,146,60,0.25);">&#10060; 보안 패치로 차단됨</span>
+        </div>
+        <div class="cv-muted" style="margin-top: 8px;">백그라운드 상태에서 Activity 시작 불가</div>
+      </div>
+
+    </div>
+
+    <!-- After 열 -->
+    <div class="cv-column">
+      <div class="cv-column__label">After</div>
+
+      <!-- Step 1 -->
+      <div class="cv-card" style="text-align: center;">
+        <div class="cv-card__header">1. 상품 클릭</div>
+        <div class="cv-card__body">사용자가 라이브커머스에서 상품 선택</div>
+      </div>
+
+      <div class="cv-arrow">&#8595;</div>
+
+      <!-- Step 2: 즉시 startActivity -->
+      <div class="cv-card cv-card--add" style="text-align: center;">
+        <div class="cv-card__header"><span class="cv-badge cv-badge--add">~ 변경</span> 2. 상세 화면 전환 (즉시 실행)</div>
+        <div class="cv-card__body">
+          포그라운드 상태에서 바로 <code style="font-family:'JetBrains Mono','SF Mono',monospace;font-size:12px;background:rgba(0,0,0,0.25);padding:2px 6px;border-radius:4px;">startActivity(intent)</code> 호출
+          <br><span class="cv-muted">startActivityWithChangePipMode()</span>
+        </div>
+        <div style="margin-top: 12px;">
+          <span class="cv-badge cv-badge--add" style="font-size: 13px; padding: 6px 14px; box-shadow: 0 0 12px rgba(96,165,250,0.25);">&#10003; 포그라운드 — 차단 없음</span>
+        </div>
+      </div>
+
+      <div class="cv-arrow">&#8595;</div>
+
+      <!-- Step 3: PiP 진입 -->
+      <div class="cv-card" style="text-align: center;">
+        <div class="cv-card__header">3. PiP 모드 진입</div>
+        <div class="cv-card__body">
+          <code style="font-family:'JetBrains Mono','SF Mono',monospace;font-size:12px;background:rgba(0,0,0,0.25);padding:2px 6px;border-radius:4px;">enterPipMode()</code> 호출
+          <br><span class="cv-muted">이미 상세 화면 전환 완료</span>
+        </div>
+      </div>
+
+      <div class="cv-arrow" style="visibility: hidden;">&#8595;</div>
+
+      <!-- 삭제된 로직 표시 -->
+      <div class="cv-card" style="text-align: center; border-style: dashed; opacity: 0.35;">
+        <div class="cv-card__header" style="color: var(--cv-muted);">nextIntent / 콜백 로직 제거됨</div>
+        <div class="cv-card__body"><del style="color: var(--cv-muted);">onPictureInPictureModeChanged 내 startActivity 삭제</del></div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- 코드 변경 요약 -->
+  <div class="cv-card" style="margin-top: 8px;">
+    <div class="cv-card__header">코드 변경 요약</div>
+    <div class="cv-card__body" style="margin-bottom: 12px;">
+      <code style="font-family:'JetBrains Mono','SF Mono',monospace;font-size:13px;background:rgba(0,0,0,0.25);padding:2px 6px;border-radius:4px;">LiveCommerceWebViewActivity.kt</code> 1개 파일, +2 / -11 lines
+    </div>
+
+    <div style="display: flex; gap: 16px; margin-top: 16px; flex-wrap: wrap;">
+      <div style="flex: 1; min-width: 240px;">
+        <div class="cv-code cv-code--before">
+          <div class="cv-code__label">BEFORE</div>
+          <pre>nextIntent = intent.flagNewTask()
+enterPipMode()
+// ... PiP 전환 완료 콜백에서:
+if (nextIntent != null) {
+    startActivity(nextIntent)
+    nextIntent = null
+}</pre>
+        </div>
+      </div>
+      <div style="flex: 1; min-width: 240px;">
+        <div class="cv-code cv-code--after">
+          <div class="cv-code__label">AFTER</div>
+          <pre>startActivity(intent.flagNewTask())
+enterPipMode()
+// nextIntent 필드 및 콜백 로직 삭제</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+<!-- Citation 토글 (COM-20: 기본 접힘) -->
+<div class="cv-citations">
+  <button class="cv-citations__toggle" aria-expanded="false"
+    onclick="var c=this.nextElementSibling;var open=c.classList.toggle('open');this.setAttribute('aria-expanded',open);this.querySelector('.arrow').style.transform=open?'rotate(90deg)':'rotate(0deg)';">
+    <span class="arrow" style="display:inline-block;transition:transform 200ms ease;font-size:12px;">&#9654;</span>
+    적용된 설계 근거
+  </button>
+  <div class="cv-citations__content">
+    <table class="cv-table" style="margin-top: 12px;">
+      <thead>
+        <tr>
+          <th class="cv-table__header">규칙</th>
+          <th class="cv-table__header">설명</th>
+          <th class="cv-table__header">적용</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="cv-table__row"><td style="padding:8px 12px;color:var(--cv-text-secondary);">COM-01</td><td style="padding:8px 12px;color:var(--cv-text-secondary);">작업 기억 용량 4±1</td><td style="padding:8px 12px;color:var(--cv-text-secondary);">각 열의 독립 노드를 3-4개로 제한</td></tr>
+        <tr class="cv-table__row"><td style="padding:8px 12px;color:var(--cv-text-secondary);">COM-05</td><td style="padding:8px 12px;color:var(--cv-text-secondary);">멀티미디어 원칙 d=1.39</td><td style="padding:8px 12px;color:var(--cv-text-secondary);">다이어그램 + 텍스트 설명 병행</td></tr>
+        <tr class="cv-table__row"><td style="padding:8px 12px;color:var(--cv-text-secondary);">COM-07</td><td style="padding:8px 12px;color:var(--cv-text-secondary);">WCAG SC 1.4.1</td><td style="padding:8px 12px;color:var(--cv-text-secondary);">색상 외 +/-/~/→ 기호 병행</td></tr>
+        <tr class="cv-table__row"><td style="padding:8px 12px;color:var(--cv-text-secondary);">COM-09</td><td style="padding:8px 12px;color:var(--cv-text-secondary);">Riche "So what?" 프레임</td><td style="padding:8px 12px;color:var(--cv-text-secondary);">WHY 카드로 보안 패치 원인 명시</td></tr>
+        <tr class="cv-table__row"><td style="padding:8px 12px;color:var(--cv-text-secondary);">COM-10</td><td style="padding:8px 12px;color:var(--cv-text-secondary);">Itti & Koch 현저성 모델</td><td style="padding:8px 12px;color:var(--cv-text-secondary);">차단 뱃지에 glow 효과로 문제 지점 강조</td></tr>
+        <tr class="cv-table__row"><td style="padding:8px 12px;color:var(--cv-text-secondary);">COM-11</td><td style="padding:8px 12px;color:var(--cv-text-secondary);">Cleveland & McGill 위치 인코딩</td><td style="padding:8px 12px;color:var(--cv-text-secondary);">Before/After 공간 배치로 순서 차이 표현</td></tr>
+        <tr class="cv-table__row"><td style="padding:8px 12px;color:var(--cv-text-secondary);">COM-14</td><td style="padding:8px 12px;color:var(--cv-text-secondary);">테마 통일</td><td style="padding:8px 12px;color:var(--cv-text-secondary);">Glass 테마 CSS 변수만 사용</td></tr>
+        <tr class="cv-table__row"><td style="padding:8px 12px;color:var(--cv-text-secondary);">COM-25</td><td style="padding:8px 12px;color:var(--cv-text-secondary);">cv-card 기반 파이프라인</td><td style="padding:8px 12px;color:var(--cv-text-secondary);">cv-card 클래스로 모든 노드 구성</td></tr>
+        <tr class="cv-table__row"><td style="padding:8px 12px;color:var(--cv-text-secondary);">STR-05</td><td style="padding:8px 12px;color:var(--cv-text-secondary);">SMALL 규모 간결 시각화</td><td style="padding:8px 12px;color:var(--cv-text-secondary);">에이전트 1개, 단일 섹션 구성</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="cv-footer">
+  Generated by diff-viz | 2026-04-07
+</div>
+
+</body>
+</html>
