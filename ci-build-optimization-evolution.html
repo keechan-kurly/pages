@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CI 빌드 성능 최적화 3부작 - Change Visualization</title>
+<style>
+/* diff-viz: glass theme
+ * Glassmorphism — 반투명 블러 카드, 배경 그라데이션 비침, 프리미엄 오버레이 느낌.
+ * 다크 배경 + 컬러풀 그라데이션 위에 frosted glass 카드를 올린다.
+ */
+
+:root {
+  --cv-add: #60a5fa;
+  --cv-del: #fb923c;
+  --cv-mod: #fbbf24;
+  --cv-mov: #38bdf8;
+  --cv-bg: #0c0a1a;
+  --cv-text: #f1f5f9;
+  --cv-text-secondary: #c1c7d0;
+  --cv-muted: #8892a4;
+  --cv-border: rgba(255,255,255,0.10);
+  --cv-surface: rgba(255,255,255,0.04);
+  --cv-card-bg: rgba(255,255,255,0.06);
+  --cv-code-bg: rgba(0,0,0,0.35);
+  --cv-add-surface: rgba(96,165,250,0.08);
+  --cv-del-surface: rgba(251,146,60,0.08);
+  --cv-mod-surface: rgba(251,191,36,0.06);
+  --cv-mov-surface: rgba(56,189,248,0.08);
+
+  --glass-blur: 16px;
+  --glass-saturation: 180%;
+  --glass-border: rgba(255,255,255,0.12);
+  --glass-border-hover: rgba(255,255,255,0.20);
+  --glass-radius: 16px;
+  --glass-radius-lg: 24px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  color: var(--cv-text);
+  background: var(--cv-bg);
+  line-height: 1.7;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 48px 32px;
+  -webkit-font-smoothing: antialiased;
+  position: relative;
+}
+
+/* ── Ambient Background Gradient ── */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background:
+    radial-gradient(ellipse 50% 40% at 20% 20%, rgba(99,102,241,0.15) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 50% at 80% 30%, rgba(236,72,153,0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 50% 80%, rgba(56,189,248,0.08) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+body > * { position: relative; z-index: 1; }
+
+/* ── HERO ── */
+.cv-hero {
+  position: relative;
+  padding: 64px 40px 56px;
+  margin-bottom: 48px;
+  border-radius: var(--glass-radius-lg);
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(24px) saturate(var(--glass-saturation));
+  -webkit-backdrop-filter: blur(24px) saturate(var(--glass-saturation));
+  border: 1px solid var(--glass-border);
+  overflow: hidden;
+  box-shadow:
+    0 8px 32px rgba(0,0,0,0.2),
+    inset 0 1px 0 rgba(255,255,255,0.06);
+}
+.cv-hero::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%);
+}
+.cv-hero__title {
+  font-size: 32px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 16px;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  position: relative;
+}
+.cv-hero__subtitle {
+  font-size: 16px;
+  color: var(--cv-muted);
+  margin: 0;
+  line-height: 1.6;
+  position: relative;
+  max-width: 640px;
+}
+.cv-hero__glow {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.cv-hero__glow--tr {
+  top: -80px; right: -60px;
+  width: 260px; height: 260px;
+  background: radial-gradient(circle, rgba(99,102,241,0.20) 0%, transparent 60%);
+}
+.cv-hero__glow--bl {
+  bottom: -60px; left: -40px;
+  width: 200px; height: 200px;
+  background: radial-gradient(circle, rgba(236,72,153,0.12) 0%, transparent 60%);
+}
+
+/* ── Legend ── */
+.cv-legend {
+  display: flex; gap: 20px; flex-wrap: wrap;
+  padding: 14px 20px;
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  border: 1px solid var(--cv-border);
+  border-radius: var(--glass-radius);
+  margin-bottom: 32px;
+  font-size: 13px;
+  color: var(--cv-muted);
+}
+.cv-legend__item { display: flex; align-items: center; gap: 8px; }
+.cv-legend__dot {
+  width: 10px; height: 10px; border-radius: 50%; display: inline-block;
+  box-shadow: 0 0 10px currentColor, 0 0 20px currentColor;
+}
+
+/* ── Section ── */
+.cv-section { margin-bottom: 48px; animation: cv-fade-in 500ms ease-out both; }
+.cv-section:nth-child(2) { animation-delay: 60ms; }
+.cv-section:nth-child(3) { animation-delay: 120ms; }
+.cv-section:nth-child(4) { animation-delay: 180ms; }
+
+/* ── Card (Glass) ── */
+.cv-card {
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius);
+  padding: 20px 24px;
+  margin-bottom: 16px;
+  transition: border-color 250ms ease, box-shadow 250ms ease, transform 250ms ease;
+  box-shadow:
+    0 4px 16px rgba(0,0,0,0.15),
+    inset 0 1px 0 rgba(255,255,255,0.04);
+}
+.cv-card:hover {
+  border-color: var(--glass-border-hover);
+  box-shadow:
+    0 8px 32px rgba(0,0,0,0.2),
+    inset 0 1px 0 rgba(255,255,255,0.06);
+  transform: translateY(-1px);
+}
+.cv-card--add {
+  border-color: rgba(96,165,250,0.20);
+  background: rgba(96,165,250,0.06);
+  box-shadow:
+    0 4px 16px rgba(0,0,0,0.15),
+    0 0 24px rgba(96,165,250,0.06),
+    inset 0 1px 0 rgba(96,165,250,0.08);
+}
+.cv-card--del {
+  border-color: rgba(251,146,60,0.20);
+  background: rgba(251,146,60,0.06);
+}
+.cv-card--mod {
+  border-color: rgba(251,191,36,0.15);
+  background: rgba(251,191,36,0.04);
+}
+.cv-card--why {
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  border: 1px solid var(--cv-border);
+  border-left: 3px solid var(--cv-mod);
+  border-radius: 0 var(--glass-radius) var(--glass-radius) 0;
+}
+.cv-card__header {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--cv-text);
+  margin-bottom: 10px;
+}
+.cv-card__body {
+  font-size: 14px;
+  color: var(--cv-text-secondary);
+  line-height: 1.7;
+}
+
+/* ── Columns ── */
+.cv-columns {
+  display: flex;
+  gap: 20px;
+  align-items: stretch;
+  flex-wrap: wrap;
+  margin-bottom: 32px;
+}
+.cv-column { flex: 1; min-width: 280px; }
+.cv-column__label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--cv-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+}
+
+/* ── Module ── */
+.cv-module {
+  border: 1px solid var(--cv-border);
+  border-radius: var(--glass-radius);
+  padding: 16px;
+  background: rgba(255,255,255,0.03);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  margin-bottom: 12px;
+  transition: border-color 250ms ease;
+}
+.cv-module:hover { border-color: var(--glass-border-hover); }
+.cv-module--new {
+  background: rgba(96,165,250,0.06);
+  border-color: rgba(96,165,250,0.20);
+  box-shadow: 0 0 40px rgba(96,165,250,0.06);
+  position: relative;
+}
+.cv-module--new::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: calc(var(--glass-radius) + 1px);
+  background: linear-gradient(135deg, rgba(96,165,250,0.3), rgba(236,72,153,0.15), rgba(56,189,248,0.3));
+  z-index: -1;
+  opacity: 0.5;
+}
+.cv-module__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cv-add);
+  margin-bottom: 10px;
+}
+.cv-module__items { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ── Arrow ── */
+.cv-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  flex-shrink: 0;
+  font-size: 20px;
+  color: var(--cv-muted);
+  font-weight: 400;
+}
+
+/* ── Badge ── */
+.cv-badge {
+  display: inline-flex; align-items: center;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--cv-muted);
+  border: 1px solid var(--cv-border);
+}
+.cv-badge--add { background: rgba(96,165,250,0.10); color: var(--cv-add); border-color: rgba(96,165,250,0.15); }
+.cv-badge--del { background: rgba(251,146,60,0.10); color: var(--cv-del); border-color: rgba(251,146,60,0.15); }
+.cv-badge--mod { background: rgba(251,191,36,0.08); color: var(--cv-mod); border-color: rgba(251,191,36,0.12); }
+.cv-badge--new { background: var(--cv-add); color: #0c0a1a; font-weight: 600; border-color: transparent; }
+.cv-badge--module { background: rgba(96,165,250,0.10); color: var(--cv-add); border-color: rgba(96,165,250,0.15); }
+
+/* ── Code ── */
+.cv-code { border-radius: var(--glass-radius); overflow: hidden; margin-bottom: 20px; }
+.cv-code__label { font-size: 11px; font-weight: 600; letter-spacing: 0.5px; margin-bottom: 6px; }
+.cv-code--before .cv-code__label { color: var(--cv-del); }
+.cv-code--after .cv-code__label { color: var(--cv-add); }
+
+.cv-code pre {
+  background: rgba(0,0,0,0.35);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--cv-text);
+  border-radius: var(--glass-radius);
+  padding: 16px 20px;
+  font-size: 13px;
+  font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+  line-height: 1.6;
+  margin: 0;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  border: 1px solid var(--cv-border);
+}
+
+/* ── Typography ── */
+.cv-h2 { font-size: 20px; font-weight: 600; color: var(--cv-text); letter-spacing: -0.01em; margin-bottom: 12px; }
+.cv-h3 { font-size: 15px; font-weight: 600; color: var(--cv-text); margin-bottom: 8px; }
+.cv-body { font-size: 14px; color: var(--cv-text-secondary); line-height: 1.7; }
+.cv-muted { font-size: 12px; color: var(--cv-muted); }
+
+.cv-text-add { color: var(--cv-add); }
+.cv-text-del { color: var(--cv-del); }
+.cv-text-mod { color: var(--cv-mod); }
+.cv-text-mov { color: var(--cv-mov); }
+
+/* ── Table ── */
+.cv-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.cv-table__header { background: rgba(255,255,255,0.03); font-weight: 600; text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--cv-border); color: var(--cv-text); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+.cv-table__row { border-bottom: 1px solid var(--cv-border); }
+.cv-table__row td { padding: 8px 12px; color: var(--cv-text-secondary); }
+
+/* ── Citations ── */
+.cv-citations { margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--cv-border); }
+.cv-citations__toggle { background: none; border: none; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--cv-muted); padding: 0; display: flex; align-items: center; gap: 8px; transition: color 200ms ease; }
+.cv-citations__toggle:hover { color: var(--cv-text-secondary); }
+.cv-citations__content { overflow: hidden; max-height: 0; transition: max-height 300ms ease; }
+.cv-citations__content.open { max-height: 600px; }
+
+/* ── Footer ── */
+.cv-footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--cv-border); font-size: 12px; color: var(--cv-muted); }
+
+/* ── Animation ── */
+@keyframes cv-fade-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Phase 1 Pipeline Animation (10s infinite loop) ──
+ * 0-4.5s: 시나리오 1 (소스 코드 변경 → assembleDebug)
+ * 5-9.5s: 시나리오 2 (테스트만 변경 → 빌드 스킵)
+ */
+.p1-ind-src { animation: p1-ind-src 10s ease infinite; }
+.p1-ind-test { animation: p1-ind-test 10s ease infinite; }
+.p1-node-trigger { animation: p1-trigger 10s ease infinite; }
+.p1-node-check { animation: p1-check 10s ease infinite; }
+.p1-path-src { animation: p1-src 10s ease infinite; transition: opacity 400ms ease; }
+.p1-path-test { animation: p1-test 10s ease infinite; transition: opacity 400ms ease; }
+.p1-result-src { animation: p1-res-src 10s ease infinite; }
+.p1-result-test { animation: p1-res-test 10s ease infinite; }
+.p1-connector { animation: p1-conn 10s ease infinite; }
+
+/* Scenario indicator tabs */
+@keyframes p1-ind-src {
+  0%, 4% { border-color: transparent; background: transparent; }
+  8%, 42% { border-color: rgba(251,191,36,0.30); background: var(--cv-mod-surface); }
+  48%, 100% { border-color: transparent; background: transparent; }
+}
+@keyframes p1-ind-test {
+  0%, 54% { border-color: transparent; background: transparent; }
+  58%, 92% { border-color: rgba(96,165,250,0.30); background: var(--cv-add-surface); }
+  98%, 100% { border-color: transparent; background: transparent; }
+}
+
+/* Node pulses — trigger then check, twice per cycle */
+@keyframes p1-trigger {
+  0%, 3% { box-shadow: none; border-color: var(--cv-border); }
+  5%, 10% { box-shadow: 0 0 20px rgba(96,165,250,0.35); border-color: rgba(96,165,250,0.40); }
+  14%, 48% { box-shadow: none; border-color: var(--cv-border); }
+  55%, 60% { box-shadow: 0 0 20px rgba(96,165,250,0.35); border-color: rgba(96,165,250,0.40); }
+  64%, 100% { box-shadow: none; border-color: var(--cv-border); }
+}
+@keyframes p1-check {
+  0%, 10% { box-shadow: 0 0 40px rgba(96,165,250,0.06); }
+  13%, 18% { box-shadow: 0 0 28px rgba(96,165,250,0.40), 0 0 56px rgba(96,165,250,0.12); }
+  22%, 48% { box-shadow: 0 0 40px rgba(96,165,250,0.06); }
+  62%, 68% { box-shadow: 0 0 28px rgba(96,165,250,0.40), 0 0 56px rgba(96,165,250,0.12); }
+  72%, 100% { box-shadow: 0 0 40px rgba(96,165,250,0.06); }
+}
+
+/* Branch path opacity — active vs dimmed */
+@keyframes p1-src {
+  0%, 18% { opacity: 0.25; }
+  22%, 42% { opacity: 1; }
+  46%, 100% { opacity: 0.25; }
+}
+@keyframes p1-test {
+  0%, 68% { opacity: 0.25; }
+  72%, 92% { opacity: 1; }
+  96%, 100% { opacity: 0.25; }
+}
+
+/* Result node glow when active */
+@keyframes p1-res-src {
+  0%, 20% { box-shadow: none; border-color: var(--cv-border); }
+  24%, 40% { box-shadow: 0 0 16px rgba(251,191,36,0.25); border-color: rgba(251,191,36,0.30); }
+  44%, 100% { box-shadow: none; border-color: var(--cv-border); }
+}
+@keyframes p1-res-test {
+  0%, 70% { box-shadow: none; }
+  74%, 90% { box-shadow: 0 0 24px rgba(96,165,250,0.30), 0 0 48px rgba(96,165,250,0.10); }
+  94%, 100% { box-shadow: none; }
+}
+
+/* Connector pulse traveling along arrow (horizontal) */
+@keyframes p1-conn {
+  0%, 4% { background-position: -100% 0; }
+  6%, 12% { background-position: 200% 0; }
+  14%, 54% { background-position: -100% 0; }
+  56%, 62% { background-position: 200% 0; }
+  64%, 100% { background-position: -100% 0; }
+}
+
+/* Connector pulse traveling down (vertical) */
+.p1-conn-v { animation: p1-conn-v 10s ease infinite; }
+@keyframes p1-conn-v {
+  0%, 4% { background-position: 0 -100%; }
+  6%, 12% { background-position: 0 200%; }
+  14%, 54% { background-position: 0 -100%; }
+  56%, 62% { background-position: 0 200%; }
+  64%, 100% { background-position: 0 -100%; }
+}
+
+/* Branch split connector (fork animation) */
+.p1-fork { animation: p1-fork 10s ease infinite; }
+@keyframes p1-fork {
+  0%, 16% { opacity: 0.3; }
+  20% { opacity: 1; }
+  46%, 66% { opacity: 0.3; }
+  70% { opacity: 1; }
+  96%, 100% { opacity: 0.3; }
+}
+
+/* ── Phase 2: Sequential vs Parallel compilation (12s loop) ── */
+
+/* BEFORE: sequential modules — each lights up in turn */
+.p2-seq-0 { animation: p2-seq-0 12s ease infinite; }
+.p2-seq-1 { animation: p2-seq-1 12s ease infinite; }
+.p2-seq-2 { animation: p2-seq-2 12s ease infinite; }
+.p2-seq-3 { animation: p2-seq-3 12s ease infinite; }
+.p2-seq-4 { animation: p2-seq-4 12s ease infinite; }
+.p2-seq-5 { animation: p2-seq-5 12s ease infinite; }
+
+@keyframes p2-seq-0 {
+  0%, 6% { opacity: 0.2; box-shadow: none; border-color: var(--cv-border); }
+  8%, 14% { opacity: 1; box-shadow: 0 0 14px rgba(96,165,250,0.30); border-color: rgba(96,165,250,0.45); }
+  17%, 72% { opacity: 0.55; box-shadow: none; border-color: rgba(96,165,250,0.18); }
+  78%, 100% { opacity: 0.2; box-shadow: none; border-color: var(--cv-border); }
+}
+@keyframes p2-seq-1 {
+  0%, 14% { opacity: 0.2; box-shadow: none; border-color: var(--cv-border); }
+  17%, 23% { opacity: 1; box-shadow: 0 0 14px rgba(96,165,250,0.30); border-color: rgba(96,165,250,0.45); }
+  26%, 72% { opacity: 0.55; box-shadow: none; border-color: rgba(96,165,250,0.18); }
+  78%, 100% { opacity: 0.2; box-shadow: none; border-color: var(--cv-border); }
+}
+@keyframes p2-seq-2 {
+  0%, 23% { opacity: 0.2; box-shadow: none; border-color: var(--cv-border); }
+  26%, 32% { opacity: 1; box-shadow: 0 0 14px rgba(96,165,250,0.30); border-color: rgba(96,165,250,0.45); }
+  35%, 72% { opacity: 0.55; box-shadow: none; border-color: rgba(96,165,250,0.18); }
+  78%, 100% { opacity: 0.2; box-shadow: none; border-color: var(--cv-border); }
+}
+@keyframes p2-seq-3 {
+  0%, 32% { opacity: 0.2; box-shadow: none; border-color: var(--cv-border); }
+  35%, 41% { opacity: 1; box-shadow: 0 0 14px rgba(96,165,250,0.30); border-color: rgba(96,165,250,0.45); }
+  44%, 72% { opacity: 0.55; box-shadow: none; border-color: rgba(96,165,250,0.18); }
+  78%, 100% { opacity: 0.2; box-shadow: none; border-color: var(--cv-border); }
+}
+@keyframes p2-seq-4 {
+  0%, 41% { opacity: 0.2; box-shadow: none; border-color: var(--cv-border); }
+  44%, 50% { opacity: 1; box-shadow: 0 0 14px rgba(96,165,250,0.30); border-color: rgba(96,165,250,0.45); }
+  53%, 72% { opacity: 0.55; box-shadow: none; border-color: rgba(96,165,250,0.18); }
+  78%, 100% { opacity: 0.2; box-shadow: none; border-color: var(--cv-border); }
+}
+@keyframes p2-seq-5 {
+  0%, 50% { opacity: 0.2; box-shadow: none; border-color: var(--cv-border); }
+  53%, 59% { opacity: 1; box-shadow: 0 0 14px rgba(96,165,250,0.30); border-color: rgba(96,165,250,0.45); }
+  62%, 72% { opacity: 0.55; box-shadow: none; border-color: rgba(96,165,250,0.18); }
+  78%, 100% { opacity: 0.2; box-shadow: none; border-color: var(--cv-border); }
+}
+
+/* AFTER: parallel — all changed modules light up together */
+.p2-par { animation: p2-par 12s ease infinite; }
+@keyframes p2-par {
+  0%, 6% { opacity: 0.2; box-shadow: none; border-color: var(--cv-border); }
+  8%, 24% { opacity: 1; box-shadow: 0 0 18px rgba(96,165,250,0.35); border-color: rgba(96,165,250,0.50); }
+  28%, 72% { opacity: 0.7; box-shadow: none; border-color: rgba(96,165,250,0.22); }
+  78%, 100% { opacity: 0.2; box-shadow: none; border-color: var(--cv-border); }
+}
+
+/* Progress bars */
+.p2-bar-seq { animation: p2-bar-seq 12s ease infinite; }
+@keyframes p2-bar-seq {
+  0%, 6% { width: 0%; }
+  8% { width: 0%; }
+  62% { width: 100%; }
+  72% { width: 100%; }
+  78%, 100% { width: 0%; }
+}
+.p2-bar-par { animation: p2-bar-par 12s ease infinite; }
+@keyframes p2-bar-par {
+  0%, 6% { width: 0%; }
+  8% { width: 0%; }
+  28% { width: 100%; }
+  72% { width: 100%; }
+  78%, 100% { width: 0%; }
+}
+
+/* Done badges */
+.p2-done-seq { animation: p2-done-seq 12s ease infinite; }
+@keyframes p2-done-seq {
+  0%, 60% { opacity: 0; transform: scale(0.8); }
+  64%, 72% { opacity: 1; transform: scale(1); }
+  78%, 100% { opacity: 0; transform: scale(0.8); }
+}
+.p2-done-par { animation: p2-done-par 12s ease infinite; }
+@keyframes p2-done-par {
+  0%, 26% { opacity: 0; transform: scale(0.8); }
+  30%, 72% { opacity: 1; transform: scale(1); }
+  78%, 100% { opacity: 0; transform: scale(0.8); }
+}
+
+/* Spinning indicator for active compile */
+.p2-spin { display: inline-block; animation: p2-spin 1s linear infinite; }
+@keyframes p2-spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- HERO Header -->
+<div class="cv-hero">
+  <div class="cv-hero__glow cv-hero__glow--tr"></div>
+  <div class="cv-hero__glow cv-hero__glow--bl"></div>
+  <h1 class="cv-hero__title">CI 빌드 성능 최적화 3부작</h1>
+  <p class="cv-hero__subtitle">PR #7235 → #7271 → #7326: 불필요한 빌드 스킵, 실패 유형 분류, AI 자동 수정으로 CI 파이프라인을 단계적으로 진화</p>
+</div>
+
+<div class="cv-legend">
+  <span class="cv-legend__item">
+    <span class="cv-legend__dot" style="color:var(--cv-add);"></span>
+    <span>+ 추가</span>
+  </span>
+  <span class="cv-legend__item">
+    <span class="cv-legend__dot" style="color:var(--cv-del);"></span>
+    <span>- 삭제</span>
+  </span>
+  <span class="cv-legend__item">
+    <span class="cv-legend__dot" style="color:var(--cv-mod);"></span>
+    <span>~ 수정</span>
+  </span>
+  <span class="cv-legend__item">
+    <span class="cv-legend__dot" style="color:var(--cv-mov);"></span>
+    <span>→ 이동</span>
+  </span>
+</div>
+
+<!-- Main Content Section -->
+<section class="cv-section">
+
+  <!-- WHY: 변경 동기 -->
+  <div class="cv-card cv-card--why" style="margin-bottom:32px;">
+    <h2 class="cv-h2" style="margin-bottom:12px;">왜 CI 파이프라인을 개선했는가</h2>
+    <p class="cv-body" style="margin-bottom:8px;">
+      기존 CI는 <strong>모든 PR에 대해 무조건 빌드</strong>를 실행했고,
+      실패 시 <strong>단순 에러 메시지</strong>만 Slack으로 전송했다.
+    </p>
+    <ul class="cv-body" style="margin:0; padding-left:20px;">
+      <li>테스트 코드만 수정해도 전체 빌드가 돌아 <strong>리소스 낭비</strong></li>
+      <li>컴파일 에러인지 테스트 실패인지 구분 불가 → <strong>디버깅 시간 증가</strong></li>
+      <li>컴파일 에러를 개발자가 직접 수정해야 → <strong>반복 작업</strong></li>
+    </ul>
+    <p class="cv-muted" style="margin-top:12px;">
+      3개 PR(#7235 → #7271 → #7326)이 이 문제를 단계적으로 해결한다.
+    </p>
+  </div>
+
+  <!-- BEFORE: 기존 CI 파이프라인 -->
+  <h2 class="cv-h2" style="margin-bottom:16px;">Before — 기존 CI 파이프라인</h2>
+
+  <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:40px;">
+    <!-- build_for_develop.yml -->
+    <div class="cv-card" style="flex:1; min-width:260px; margin-bottom:0;">
+      <p class="cv-muted" style="margin-bottom:10px;">build_for_develop.yml</p>
+      <div style="display:flex; flex-direction:column; align-items:center; gap:0;">
+        <div class="cv-module" style="width:100%; padding:10px 14px; margin-bottom:0; display:flex; align-items:center; gap:10px;">
+          <span style="width:24px; height:24px; border-radius:50%; background:var(--cv-surface); border:1px solid var(--cv-border); display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:11px; font-weight:700; color:var(--cv-text);">1</span>
+          <span class="cv-body" style="font-size:13px;">PR 트리거</span>
+        </div>
+        <span style="color:var(--cv-muted); font-size:10px;">▼</span>
+        <div class="cv-module" style="width:100%; padding:10px 14px; margin-bottom:0; display:flex; align-items:center; gap:10px;">
+          <span style="width:24px; height:24px; border-radius:50%; background:var(--cv-surface); border:1px solid var(--cv-border); display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:11px; font-weight:700; color:var(--cv-text);">2</span>
+          <div>
+            <span class="cv-body" style="font-size:13px;">assembleDebug</span><br/>
+            <span class="cv-muted">모든 PR 무조건 빌드</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- unit_test_on_pr.yml -->
+    <div class="cv-card" style="flex:2; min-width:340px; margin-bottom:0;">
+      <p class="cv-muted" style="margin-bottom:10px;">unit_test_on_pr.yml</p>
+      <div style="display:flex; flex-direction:column; align-items:center; gap:0;">
+        <div class="cv-module" style="width:100%; padding:10px 14px; margin-bottom:0; display:flex; align-items:center; gap:10px;">
+          <span style="width:24px; height:24px; border-radius:50%; background:var(--cv-surface); border:1px solid var(--cv-border); display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:11px; font-weight:700; color:var(--cv-text);">1</span>
+          <span class="cv-body" style="font-size:13px;">PR 트리거</span>
+        </div>
+        <span style="color:var(--cv-muted); font-size:10px;">▼</span>
+        <div class="cv-module" style="width:100%; padding:10px 14px; margin-bottom:0; display:flex; align-items:center; gap:10px;">
+          <span style="width:24px; height:24px; border-radius:50%; background:var(--cv-surface); border:1px solid var(--cv-border); display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:11px; font-weight:700; color:var(--cv-text);">2</span>
+          <span class="cv-body" style="font-size:13px;">testStoreRelease</span>
+        </div>
+        <span style="color:var(--cv-muted); font-size:10px;">▼</span>
+        <div class="cv-module" style="width:100%; padding:10px 14px; margin-bottom:0; display:flex; align-items:center; gap:10px; position:relative;">
+          <span style="width:24px; height:24px; border-radius:50%; background:var(--cv-surface); border:1px solid var(--cv-border); display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:11px; font-weight:700; color:var(--cv-text);">3</span>
+          <div>
+            <span class="cv-body" style="font-size:13px;">실패 시 Slack</span>
+            <span class="cv-badge cv-badge--del" style="margin-left:6px;">단순</span><br/>
+            <span class="cv-muted">에러 메시지만 전달 — 유형 구분 없음</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AFTER: 3단계 진화 -->
+  <h2 class="cv-h2" style="margin-bottom:16px;">After — 3단계 진화</h2>
+
+  <!-- Phase 1: PR #7235 — Animated Vertical Pipeline -->
+  <div class="cv-card cv-card--add" style="margin-bottom:24px;">
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+      <span class="cv-badge cv-badge--new">Phase 1</span>
+      <h3 class="cv-h3" style="margin:0;">+ 빌드 스킵 정책</h3>
+      <span class="cv-muted">PR #7235</span>
+    </div>
+
+    <p class="cv-body" style="margin-bottom:16px;">
+      테스트 코드만 변경된 PR은 빌드를 건너뛰어 CI 리소스를 절약한다.
+    </p>
+
+    <!-- Scenario indicator pills (compact) -->
+    <div style="display:flex; gap:8px; margin-bottom:20px;">
+      <div class="p1-ind-src" style="padding:5px 14px; border-radius:20px; border:1.5px solid transparent; display:flex; align-items:center; gap:6px;">
+        <span style="width:6px; height:6px; border-radius:50%; background:var(--cv-mod); display:inline-block;"></span>
+        <span style="font-size:12px; font-weight:600; color:var(--cv-mod);">시나리오 1</span>
+        <span class="cv-muted">소스 코드 변경</span>
+      </div>
+      <div class="p1-ind-test" style="padding:5px 14px; border-radius:20px; border:1.5px solid transparent; display:flex; align-items:center; gap:6px;">
+        <span style="width:6px; height:6px; border-radius:50%; background:var(--cv-add); display:inline-block;"></span>
+        <span style="font-size:12px; font-weight:600; color:var(--cv-add);">시나리오 2</span>
+        <span class="cv-muted">테스트 코드만 변경</span>
+      </div>
+    </div>
+
+    <p class="cv-muted" style="margin-bottom:12px;">build_for_develop.yml</p>
+
+    <!-- ═══ Vertical Pipeline ═══ -->
+    <div style="display:flex; flex-direction:column; align-items:center; gap:0;">
+
+      <!-- Step 1: PR 트리거 -->
+      <div class="p1-node-trigger cv-module" style="width:100%; padding:14px 20px; margin-bottom:0; display:flex; align-items:center; gap:12px;">
+        <div style="width:32px; height:32px; border-radius:50%; background:var(--cv-surface); border:1.5px solid var(--cv-border); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+          <span style="font-size:13px; font-weight:700; color:var(--cv-text);">1</span>
+        </div>
+        <div>
+          <div class="cv-body" style="font-size:14px; font-weight:600;">PR 트리거</div>
+          <div class="cv-muted">pull_request → opened, synchronize, reopened</div>
+        </div>
+      </div>
+
+      <!-- Vertical connector ↓ -->
+      <div style="display:flex; flex-direction:column; align-items:center; padding:2px 0;">
+        <div class="p1-conn-v" style="width:2px; height:24px; background:var(--cv-border); background-image:linear-gradient(180deg, transparent 0%, var(--cv-add) 50%, transparent 100%); background-size:100% 50%; background-repeat:no-repeat; background-position:0 -100%;"></div>
+        <span style="color:var(--cv-muted); font-size:10px; line-height:1;">▼</span>
+      </div>
+
+      <!-- Step 2: check-changes -->
+      <div class="p1-node-check cv-module cv-module--new" style="width:100%; padding:14px 20px; margin-bottom:0; display:flex; align-items:center; gap:12px;">
+        <div style="width:32px; height:32px; border-radius:50%; background:var(--cv-add-surface); border:1.5px solid rgba(96,165,250,0.25); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+          <span style="font-size:13px; font-weight:700; color:var(--cv-add);">2</span>
+        </div>
+        <div>
+          <div class="cv-body" style="font-size:14px; font-weight:600;">+ check-changes <span class="cv-badge cv-badge--add" style="margin-left:6px;">NEW</span></div>
+          <div class="cv-muted">변경된 파일을 분석하여 소스 코드 변경 vs 테스트 코드만 변경 판단</div>
+        </div>
+      </div>
+
+      <!-- Fork connector ↓ (animated) -->
+      <div class="p1-fork" style="display:flex; flex-direction:column; align-items:center; padding:2px 0;">
+        <div style="width:2px; height:16px; background:var(--cv-border);"></div>
+        <span style="color:var(--cv-muted); font-size:10px; line-height:1;">▼</span>
+      </div>
+
+      <!-- Step 3: Branch results — side by side -->
+      <div style="display:flex; gap:12px; width:100%;">
+        <!-- Branch A: 소스 변경 → assembleDebug -->
+        <div class="p1-path-src" style="flex:1; display:flex; flex-direction:column; gap:0;">
+          <!-- Condition pill -->
+          <div style="display:flex; justify-content:center; margin-bottom:6px;">
+            <span class="cv-badge cv-badge--mod" style="padding:4px 12px; font-size:12px; font-weight:600;">소스 변경</span>
+          </div>
+          <!-- Result card -->
+          <div class="p1-result-src cv-module" style="flex:1; padding:14px 16px; margin-bottom:0; text-align:center; border-left:3px solid var(--cv-mod);">
+            <div class="cv-body" style="font-size:14px; font-weight:600;">assembleDebug</div>
+            <div class="cv-muted" style="margin-top:4px;">빌드 실행</div>
+          </div>
+        </div>
+
+        <!-- Branch B: 테스트만 → 빌드 스킵 -->
+        <div class="p1-path-test" style="flex:1; display:flex; flex-direction:column; gap:0;">
+          <!-- Condition pill -->
+          <div style="display:flex; justify-content:center; margin-bottom:6px;">
+            <span class="cv-badge cv-badge--add" style="padding:4px 12px; font-size:12px; font-weight:600;">테스트만</span>
+          </div>
+          <!-- Result card -->
+          <div class="p1-result-test cv-module cv-module--new" style="flex:1; padding:14px 16px; margin-bottom:0; text-align:center; border-left:3px solid var(--cv-add);">
+            <div class="cv-body" style="font-size:14px; font-weight:600;">~ 빌드 스킵</div>
+            <div class="cv-muted" style="margin-top:4px;">CI 리소스 절약</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <!-- ═══ End Vertical Pipeline ═══ -->
+
+    <p class="cv-muted" style="margin-top:16px;">
+      concurrency를 job 레벨로 이동 → check-changes가 빠르게 통과하여 큐 블로킹 방지
+    </p>
+  </div>
+
+  <!-- Phase 2: PR #7271 — Animated Sequential vs Parallel -->
+  <div class="cv-card cv-card--mod" style="margin-bottom:24px;">
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+      <span class="cv-badge cv-badge--new">Phase 2</span>
+      <h3 class="cv-h3" style="margin:0;">~ 실패 유형 분류 + 2-Phase 파이프라인</h3>
+      <span class="cv-muted">PR #7271</span>
+    </div>
+
+    <p class="cv-body" style="margin-bottom:20px;">
+      빌드를 2단계로 나눠 빠른 피드백을 주고, 실패를 유형별로 분류하여 정확한 알림을 전달한다.
+    </p>
+
+    <!-- ═══ Compile Check: Before vs After ═══ -->
+    <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:20px;">
+
+      <!-- ── BEFORE: 순차 컴파일 (세로 = 직렬) ── -->
+      <div style="flex:1; min-width:200px;">
+        <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px;">
+          <span class="cv-badge cv-badge--del" style="font-size:11px;">Before</span>
+          <span class="cv-muted">전체 모듈 순차 컴파일</span>
+        </div>
+
+        <!-- Vertical stack = sequential -->
+        <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:10px;">
+          <div class="p2-seq-0" style="padding:8px 12px; border:1.5px solid var(--cv-border); border-radius:10px; background:var(--cv-surface); display:flex; align-items:center; gap:8px;">
+            <span style="font-size:12px; font-weight:600; color:var(--cv-text);">:app</span>
+            <span class="cv-muted" style="margin-left:auto; font-size:10px;">▼</span>
+          </div>
+          <div class="p2-seq-1" style="padding:8px 12px; border:1.5px solid var(--cv-border); border-radius:10px; background:var(--cv-surface); display:flex; align-items:center; gap:8px;">
+            <span style="font-size:12px; font-weight:600; color:var(--cv-text);">:features</span>
+            <span class="cv-muted" style="margin-left:auto; font-size:10px;">▼</span>
+          </div>
+          <div class="p2-seq-2" style="padding:8px 12px; border:1.5px solid var(--cv-border); border-radius:10px; background:var(--cv-surface); display:flex; align-items:center; gap:8px;">
+            <span style="font-size:12px; font-weight:600; color:var(--cv-text);">:domain</span>
+            <span class="cv-muted" style="margin-left:auto; font-size:10px;">▼</span>
+          </div>
+          <div class="p2-seq-3" style="padding:8px 12px; border:1.5px solid var(--cv-border); border-radius:10px; background:var(--cv-surface); display:flex; align-items:center; gap:8px;">
+            <span style="font-size:12px; font-weight:600; color:var(--cv-text);">:data</span>
+            <span class="cv-muted" style="margin-left:auto; font-size:10px;">▼</span>
+          </div>
+          <div class="p2-seq-4" style="padding:8px 12px; border:1.5px solid var(--cv-border); border-radius:10px; background:var(--cv-surface); display:flex; align-items:center; gap:8px;">
+            <span style="font-size:12px; font-weight:600; color:var(--cv-text);">:core</span>
+            <span class="cv-muted" style="margin-left:auto; font-size:10px;">▼</span>
+          </div>
+          <div class="p2-seq-5" style="padding:8px 12px; border:1.5px solid var(--cv-border); border-radius:10px; background:var(--cv-surface);">
+            <span style="font-size:12px; font-weight:600; color:var(--cv-text);">:navigation</span>
+          </div>
+        </div>
+
+        <!-- Progress bar -->
+        <div style="position:relative; height:22px;">
+          <div style="position:absolute; inset:0; border-radius:6px; background:rgba(255,255,255,0.04); border:1px solid var(--cv-border); overflow:hidden;">
+            <div class="p2-bar-seq" style="height:100%; width:0%; background:linear-gradient(90deg, rgba(251,146,60,0.25), rgba(251,146,60,0.40)); border-radius:6px;"></div>
+          </div>
+          <div class="p2-done-seq" style="position:absolute; right:8px; top:2px; opacity:0;">
+            <span style="font-size:12px; color:var(--cv-del); font-weight:600;">완료 — 느림</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── AFTER: 병렬 컴파일 (가로 = 병렬) ── -->
+      <div style="flex:2; min-width:340px;">
+        <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px;">
+          <span class="cv-badge cv-badge--add" style="font-size:11px;">After</span>
+          <span class="cv-muted">+ Quick Compile Check — 변경 모듈만 병렬 컴파일 <span style="color:var(--cv-add);">--parallel</span></span>
+        </div>
+
+        <!-- Horizontal row = parallel (changed modules) -->
+        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
+          <div class="p2-par" style="flex:1; min-width:80px; padding:10px 8px; border:1.5px solid var(--cv-border); border-radius:10px; text-align:center; background:var(--cv-add-surface);">
+            <div style="font-size:13px; font-weight:600; color:var(--cv-add);">:features</div>
+            <div class="cv-muted" style="font-size:10px; margin-top:2px;">컴파일 중</div>
+          </div>
+          <div class="p2-par" style="flex:1; min-width:80px; padding:10px 8px; border:1.5px solid var(--cv-border); border-radius:10px; text-align:center; background:var(--cv-add-surface);">
+            <div style="font-size:13px; font-weight:600; color:var(--cv-add);">:domain</div>
+            <div class="cv-muted" style="font-size:10px; margin-top:2px;">컴파일 중</div>
+          </div>
+          <div class="p2-par" style="flex:1; min-width:80px; padding:10px 8px; border:1.5px solid var(--cv-border); border-radius:10px; text-align:center; background:var(--cv-add-surface);">
+            <div style="font-size:13px; font-weight:600; color:var(--cv-add);">:data</div>
+            <div class="cv-muted" style="font-size:10px; margin-top:2px;">컴파일 중</div>
+          </div>
+        </div>
+
+        <!-- Skipped modules (muted row) -->
+        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
+          <div style="flex:1; min-width:70px; padding:6px 8px; border:1px dashed rgba(255,255,255,0.06); border-radius:8px; text-align:center; opacity:0.3;">
+            <span style="font-size:11px; color:var(--cv-muted);">:app</span>
+            <span style="font-size:9px; color:var(--cv-muted); margin-left:4px;">skip</span>
+          </div>
+          <div style="flex:1; min-width:70px; padding:6px 8px; border:1px dashed rgba(255,255,255,0.06); border-radius:8px; text-align:center; opacity:0.3;">
+            <span style="font-size:11px; color:var(--cv-muted);">:core</span>
+            <span style="font-size:9px; color:var(--cv-muted); margin-left:4px;">skip</span>
+          </div>
+          <div style="flex:1; min-width:70px; padding:6px 8px; border:1px dashed rgba(255,255,255,0.06); border-radius:8px; text-align:center; opacity:0.3;">
+            <span style="font-size:11px; color:var(--cv-muted);">:navigation</span>
+            <span style="font-size:9px; color:var(--cv-muted); margin-left:4px;">skip</span>
+          </div>
+        </div>
+
+        <!-- Progress bar -->
+        <div style="position:relative; height:22px;">
+          <div style="position:absolute; inset:0; border-radius:6px; background:rgba(255,255,255,0.04); border:1px solid var(--cv-border); overflow:hidden;">
+            <div class="p2-bar-par" style="height:100%; width:0%; background:linear-gradient(90deg, rgba(96,165,250,0.25), rgba(96,165,250,0.45)); border-radius:6px;"></div>
+          </div>
+          <div class="p2-done-par" style="position:absolute; right:8px; top:2px; opacity:0;">
+            <span style="font-size:12px; color:var(--cv-add); font-weight:600;">완료 — 빠름</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <!-- ═══ End Compile Check ═══ -->
+
+  </div>
+
+  <!-- Phase 3: PR #7326 — Redesigned after reference -->
+  <div class="cv-card cv-card--add" style="margin-bottom:24px;">
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+      <span class="cv-badge cv-badge--new">Phase 3</span>
+      <h3 class="cv-h3" style="margin:0;">+ AI 자동 수정 (Gemini)</h3>
+      <span class="cv-muted">PR #7326</span>
+    </div>
+
+    <p class="cv-body" style="margin-bottom:20px;">
+      컴파일 에러를 Gemini API가 자동 수정하여 개발자 개입을 최소화한다.
+      아래는 Phase 1~3이 모두 적용된 <strong>최종 CI 파이프라인</strong>이다.
+    </p>
+
+    <!-- Step 0: 무한 루프 방지 (NEW) -->
+    <div class="cv-card cv-card--add" style="padding:14px 18px; margin-bottom:8px;">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+        <span class="cv-h3" style="margin-bottom:0;">+ 무한 루프 방지</span>
+        <span class="cv-badge cv-badge--new">NEW</span>
+      </div>
+      <div class="cv-muted">최근 3커밋에 <code style="color:var(--cv-add); background:var(--cv-add-surface); padding:1px 5px; border-radius:4px; font-size:12px;">[auto-fix]</code> 태그가 있으면 자동 수정 skip</div>
+    </div>
+
+    <div class="cv-arrow" style="font-size:16px; min-width:auto; padding:4px 0;">&darr;</div>
+
+    <!-- 기존 흐름 (그룹화) -->
+    <div class="cv-card" style="padding:14px 18px; margin-bottom:8px;">
+      <div class="cv-h3" style="margin-bottom:4px;">기존 흐름</div>
+      <div class="cv-muted" style="margin-bottom:6px;">PR 트리거 &rarr; JDK 설정 &rarr; Quick compile check &rarr; Unit test &rarr; 실패 시 에러 분류</div>
+      <div style="display:flex; gap:6px; flex-wrap:wrap;">
+        <span class="cv-badge cv-badge--del" style="border-width:2px; padding:4px 12px; font-size:12px; font-weight:600; box-shadow:0 0 12px rgba(251,146,60,0.15);">COMPILE_ERROR</span>
+        <span class="cv-badge cv-badge--mod">TEST_FAILURE</span>
+        <span class="cv-badge">BUILD_ERROR</span>
+      </div>
+    </div>
+
+    <!-- 조건 분기 인디케이터 -->
+    <div style="display:flex; align-items:center; justify-content:center; padding:6px 0;">
+      <div style="display:flex; flex-direction:column; align-items:center;">
+        <div style="width:2px; height:10px; background:var(--cv-del);"></div>
+        <div style="background:var(--cv-del-surface); border:1.5px solid rgba(251,146,60,0.30); border-radius:20px; padding:4px 14px; display:flex; align-items:center; gap:6px;">
+          <span style="font-size:12px; color:var(--cv-del); font-weight:600;">COMPILE_ERROR</span>
+          <span style="font-size:11px; color:var(--cv-muted);">인 경우만 실행</span>
+        </div>
+        <div style="width:2px; height:10px; background:var(--cv-del);"></div>
+      </div>
+    </div>
+
+    <!-- ★ Gemini 자동 수정 파이프라인 (NEW — 핵심) -->
+    <div class="cv-card cv-card--add" style="padding:18px 20px; margin-bottom:8px; border-width:2px; border-left:3px solid var(--cv-del);">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+        <span class="cv-h3" style="margin-bottom:0;">+ Gemini 자동 수정 파이프라인</span>
+        <span class="cv-badge cv-badge--new">NEW</span>
+      </div>
+
+      <!-- Sub-step 1: 컨텍스트 수집 -->
+      <div style="border-left:2px solid var(--cv-border); padding-left:14px; margin-bottom:12px;">
+        <div class="cv-body" style="margin-bottom:4px;"><strong style="color:var(--cv-text);">1. 컨텍스트 수집</strong></div>
+        <div class="cv-muted">컴파일 에러 목록 + 관련 소스 코드(500줄/파일) + PR diff</div>
+        <div style="margin-top:6px;">
+          <span class="cv-badge cv-badge--mod" style="font-size:10px;">compile log &rarr; error-details.txt</span>
+        </div>
+      </div>
+
+      <!-- Sub-step 2: Gemini API 호출 -->
+      <div style="border-left:2px solid var(--cv-border); padding-left:14px; margin-bottom:12px;">
+        <div class="cv-body" style="margin-bottom:4px;"><strong style="color:var(--cv-text);">2. Gemini API 호출</strong></div>
+        <div class="cv-muted">에러 + 소스 + diff를 프롬프트로 전달, search/replace 수정안 생성</div>
+        <div style="margin-top:6px;">
+          <span class="cv-badge cv-badge--add" style="font-size:10px;">errors + source + diff &rarr; search/replace JSON</span>
+        </div>
+      </div>
+
+      <!-- Sub-step 3: 수정 적용 -->
+      <div style="border-left:2px solid var(--cv-border); padding-left:14px;">
+        <div class="cv-body" style="margin-bottom:4px;"><strong style="color:var(--cv-text);">3. 수정 적용 &amp; Push</strong></div>
+        <div class="cv-muted">Python으로 JSON 파싱 &rarr; 파일 수정 &rarr; <code style="color:var(--cv-add); background:var(--cv-add-surface); padding:1px 5px; border-radius:4px; font-size:12px;">[auto-fix]</code> 커밋 &amp; push</div>
+        <div style="margin-top:6px;">
+          <span class="cv-badge cv-badge--add" style="font-size:10px;">JSON replacements &rarr; fixed source files</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="cv-arrow" style="font-size:16px; min-width:auto; padding:4px 0;">&darr;</div>
+
+    <!-- 후속 알림 처리 (그룹화) -->
+    <div class="cv-card cv-card--mod" style="padding:14px 18px;">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+        <span class="cv-h3" style="margin-bottom:0;">~ 후속 알림 처리</span>
+        <span class="cv-badge cv-badge--mod">MOD</span>
+      </div>
+      <div style="border-left:2px solid var(--cv-border); padding-left:12px; margin-bottom:8px;">
+        <div class="cv-body"><strong style="color:var(--cv-text);">PR 코멘트</strong></div>
+        <div class="cv-muted">auto-fix 적용 시 "자동 수정 시도" 메시지로 변경</div>
+      </div>
+      <div style="border-left:2px solid var(--cv-border); padding-left:12px;">
+        <div class="cv-body"><strong style="color:var(--cv-text);">Slack 알림</strong></div>
+        <div class="cv-muted">auto-fix 적용 시 알림 생략 (재실행에서 실패하면 그때 발송)</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 전체 Journey 요약 -->
+  <div class="cv-card" style="margin-top:32px;">
+    <h3 class="cv-h3" style="margin-bottom:16px;">전체 진화 요약</h3>
+
+    <div class="cv-columns" style="margin-bottom:0;">
+      <!-- Before column -->
+      <div class="cv-column" style="min-width:200px;">
+        <div class="cv-column__label" style="margin-bottom:8px;">
+          <span class="cv-badge cv-badge--del">Before</span>
+        </div>
+        <ul class="cv-body" style="padding-left:20px; margin:0;">
+          <li>모든 PR → 무조건 빌드</li>
+          <li>실패 → 단순 에러 메시지</li>
+          <li>컴파일 에러 → 개발자 수동 수정</li>
+          <li>Slack → 구분 없는 알림</li>
+        </ul>
+      </div>
+
+      <!-- Arrow -->
+      <div class="cv-arrow">→</div>
+
+      <!-- After column -->
+      <div class="cv-column" style="min-width:200px;">
+        <div class="cv-column__label" style="margin-bottom:8px;">
+          <span class="cv-badge cv-badge--add">After</span>
+        </div>
+        <ul class="cv-body" style="padding-left:20px; margin:0;">
+          <li><strong style="color:var(--cv-add);">+</strong> 테스트만 변경 시 빌드 스킵</li>
+          <li><strong style="color:var(--cv-add);">+</strong> 2-Phase 파이프라인 + 실패 분류</li>
+          <li><strong style="color:var(--cv-add);">+</strong> Gemini AI 자동 수정</li>
+          <li><strong style="color:var(--cv-mod);">~</strong> 유형별 아이콘 + @멘션 알림</li>
+        </ul>
+      </div>
+    </div>
+
+    <p class="cv-muted" style="margin-top:16px;">
+      PR #7235 → #7271 → #7326 순서로 점진적 개선. 각 Phase는 이전 Phase 위에 쌓인다.
+    </p>
+  </div>
+
+</section>
+
+<!-- Citation 토글 (COM-20: 기본 접힘) -->
+<div class="cv-citations">
+  <button class="cv-citations__toggle" aria-expanded="false"
+    onclick="var c=this.nextElementSibling;var open=c.classList.toggle('open');this.setAttribute('aria-expanded',open);this.querySelector('.arrow').style.transform=open?'rotate(90deg)':'rotate(0deg)';">
+    <span class="arrow" style="display:inline-block;transition:transform 200ms ease;font-size:12px;">&#9654;</span>
+    적용된 설계 근거
+  </button>
+  <div class="cv-citations__content">
+    <table class="cv-table" style="margin-top:12px;">
+      <thead>
+        <tr>
+          <th class="cv-table__header">규칙</th>
+          <th class="cv-table__header">설명</th>
+          <th class="cv-table__header">적용 위치</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="cv-table__row"><td>COM-01</td><td>한 다이어그램 내 요소 최대 4개</td><td>각 Phase 내 노드 수 제한</td></tr>
+        <tr class="cv-table__row"><td>COM-05</td><td>텍스트 + 다이어그램 병행</td><td>모든 Phase에 설명 + 흐름도 병행</td></tr>
+        <tr class="cv-table__row"><td>COM-07</td><td>색상 외 보조 시각 단서</td><td>+/-/~ 기호로 추가/삭제/수정 표시</td></tr>
+        <tr class="cv-table__row"><td>COM-09</td><td>변경의 "왜" 포함</td><td>WHY 카드에 기존 문제점 명시</td></tr>
+        <tr class="cv-table__row"><td>COM-10</td><td>중요한 변경을 시각적으로 강조</td><td>Phase 3 Gemini 분기 시각적 강조</td></tr>
+        <tr class="cv-table__row"><td>COM-18</td><td>한글 기능 요약 선행</td><td>각 스텝의 한글 설명 우선 배치</td></tr>
+        <tr class="cv-table__row"><td>COM-21</td><td>조건 분기 pill 인디케이터</td><td>Phase 1/3 조건 분기에 pill 라벨 사용</td></tr>
+        <tr class="cv-table__row"><td>COM-22</td><td>CL-01 초과 시 기존 흐름 그룹화</td><td>Phase 2 공통 흐름 점선 그룹화</td></tr>
+        <tr class="cv-table__row"><td>STR-02</td><td>FLOW 유형 에이전트</td><td>CI 파이프라인 흐름 시각화</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="cv-footer">
+  Generated by diff-viz | 2026-04-07
+</div>
+
+</body>
+</html>

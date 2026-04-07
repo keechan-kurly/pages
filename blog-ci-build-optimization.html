@@ -1510,10 +1510,17 @@ LAST_MSG=$(curl -s \
 
     <p>3개 PR이 연결되는 전체 파이프라인 흐름을 인터랙티브 시각화로 확인할 수 있다. 각 단계별 Before/After 비교와 애니메이션이 포함되어 있다.</p>
 
-    <div style="margin: 24px 0; padding: 24px 28px; border-radius: var(--radius); border: 1px solid var(--toss-blue-border); background: var(--toss-blue-light); text-align: center;">
-        <div style="font-size: 0.95rem; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">CI 지능형 파이프라인 — 인터랙티브 시각화</div>
-        <div style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 16px;">변경 분석 게이트 → 실패 분류 + 알림 → Gemini 자동 수정</div>
-        <a href="ci-build-optimization-pipeline.html" target="_blank" style="display: inline-block; padding: 10px 24px; border-radius: var(--radius-sm); background: var(--toss-blue); color: white; font-size: 0.88rem; font-weight: 700; text-decoration: none; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">시각화 보기 →</a>
+    <div style="display: flex; gap: 16px; flex-wrap: wrap; margin: 24px 0;">
+        <div style="flex: 1; min-width: 260px; padding: 24px 28px; border-radius: var(--radius); border: 1px solid var(--toss-blue-border); background: var(--toss-blue-light); text-align: center;">
+            <div style="font-size: 0.95rem; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">CI 지능형 파이프라인 — 인터랙티브 시각화</div>
+            <div style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 16px;">변경 분석 게이트 → 실패 분류 + 알림 → Gemini 자동 수정</div>
+            <a href="ci-build-optimization-pipeline.html" target="_blank" style="display: inline-block; padding: 10px 24px; border-radius: var(--radius-sm); background: var(--toss-blue); color: white; font-size: 0.88rem; font-weight: 700; text-decoration: none; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">시각화 보기 →</a>
+        </div>
+        <div style="flex: 1; min-width: 260px; padding: 24px 28px; border-radius: var(--radius); border: 1px solid var(--grey-200); background: var(--grey-50); text-align: center;">
+            <div style="font-size: 0.95rem; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">3부작 진화 시각화 — Glass Dark</div>
+            <div style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 16px;">PR #7235 → #7271 → #7326 단계별 파이프라인 진화 + 애니메이션</div>
+            <a href="ci-build-optimization-evolution.html" target="_blank" style="display: inline-block; padding: 10px 24px; border-radius: var(--radius-sm); background: var(--grey-900); color: white; font-size: 0.88rem; font-weight: 700; text-decoration: none; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">시각화 보기 →</a>
+        </div>
     </div>
 
     <hr>
