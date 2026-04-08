@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Delegator 42개를 sealed interface 하나로 — Android 네비게이션 시스템 재설계</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════
+   Toss Tech Light Theme — Blog Template
+   ═══════════════════════════════════════════════ */
+:root {
+    --grey-50: #f9fafb;
+    --grey-100: #f2f4f6;
+    --grey-200: #e5e8eb;
+    --grey-300: #d1d6db;
+    --grey-400: #b0b8c1;
+    --grey-500: #8b95a1;
+    --grey-600: #6b7684;
+    --grey-700: #4e5968;
+    --grey-800: #333d4b;
+    --grey-900: #191f28;
+    --toss-blue: #0064FF;
+    --toss-blue-light: rgba(0, 100, 255, 0.08);
+    --toss-blue-border: rgba(0, 100, 255, 0.2);
+    --bg: #ffffff;
+    --bg-elevated: var(--grey-50);
+    --bg-highlight: #ffc34236;
+    --bg-code: var(--grey-100);
+    --bg-blockquote: transparent;
+    --text-primary: var(--grey-900);
+    --text-secondary: var(--grey-700);
+    --text-tertiary: var(--grey-500);
+    --border-light: var(--grey-200);
+    --border-blockquote: var(--grey-800);
+    --content-width: 680px;
+    --wide-width: 780px;
+    --radius: 16px;
+    --radius-sm: 10px;
+    --font-body: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --font-code: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text-primary);
+    line-height: 1.8;
+    font-size: 16.5px;
+    -webkit-font-smoothing: antialiased;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+}
+
+::selection { background: rgba(0, 100, 255, 0.15); color: var(--grey-900); }
+a { color: var(--toss-blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.article { max-width: var(--content-width); margin: 0 auto; padding: 0 24px; }
+.article-wide { max-width: var(--wide-width); margin: 0 auto; padding: 0 24px; }
+
+.hero { padding: 80px 24px 48px; max-width: var(--content-width); margin: 0 auto; }
+.hero-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 24px; font-size: 0.875rem; color: var(--text-tertiary); }
+.hero-meta .author { color: var(--text-secondary); font-weight: 600; }
+.hero-meta .dot { color: var(--grey-300); }
+.hero-title { font-size: 2.2rem; font-weight: 800; line-height: 1.3; color: var(--text-primary); margin-bottom: 16px; letter-spacing: -0.02em; }
+.hero-subtitle { font-size: 1.1rem; line-height: 1.7; color: var(--text-secondary); max-width: 580px; }
+.hero-tags { display: flex; gap: 8px; margin-top: 20px; flex-wrap: wrap; }
+.hero-tag { padding: 4px 12px; border-radius: var(--radius-sm); background: var(--toss-blue-light); border: 1px solid var(--toss-blue-border); font-size: 0.8rem; font-weight: 600; color: var(--toss-blue); }
+
+.toc { margin: 0 0 48px 0; padding: 24px 28px; background: var(--bg-elevated); border-radius: var(--radius); border: 1px solid var(--border-light); }
+.toc-label { font-size: 0.75rem; font-weight: 700; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px; }
+.toc-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.toc-list a { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 0.92rem; color: var(--text-secondary); transition: color 0.2s; }
+.toc-list a:hover { color: var(--toss-blue); text-decoration: none; }
+.toc-num { width: 24px; height: 24px; border-radius: 7px; background: var(--grey-200); display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; color: var(--text-secondary); flex-shrink: 0; }
+
+.article h2 { font-size: 1.55rem; font-weight: 800; line-height: 1.35; color: var(--text-primary); margin: 56px 0 20px 0; letter-spacing: -0.01em; }
+.article h2:first-child { margin-top: 0; }
+.article h3 { font-size: 1.2rem; font-weight: 700; line-height: 1.4; color: var(--text-primary); margin: 40px 0 14px 0; }
+.article p { margin: 0 0 20px 0; color: var(--text-primary); }
+.article strong { font-weight: 700; color: var(--grey-900); }
+
+.article blockquote { margin: 28px 0; padding: 0 0 0 20px; border-left: 2.5px solid var(--border-blockquote); font-size: 1.05rem; font-weight: 600; line-height: 1.7; color: var(--text-primary); }
+.article blockquote p { margin: 0; }
+
+.highlight-box { margin: 28px 0; padding: 20px 24px; background: var(--bg-highlight); border-radius: var(--radius); font-weight: 600; line-height: 1.7; color: var(--text-primary); }
+
+.content-box { margin: 28px 0; padding: 24px 28px; background: var(--bg-elevated); border-radius: var(--radius); border: 1px solid var(--border-light); }
+.content-box-title { font-size: 0.95rem; font-weight: 700; color: var(--text-primary); margin-bottom: 12px; }
+.content-box p { margin-bottom: 8px; font-size: 0.93rem; }
+.content-box p:last-child { margin-bottom: 0; }
+
+.article code { font-family: var(--font-code); font-size: 0.88em; padding: 2px 6px; background: var(--bg-code); border-radius: 5px; color: var(--grey-800); }
+.article pre { margin: 24px 0; padding: 24px; background: var(--grey-900); border-radius: var(--radius); overflow-x: auto; line-height: 1.6; }
+.article pre code { font-family: var(--font-code); font-size: 0.85rem; background: none; padding: 0; color: #abb2bf; border-radius: 0; }
+
+.kw { color: #c678dd; }
+.str { color: #98c379; }
+.cmt { color: #5c6370; font-style: italic; }
+.typ { color: #e5c07b; }
+.fn { color: #61afef; }
+.ann { color: #d19a66; }
+.op { color: #56b6c2; }
+
+.article ul, .article ol { margin: 0 0 20px 0; padding-left: 24px; }
+.article li { margin-bottom: 10px; line-height: 1.7; }
+.article li::marker { color: var(--text-tertiary); }
+
+.metrics-table { width: 100%; border-collapse: collapse; margin: 24px 0; font-size: 0.9rem; }
+.metrics-table th { text-align: left; padding: 12px 16px; background: var(--bg-elevated); border-bottom: 2px solid var(--border-light); font-weight: 700; font-size: 0.8rem; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.04em; }
+.metrics-table td { padding: 12px 16px; border-bottom: 1px solid var(--border-light); color: var(--text-secondary); }
+.metrics-table .metric-label { color: var(--text-primary); font-weight: 600; }
+.metrics-table .metric-good { color: #16a34a; font-weight: 700; }
+.metrics-table .metric-bad { color: #dc2626; font-weight: 600; }
+
+.delta { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 6px; font-size: 0.78rem; font-weight: 700; }
+.delta-good { background: rgba(22, 163, 74, 0.1); color: #16a34a; }
+.delta-bad { background: rgba(220, 38, 38, 0.1); color: #dc2626; }
+.delta-neutral { background: var(--grey-100); color: var(--text-tertiary); }
+
+.summary-box { margin: 36px 0; padding: 24px 28px; background: var(--toss-blue-light); border: 1px solid var(--toss-blue-border); border-radius: var(--radius); }
+.summary-box-title { font-size: 0.82rem; font-weight: 700; color: var(--toss-blue); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.06em; }
+.summary-box p, .summary-box li { color: var(--text-primary); font-size: 0.95rem; }
+
+.compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 28px 0; }
+.compare-card { padding: 20px; border-radius: var(--radius); border: 1px solid var(--border-light); background: var(--bg); }
+.compare-card:hover { border-color: var(--grey-300); }
+.compare-card-label { font-size: 0.72rem; font-weight: 700; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+.compare-before { border-left: 3px solid var(--grey-400); }
+.compare-after { border-left: 3px solid var(--toss-blue); }
+.compare-card pre { margin: 12px 0 0 0; padding: 14px; font-size: 0.8rem; border-radius: 10px; }
+.compare-card pre code { font-size: 0.8rem; }
+
+.article hr { border: none; height: 1px; background: var(--border-light); margin: 48px 0; }
+
+.footnotes { margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--border-light); font-size: 0.82rem; color: var(--text-tertiary); line-height: 1.8; }
+.footnotes a { color: var(--text-tertiary); text-decoration: underline; }
+.footnote-ref { font-size: 0.75em; vertical-align: super; color: var(--toss-blue); cursor: pointer; font-weight: 600; }
+
+.article-footer { margin-top: 56px; padding: 32px 0; text-align: center; color: var(--text-tertiary); font-size: 0.82rem; }
+.share-buttons { display: flex; justify-content: center; gap: 12px; margin-top: 16px; }
+.share-btn { padding: 8px 20px; border-radius: var(--radius-sm); background: var(--bg-elevated); border: 1px solid var(--border-light); font-size: 0.82rem; font-weight: 600; color: var(--text-secondary); cursor: pointer; transition: all 0.2s; }
+.share-btn:hover { background: var(--grey-200); color: var(--text-primary); }
+
+@media (max-width: 768px) {
+    .hero { padding: 48px 20px 32px; }
+    .hero-title { font-size: 1.7rem; }
+    .article, .article-wide { padding: 0 20px; }
+    .article h2 { font-size: 1.35rem; margin-top: 40px; }
+    .article h3 { font-size: 1.1rem; }
+    .compare-grid { grid-template-columns: 1fr; }
+    .article pre { padding: 16px; margin-left: -8px; margin-right: -8px; border-radius: 12px; }
+}
+
+@media print {
+    body { font-size: 11pt; }
+    .hero { padding: 24px 0; }
+    .article pre { white-space: pre-wrap; }
+    .toc, .share-buttons, .article-footer { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     Hero Header
+     ═══════════════════════════════════════════ -->
+<header class="hero">
+    <div class="hero-meta">
+        <span class="author">컬리 Android 팀</span>
+        <span class="dot">&middot;</span>
+        <span>Android Engineer</span>
+        <span class="dot">&middot;</span>
+        <time>2026. 4</time>
+    </div>
+    <h1 class="hero-title">Delegator 42개를 sealed interface 하나로 — Android 네비게이션 시스템 재설계</h1>
+    <p class="hero-subtitle">파편화된 네비게이션 로직을 Destination 기반 단일 시스템으로 통합하고, Compose Navigation 전환의 발판을 마련한 과정</p>
+    <div class="hero-tags">
+        <span class="hero-tag">Android</span>
+        <span class="hero-tag">Navigation</span>
+        <span class="hero-tag">Kotlin sealed interface</span>
+        <span class="hero-tag">Hilt Multibinding</span>
+        <span class="hero-tag">Clean Architecture</span>
+    </div>
+</header>
+
+<!-- ═══════════════════════════════════════════
+     Table of Contents
+     ═══════════════════════════════════════════ -->
+<nav class="article">
+    <div class="toc">
+        <div class="toc-label">목차</div>
+        <ol class="toc-list">
+            <li><a href="#section-1"><span class="toc-num">1</span> 화면 하나, Delegator 셋</a></li>
+            <li><a href="#section-2"><span class="toc-num">2</span> Delegator 패턴 해부</a></li>
+            <li><a href="#section-3"><span class="toc-num">3</span> Compose Navigation 대신 sealed interface를 선택한 이유</a></li>
+            <li><a href="#section-4"><span class="toc-num">4</span> 새 시스템 구축</a></li>
+            <li><a href="#section-5"><span class="toc-num">5</span> 42개 Delegator 제거</a></li>
+            <li><a href="#section-6"><span class="toc-num">6</span> Before / After</a></li>
+            <li><a href="#section-7"><span class="toc-num">7</span> 다음 목적지</a></li>
+        </ol>
+    </div>
+</nav>
+
+<!-- ═══════════════════════════════════════════
+     Article Body
+     ═══════════════════════════════════════════ -->
+<article class="article">
+
+<!-- ────────────────────────────────────────
+     Section 1: 화면 하나, Delegator 셋
+     ──────────────────────────────────────── -->
+<h2 id="section-1">화면 하나, Delegator 셋</h2>
+
+<p>38개 화면, 42개 Delegator 인터페이스, 170개 파일 변경. 하나의 네비게이션 시스템을 재설계하는 데 필요했던 숫자다.</p>
+
+<p>컬리 앱에서 상품 상세 화면으로 진입하는 경로는 여러 개다. 홈 탭에서 상품을 탭하면 <code>HomeDelegator</code>가, 배너를 탭하면 <code>BannerDelegator</code>가, 딥링크(deep link)로 진입하면 <code>ProductNavDelegator</code>가 각각 Intent를 생성한다. 같은 화면으로 가는 로직이 세 곳에 흩어져 있었다.</p>
+
+<p>새 화면을 추가하려면 최소 세 파일을 세 모듈에 걸쳐 작성해야 했다. <code>:features</code> 모듈에 Delegator 인터페이스를 정의하고, <code>:app</code> 모듈에 구현체를 작성하고, Hilt 모듈에 바인딩을 등록한다. 딥링크가 필요하면 <code>:navigation</code> 모듈에 NavDelegator까지 추가되어 파일이 다섯 개로 늘어난다.</p>
+
+<p>이 구조를 Destination 기반 단일 네비게이션 시스템으로 재설계했다. Delegator 42개를 제거하고, sealed interface 하나와 <code>KurlyNavigator</code> 인터페이스 하나로 대체했다. 이 글에서는 왜 이 설계를 선택했는지, 어떻게 구축하고 마이그레이션했는지, 그리고 무엇을 얻고 무엇을 잃었는지를 다룬다.</p>
+
+<hr>
+
+<!-- ────────────────────────────────────────
+     Section 2: Delegator 패턴 해부
+     ──────────────────────────────────────── -->
+<h2 id="section-2">Delegator 패턴 해부</h2>
+
+<p>기존 네비게이션 구조는 Delegator 패턴과 NavDelegator 패턴이 혼재했다. 4년간 화면이 추가될 때마다 인터페이스와 구현체가 한 쌍씩 늘어났고, 최종적으로 27개 Delegator 인터페이스와 5개 NavDelegator, 그리고 이를 조합하는 Navigator 객체가 존재했다.</p>
+
+<p>Delegator 패턴의 기본 구조는 Feature 모듈의 인터페이스와 App 모듈의 구현체로 이루어진다.</p>
+
+<pre><code><span class="cmt">// :features — 인터페이스 정의</span>
+<span class="kw">interface</span> <span class="typ">HomeDelegator</span> {
+    <span class="kw">fun</span> <span class="fn">navigateToHome</span>(context: <span class="typ">Context</span>, site: <span class="typ">String</span>?)
+}
+
+<span class="cmt">// :app — 구현체</span>
+<span class="kw">class</span> <span class="typ">HomeDelegatorImpl</span> <span class="ann">@Inject</span> <span class="kw">constructor</span>(
+    <span class="kw">private val</span> homeIntentGenerator: <span class="typ">HomeIntentGenerator</span>,
+) : <span class="typ">HomeDelegator</span> {
+    <span class="kw">override fun</span> <span class="fn">navigateToHome</span>(context: <span class="typ">Context</span>, site: <span class="typ">String</span>?) {
+        <span class="kw">val</span> intent = homeIntentGenerator.<span class="fn">generateIntent</span>(context, site)
+        context.<span class="fn">startActivity</span>(intent)
+    }
+}</code></pre>
+
+<p>호출부는 두 가지 패턴이 공존했다. NavDelegator를 경유하는 방식과 Delegator를 직접 호출하는 방식이다.</p>
+
+<pre><code><span class="cmt">// NavDelegator 경유 — Navigator 객체의 sub-delegator 조합</span>
+navigator.home.<span class="fn">startMainActivity</span>(context)
+navigator.cart.<span class="fn">startCartActivity</span>(context)
+navigator.product.<span class="fn">startProductDetailActivity</span>(context, productNo)
+
+<span class="cmt">// Delegator 직접 호출</span>
+bannerDelegator.<span class="fn">handleUrl</span>(context, url)
+homeDelegator.<span class="fn">navigateToCategory</span>(context, categoryId)
+dialogDelegator.<span class="fn">alert</span>(fragmentManager, title, buttonText)</code></pre>
+
+<p>이 구조의 문제는 세 가지였다.</p>
+
+<p><strong>첫째, 진입 로직의 파편화.</strong> 상품 상세 화면 하나를 호출하는 코드가 <code>ProductNavDelegator</code>, <code>BannerDelegator</code>, <code>HomeDelegator</code>, <code>CategoryDelegator</code>에 각각 존재했다. 파라미터 전달 방식이 Delegator마다 달랐고, 하나를 수정하면 나머지를 찾아 동기화해야 했다.</p>
+
+<p><strong>둘째, 새 화면 추가 비용.</strong> Interface 1개 + Impl 1개 + Hilt 바인딩 1건이 기본이었다. 딥링크가 필요하면 NavDelegator Interface + Impl이 추가되어 파일이 다섯 개까지 늘어났다.</p>
+
+<p><strong>셋째, 딥링크 일관성 부재.</strong> 딥링크 파싱 로직이 각 NavDelegator에 산재했다. <code>kurly://product?no=123</code>을 처리하는 코드와 <code>kurly://home?site=market</code>을 처리하는 코드가 서로 다른 패턴을 사용했다.</p>
+
+<hr>
+
+<!-- ────────────────────────────────────────
+     Section 3: 왜 sealed interface인가
+     ──────────────────────────────────────── -->
+<h2 id="section-3">Compose Navigation 대신 sealed interface를 선택한 이유</h2>
+
+<p>네비게이션 시스템을 재설계할 때 가장 먼저 검토한 것은 Compose Navigation이었다. Jetpack의 공식 솔루션이고, 타입 안전한 route 시스템을 제공한다.</p>
+
+<p>그러나 현실적 제약이 있었다. 컬리 앱은 Activity 기반 아키텍처다. 38개 화면 대부분이 독립 Activity로 구현되어 있다. Compose Navigation을 전면 도입하려면 단일 Activity 구조로의 전환이 선행되어야 하고, 이는 현재 앱 규모에서 별도의 대형 마이그레이션이 된다.</p>
+
+<p>단계적 전환 전략을 세웠다.</p>
+
+<div class="highlight-box">
+    <strong>Phase 1</strong> (현재): Delegator 패턴 → Destination 기반 KurlyNavigator<br>
+    <strong>Phase 2</strong> (미래): Destination → Compose Navigation routes로 확장
+</div>
+
+<p>Destination sealed interface를 중간 단계로 선택한 이유는 세 가지다.</p>
+
+<p><strong>컴파일 타임 안전성.</strong> sealed interface의 <code>when</code> 표현식은 모든 화면 유형을 처리했는지 컴파일러가 검증한다. Delegator에서는 런타임에서야 발견되던 누락을 빌드 시점에 잡을 수 있다.</p>
+
+<p><strong>파라미터 타입 안전성.</strong> <code>Destination.Screen.ProductDetail(productNo: Long)</code>은 파라미터 이름과 타입을 강제한다. <code>startProductDetailActivity(context, "123")</code>처럼 String으로 전달하던 패턴에서 <code>Long</code> 타입으로 변환하여 컴파일 타임에 검증한다.</p>
+
+<p><strong>딥링크 양방향 변환.</strong> <code>DeepLinkSpec&lt;T&gt;</code>를 Destination의 companion object에 구현하면, 딥링크 파싱과 생성이 한 곳에서 관리된다. 파싱과 생성이 항상 대칭이므로, 딥링크 URL을 만들었다가 다시 파싱하면 원래 Destination으로 복원되는 라운드트립이 보장된다.</p>
+
+<hr>
+
+<!-- ────────────────────────────────────────
+     Section 4: 새 시스템 구축
+     ──────────────────────────────────────── -->
+<h2 id="section-4">새 시스템 구축</h2>
+
+<p>새 네비게이션 시스템은 네 개의 핵심 컴포넌트로 구성된다.</p>
+
+<div class="content-box">
+    <div class="content-box-title">네비게이션 처리 흐름</div>
+    <p><strong>Screen 전환</strong> &nbsp;Destination.Screen → KurlyNavigator → ScreenResolver → IntentGenerator → startActivity</p>
+    <p><strong>Overlay 표시</strong> &nbsp;Destination.Overlay → KurlyNavigator → OverlayResolver → Fragment.show()</p>
+    <p><strong>URL 전환</strong> &nbsp;URL → DestinationRegistry → DeepLinkSpec.fromUri() → Destination → Screen 전환 경로와 합류</p>
+</div>
+
+<h3>Destination: 화면의 타입 안전한 표현</h3>
+
+<p>모든 화면을 sealed interface 계층으로 정의했다. Screen은 Activity로 전환되는 화면, Overlay는 Dialog/BottomSheet로 표시되는 화면이다.</p>
+
+<pre><code><span class="kw">sealed interface</span> <span class="typ">Destination</span> {
+
+    <span class="kw">sealed interface</span> <span class="typ">Screen</span> : <span class="typ">Destination</span> {
+        <span class="kw">data class</span> <span class="typ">ProductDetail</span>(<span class="kw">val</span> productNo: <span class="typ">Long</span>) : <span class="typ">Screen</span>
+        <span class="kw">data object</span> <span class="typ">Cart</span> : <span class="typ">Screen</span>
+        <span class="kw">data class</span> <span class="typ">Home</span>(<span class="kw">val</span> site: <span class="typ">String</span>? = <span class="kw">null</span>) : <span class="typ">Screen</span>
+        <span class="cmt">// ... 38개 Screen</span>
+    }
+
+    <span class="kw">sealed interface</span> <span class="typ">Overlay</span> : <span class="typ">Destination</span> {
+        <span class="kw">data class</span> <span class="typ">Alert</span>(<span class="kw">val</span> title: <span class="typ">String</span>, <span class="kw">val</span> buttonText: <span class="typ">String</span>) : <span class="typ">Overlay</span>
+        <span class="cmt">// ... 3개 Overlay</span>
+    }
+}</code></pre>
+
+<p>파라미터가 있는 화면은 <code>data class</code>, 없는 화면은 <code>data object</code>로 구분했다. 이 구분 덕분에 <code>Cart</code>처럼 파라미터가 없는 화면은 싱글톤으로 사용하고, <code>ProductDetail(productNo = 123)</code>처럼 파라미터가 있는 화면은 인스턴스를 생성한다.</p>
+
+<h3>DeepLinkSpec: 양방향 딥링크 변환</h3>
+
+<p>딥링크를 지원하는 화면은 companion object에서 <code>DeepLinkSpec&lt;T&gt;</code>를 구현한다. <code>fromUri</code>와 <code>toUri</code>가 한 곳에 있으므로 파싱과 생성이 항상 대칭이다.</p>
+
+<pre><code><span class="kw">data class</span> <span class="typ">ProductDetail</span>(<span class="kw">val</span> productNo: <span class="typ">Long</span>) : <span class="typ">Screen</span> {
+    <span class="kw">companion object</span> : <span class="typ">DeepLinkSpec</span>&lt;<span class="typ">ProductDetail</span>&gt; {
+        <span class="kw">override val</span> host = <span class="str">"product"</span>
+        <span class="kw">override fun</span> <span class="fn">fromUri</span>(uri: <span class="typ">Uri</span>): <span class="typ">ProductDetail</span>? {
+            <span class="kw">val</span> no = uri.<span class="fn">getQueryParameter</span>(<span class="str">"no"</span>)?.<span class="fn">toLongOrNull</span>()
+                ?: <span class="kw">return null</span>
+            <span class="kw">return</span> <span class="fn">ProductDetail</span>(no)
+        }
+        <span class="kw">override fun</span> <span class="fn">toUri</span>(destination: <span class="typ">ProductDetail</span>): <span class="typ">Uri</span> =
+            <span class="fn">buildDeepLink</span> {
+                <span class="fn">host</span>(<span class="str">"product"</span>)
+                <span class="fn">appendQuery</span>(<span class="str">"no"</span>, destination.productNo.<span class="fn">toString</span>())
+            }
+    }
+}</code></pre>
+
+<p><code>ProductDetail.toUri(dest)</code>로 생성한 URI를 다시 <code>ProductDetail.fromUri(uri)</code>로 파싱하면 원래 Destination이 복원된다. 이 라운드트립은 테스트로 검증했다.<sup class="footnote-ref">[1]</sup></p>
+
+<h3>KurlyNavigator: 단일 진입점</h3>
+
+<p>42개 Delegator 인터페이스를 5개 메서드로 통합했다.</p>
+
+<pre><code><span class="kw">interface</span> <span class="typ">KurlyNavigator</span> {
+    <span class="kw">fun</span> <span class="fn">navigate</span>(context: <span class="typ">Context</span>, destination: <span class="typ">Destination</span>.<span class="typ">Screen</span>)
+    <span class="kw">fun</span> <span class="fn">resolve</span>(context: <span class="typ">Context</span>, destination: <span class="typ">Destination</span>.<span class="typ">Screen</span>): <span class="typ">Intent</span>
+    <span class="kw">fun</span> <span class="fn">navigate</span>(context: <span class="typ">Context</span>, destination: <span class="typ">Destination</span>.<span class="typ">Screen</span>,
+                 launcher: <span class="typ">ActivityResultLauncher</span>&lt;<span class="typ">Intent</span>&gt;)
+    <span class="kw">fun</span> <span class="fn">show</span>(fragmentManager: <span class="typ">FragmentManager</span>, destination: <span class="typ">Destination</span>.<span class="typ">Overlay</span>)
+    <span class="kw">fun</span> <span class="fn">navigate</span>(context: <span class="typ">Context</span>, url: <span class="typ">String</span>,
+                 fallback: <span class="typ">FallbackAction</span> = <span class="typ">FallbackAction</span>.WEB_VIEW)
+}</code></pre>
+
+<p>Screen 전환, 결과 대기 전환, Overlay 표시, URL 기반 전환 — 네 가지 유스케이스를 하나의 인터페이스에서 처리한다. 호출부에서는 어떤 유형의 네비게이션이든 <code>navigator</code> 하나만 주입받으면 된다.</p>
+
+<h3>Resolver: Intent 생성 전략</h3>
+
+<p><code>KurlyNavigatorImpl</code>은 Destination 타입에 따라 적합한 Resolver를 찾아 Intent를 생성한다. 핵심은 기존 IntentGenerator를 재활용하는 것이다.</p>
+
+<pre><code><span class="kw">class</span> <span class="typ">ProductDetailResolver</span> <span class="ann">@Inject</span> <span class="kw">constructor</span>(
+    <span class="kw">private val</span> intentGenerator: <span class="typ">ProductIntentGenerator</span>,
+) : <span class="typ">ScreenResolver</span>&lt;<span class="typ">Destination</span>.<span class="typ">Screen</span>.<span class="typ">ProductDetail</span>&gt; {
+    <span class="kw">override fun</span> <span class="fn">resolve</span>(
+        context: <span class="typ">Context</span>,
+        destination: <span class="typ">Destination</span>.<span class="typ">Screen</span>.<span class="typ">ProductDetail</span>,
+    ): <span class="typ">Intent</span> {
+        <span class="kw">val</span> uri = <span class="typ">Destination</span>.<span class="typ">Screen</span>.<span class="typ">ProductDetail</span>.<span class="fn">toUri</span>(destination)
+        <span class="kw">return</span> intentGenerator.<span class="fn">generateIntent</span>(context, uri)
+    }
+}</code></pre>
+
+<p>Resolver는 Destination의 <code>toUri</code>로 파라미터를 URI로 변환한 뒤, 기존 IntentGenerator에 위임한다. Delegator가 하던 일(파라미터 조합 → Intent 생성)을 Resolver가 대신하되, Intent 생성 로직 자체는 건드리지 않았다.</p>
+
+<p>Hilt의 <code>@IntoMap</code> 멀티바인딩으로 Resolver를 등록하면, <code>KurlyNavigatorImpl</code>이 Destination의 KClass를 키로 적합한 Resolver를 찾는다.</p>
+
+<pre><code><span class="kw">class</span> <span class="typ">KurlyNavigatorImpl</span> <span class="ann">@Inject</span> <span class="kw">constructor</span>(
+    <span class="kw">private val</span> screenResolvers: <span class="typ">Map</span>&lt;<span class="typ">KClass</span>&lt;<span class="kw">out</span> <span class="typ">Destination</span>.<span class="typ">Screen</span>&gt;,
+        <span class="ann">@JvmSuppressWildcards</span> <span class="typ">ScreenResolver</span>&lt;<span class="kw">out</span> <span class="typ">Destination</span>.<span class="typ">Screen</span>&gt;&gt;,
+    <span class="kw">private val</span> uriNavigator: <span class="typ">UriNavigator</span>,
+) : <span class="typ">KurlyNavigator</span> {
+
+    <span class="kw">override fun</span> <span class="fn">resolve</span>(context: <span class="typ">Context</span>, destination: <span class="typ">Destination</span>.<span class="typ">Screen</span>): <span class="typ">Intent</span> {
+        <span class="kw">val</span> resolver = screenResolvers[destination::class]
+            ?: <span class="fn">error</span>(<span class="str">"No ScreenResolver for </span><span class="op">${</span>destination::class.simpleName<span class="op">}</span><span class="str">"</span>)
+        <span class="kw">return</span> (resolver <span class="kw">as</span> <span class="typ">ScreenResolver</span>&lt;<span class="typ">Destination</span>.<span class="typ">Screen</span>&gt;)
+            .<span class="fn">resolve</span>(context, destination)
+    }
+
+    <span class="kw">override fun</span> <span class="fn">navigate</span>(context: <span class="typ">Context</span>, url: <span class="typ">String</span>, fallback: <span class="typ">FallbackAction</span>) {
+        <span class="kw">val</span> destination = <span class="typ">DestinationRegistry</span>.<span class="fn">fromUri</span>(url.<span class="fn">toUri</span>())
+        <span class="kw">if</span> (destination <span class="kw">is</span> <span class="typ">Destination</span>.<span class="typ">Screen</span>) <span class="fn">navigate</span>(context, destination)
+        <span class="kw">else</span> uriNavigator.<span class="fn">navigate</span>(context, url, fallbackAction = fallback)
+    }
+}</code></pre>
+
+<p>URL 기반 네비게이션에서는 <code>DestinationRegistry</code>가 URI의 host를 키로 등록된 <code>DeepLinkSpec</code> 목록에서 매칭을 시도한다. 매칭되면 타입 안전한 Destination 경로를 타고, 매칭되지 않으면 기존 <code>UriNavigator</code>로 폴백한다. 새 시스템과 기존 시스템이 공존할 수 있는 구조다.</p>
+
+<hr>
+
+<!-- ────────────────────────────────────────
+     Section 5: 42개 Delegator 제거
+     ──────────────────────────────────────── -->
+<h2 id="section-5">42개 Delegator 제거</h2>
+
+<p>새 시스템을 구축한 후, 기존 Delegator를 제거하는 단계가 남았다. 102개 파일에서 42개 인터페이스와 구현체를 삭제하고, 모든 호출부를 <code>KurlyNavigator</code>로 전환했다.</p>
+
+<p>3단계 커밋 전략을 사용했다. 순서에는 의도가 있다.</p>
+
+<div class="content-box">
+    <div class="content-box-title">마이그레이션 커밋 전략</div>
+    <p><strong>1단계: 의존 루트 차단</strong> — <code>:navigation</code> 모듈의 5개 NavDelegator와 Navigator 객체를 제거한다. 다른 모듈이 이 인터페이스에 의존하지 않도록 먼저 루트를 끊는다.</p>
+    <p><strong>2단계: 저사용 Delegator</strong> — <code>:features</code> 모듈의 저사용 Delegator(InquiryComposeDelegator, PickListDelegator 등)를 전환한다. 호출 지점이 1-2곳이므로 리스크가 낮다.</p>
+    <p><strong>3단계: 고사용 Delegator</strong> — Banner, Home, Brand, Category, OrderResult처럼 호출 지점이 많은 Delegator를 전환한다. 변경 범위가 넓어 별도 커밋으로 격리했다.</p>
+</div>
+
+<p>호출부 변환은 일관된 패턴을 따른다.</p>
+
+<div class="compare-grid">
+    <div class="compare-card compare-before">
+        <div class="compare-card-label">Before</div>
+<pre><code>navigator.home.<span class="fn">startMainActivity</span>(ctx)
+navigator.cart.<span class="fn">startCartActivity</span>(ctx)
+navigator.product.<span class="fn">startProductDetailActivity</span>(ctx, no)
+bannerDelegator.<span class="fn">handleUrl</span>(ctx, url)
+dialogDelegator.<span class="fn">alert</span>(fm, title, btn)</code></pre>
+    </div>
+    <div class="compare-card compare-after">
+        <div class="compare-card-label">After</div>
+<pre><code>navigator.<span class="fn">navigate</span>(ctx, <span class="typ">Destination</span>.<span class="typ">Screen</span>.<span class="fn">Home</span>())
+navigator.<span class="fn">navigate</span>(ctx, <span class="typ">Destination</span>.<span class="typ">Screen</span>.Cart)
+navigator.<span class="fn">navigate</span>(ctx, <span class="typ">Destination</span>.<span class="typ">Screen</span>.<span class="fn">ProductDetail</span>(no))
+navigator.<span class="fn">navigate</span>(ctx, url)
+navigator.<span class="fn">show</span>(fm, <span class="typ">Destination</span>.<span class="typ">Overlay</span>.<span class="fn">Alert</span>(title, btn))</code></pre>
+    </div>
+</div>
+
+<p>Before의 호출부는 어떤 Delegator의 어떤 메서드를 호출해야 하는지를 알아야 한다. After에서는 <code>navigator.navigate</code> 또는 <code>navigator.show</code> 두 가지 패턴으로 수렴한다. 호출부만 보면 어떤 화면으로 가는지 즉시 파악된다.</p>
+
+<p>결과: 1,616줄 삭제, 395줄 추가. 순 1,221줄 감소.<sup class="footnote-ref">[2]</sup></p>
+
+<hr>
+
+<!-- ────────────────────────────────────────
+     Section 6: Before / After
+     ──────────────────────────────────────── -->
+<h2 id="section-6">Before / After</h2>
+
+<table class="metrics-table">
+    <thead>
+        <tr>
+            <th>항목</th>
+            <th>Before (Delegator)</th>
+            <th>After (Destination)</th>
+            <th>변화</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td class="metric-label">네비게이션 인터페이스 수</td>
+            <td>42개</td>
+            <td>1개 (KurlyNavigator)</td>
+            <td><span class="delta delta-good">-97%</span></td>
+        </tr>
+        <tr>
+            <td class="metric-label">새 화면 추가 시 파일</td>
+            <td>3-5개</td>
+            <td>2개</td>
+            <td><span class="delta delta-good">-50%</span></td>
+        </tr>
+        <tr>
+            <td class="metric-label">새 화면 추가 시 모듈</td>
+            <td>3개</td>
+            <td>2개</td>
+            <td><span class="delta delta-good">-33%</span></td>
+        </tr>
+        <tr>
+            <td class="metric-label">딥링크 처리</td>
+            <td>Delegator마다 분산</td>
+            <td>DeepLinkSpec 중앙화</td>
+            <td><span class="delta delta-good">통합</span></td>
+        </tr>
+        <tr>
+            <td class="metric-label">컴파일 타임 안전성</td>
+            <td>없음</td>
+            <td>sealed exhaustive check</td>
+            <td><span class="delta delta-good">&#10003;</span></td>
+        </tr>
+        <tr>
+            <td class="metric-label">호출 패턴</td>
+            <td>Delegator별 고유 메서드</td>
+            <td>navigate / show 통일</td>
+            <td><span class="delta delta-good">통일</span></td>
+        </tr>
+        <tr>
+            <td class="metric-label">Resolver 파일 수</td>
+            <td>—</td>
+            <td>36개 추가</td>
+            <td><span class="delta delta-bad">+36</span></td>
+        </tr>
+        <tr>
+            <td class="metric-label">Destination.kt 크기</td>
+            <td>—</td>
+            <td>511줄</td>
+            <td><span class="delta delta-bad">단일 파일 집중</span></td>
+        </tr>
+    </tbody>
+</table>
+
+<p><strong>퇴보.</strong> Resolver 파일이 36개 추가되었다. 각 화면마다 Resolver 클래스가 필요하므로 파일 수 자체는 늘어났다. 다만 Resolver는 평균 10-15줄의 단순한 위임 코드로, Delegator의 Interface + Impl 조합(평균 40-60줄)보다 구조가 단순하다.</p>
+
+<p>Destination.kt 파일이 511줄이라는 점도 주의할 부분이다. 38개 Screen과 3개 Overlay, 그리고 딥링크를 지원하는 화면들의 <code>DeepLinkSpec</code> 구현이 한 파일에 모여 있다. 화면 수가 계속 늘어나면 <code>Destination.Screen.kt</code>와 <code>Destination.Overlay.kt</code>로 분리하거나, 패키지 단위로 나누는 것을 검토해야 한다.</p>
+
+<hr>
+
+<!-- ────────────────────────────────────────
+     Section 7: 다음 목적지
+     ──────────────────────────────────────── -->
+<h2 id="section-7">다음 목적지</h2>
+
+<p>이 설계의 목적은 Delegator 제거 자체가 아니라, Compose Navigation으로의 점진적 전환 경로를 확보하는 것이다.</p>
+
+<p>Destination sealed interface는 Compose Navigation의 route와 구조적으로 유사하다. <code>Destination.Screen.ProductDetail(productNo = 123)</code>은 Compose Navigation 2.8+의 <code>@Serializable data class ProductDetail(val productNo: Long)</code> route와 거의 동일한 형태다. Activity 기반 화면을 하나씩 Composable로 전환하면서 Resolver를 <code>NavGraphBuilder</code>로 교체하면 된다. 호출부의 <code>navigator.navigate(context, Destination.Screen.XXX)</code>는 변경할 필요가 없다.</p>
+
+<div class="summary-box">
+    <div class="summary-box-title">핵심 정리</div>
+    <ul>
+        <li><strong>Delegator 42개 → KurlyNavigator 1개</strong>: 파편화된 네비게이션 로직을 단일 인터페이스로 통합</li>
+        <li><strong>DeepLinkSpec 양방향 변환</strong>: 딥링크 파싱과 생성이 한 곳에서 관리되어 일관성 보장</li>
+        <li><strong>순 1,221줄 삭제</strong>: 새 시스템 구축(+2,022줄) 후 기존 시스템 제거(-1,616줄)</li>
+        <li><strong>Compose Navigation 전환 발판</strong>: Activity 기반에서 즉시 가능한 중간 단계 설계</li>
+    </ul>
+</div>
+
+<p>이 패턴이 적합한 경우: Activity 기반 아키텍처에서 Compose Navigation 전면 전환이 즉시 불가능하고, Delegator/Navigator 패턴이 10개 이상 누적된 앱.</p>
+
+<p>적합하지 않은 경우: 이미 단일 Activity + Compose Navigation으로 전환 완료된 앱, 화면 수가 10개 미만인 소규모 앱(Resolver 오버헤드가 본체보다 클 수 있다), 또는 WebView 기반 하이브리드 앱(네이티브 네비게이션 레이어가 얇으면 이 구조가 과도하다).</p>
+
+<div class="summary-box">
+    <div class="summary-box-title">시각화 자료</div>
+    <p>이 글의 핵심 변경사항을 한 페이지로 정리한 시각화 문서를 제공합니다. Delegator 제거 전후의 구조 변화, 모듈 의존성 변경, 호출 패턴 비교를 다이어그램으로 확인할 수 있습니다.<br>
+    <a href="navigation-destination-migration.html">→ 시각화 페이지 보기</a></p>
+</div>
+
+</article>
+
+<!-- ═══════════════════════════════════════════
+     Footnotes
+     ═══════════════════════════════════════════ -->
+<div class="article">
+    <div class="footnotes">
+        <p>[1] <code>DestinationDeepLinkSpecTest</code>에서 <code>fromUri</code>/<code>toUri</code> 라운드트립을 검증한다. PR #7296 참조.</p>
+        <p>[2] PR #7372: Delegator 패턴 제거. 102개 파일 변경, +395/-1,616줄.</p>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     Footer
+     ═══════════════════════════════════════════ -->
+<footer class="article-footer">
+    <div class="share-buttons">
+        <button class="share-btn" onclick="navigator.clipboard.writeText(location.href)">링크 복사</button>
+    </div>
+</footer>
+
+</body>
+</html>
