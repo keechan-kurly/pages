@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PRJ-284 베스트탭 2차 실험 - Change Visualization (Dark)</title>
+<style>
+/* diff-viz: glass theme */
+:root {
+  --cv-add: #60a5fa;
+  --cv-del: #fb923c;
+  --cv-mod: #fbbf24;
+  --cv-mov: #38bdf8;
+  --cv-bg: #0c0a1a;
+  --cv-text: #f1f5f9;
+  --cv-text-secondary: #c1c7d0;
+  --cv-muted: #8892a4;
+  --cv-border: rgba(255,255,255,0.10);
+  --cv-surface: rgba(255,255,255,0.04);
+  --cv-card-bg: rgba(255,255,255,0.06);
+  --cv-code-bg: rgba(0,0,0,0.35);
+  --cv-add-surface: rgba(96,165,250,0.08);
+  --cv-del-surface: rgba(251,146,60,0.08);
+  --cv-mod-surface: rgba(251,191,36,0.06);
+  --cv-mov-surface: rgba(56,189,248,0.08);
+  --glass-blur: 16px;
+  --glass-saturation: 180%;
+  --glass-border: rgba(255,255,255,0.12);
+  --glass-border-hover: rgba(255,255,255,0.20);
+  --glass-radius: 16px;
+  --glass-radius-lg: 24px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  color: var(--cv-text);
+  background: var(--cv-bg);
+  line-height: 1.7;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 48px 32px;
+  -webkit-font-smoothing: antialiased;
+  position: relative;
+}
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background:
+    radial-gradient(ellipse 50% 40% at 20% 20%, rgba(99,102,241,0.15) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 50% at 80% 30%, rgba(236,72,153,0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 50% 80%, rgba(56,189,248,0.08) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+body > * { position: relative; z-index: 1; }
+.cv-hero {
+  position: relative;
+  padding: 64px 40px 56px;
+  margin-bottom: 48px;
+  border-radius: var(--glass-radius-lg);
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(24px) saturate(var(--glass-saturation));
+  -webkit-backdrop-filter: blur(24px) saturate(var(--glass-saturation));
+  border: 1px solid var(--glass-border);
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06);
+}
+.cv-hero::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%);
+}
+.cv-hero__title { font-size: 32px; font-weight: 700; color: #ffffff; margin: 0 0 16px; letter-spacing: -0.02em; line-height: 1.2; position: relative; }
+.cv-hero__subtitle { font-size: 16px; color: var(--cv-muted); margin: 0; line-height: 1.6; position: relative; max-width: 640px; }
+.cv-hero__glow { position: absolute; border-radius: 50%; pointer-events: none; }
+.cv-hero__glow--tr { top: -80px; right: -60px; width: 260px; height: 260px; background: radial-gradient(circle, rgba(99,102,241,0.20) 0%, transparent 60%); }
+.cv-hero__glow--bl { bottom: -60px; left: -40px; width: 200px; height: 200px; background: radial-gradient(circle, rgba(236,72,153,0.12) 0%, transparent 60%); }
+.cv-legend {
+  display: flex; gap: 20px; flex-wrap: wrap;
+  padding: 14px 20px;
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  border: 1px solid var(--cv-border);
+  border-radius: var(--glass-radius);
+  margin-bottom: 32px;
+  font-size: 13px;
+  color: var(--cv-muted);
+}
+.cv-legend__item { display: flex; align-items: center; gap: 8px; }
+.cv-legend__dot {
+  width: 10px; height: 10px; border-radius: 50%; display: inline-block;
+  box-shadow: 0 0 10px currentColor, 0 0 20px currentColor;
+}
+.cv-section { margin-bottom: 48px; animation: cv-fade-in 500ms ease-out both; }
+.cv-section:nth-child(2) { animation-delay: 60ms; }
+.cv-section:nth-child(3) { animation-delay: 120ms; }
+.cv-section:nth-child(4) { animation-delay: 180ms; }
+.cv-card {
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius);
+  padding: 20px 24px;
+  margin-bottom: 16px;
+  transition: border-color 250ms ease, box-shadow 250ms ease, transform 250ms ease;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.04);
+}
+.cv-card:hover {
+  border-color: var(--glass-border-hover);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06);
+  transform: translateY(-1px);
+}
+.cv-card--add { border-color: rgba(96,165,250,0.20); background: rgba(96,165,250,0.06); box-shadow: 0 4px 16px rgba(0,0,0,0.15), 0 0 24px rgba(96,165,250,0.06), inset 0 1px 0 rgba(96,165,250,0.08); }
+.cv-card--del { border-color: rgba(251,146,60,0.20); background: rgba(251,146,60,0.06); }
+.cv-card--mod { border-color: rgba(251,191,36,0.15); background: rgba(251,191,36,0.04); }
+.cv-card--why { background: rgba(255,255,255,0.04); border: 1px solid var(--cv-border); border-left: 3px solid var(--cv-mod); border-radius: 0 var(--glass-radius) var(--glass-radius) 0; }
+.cv-card__header { font-size: 15px; font-weight: 600; color: var(--cv-text); margin-bottom: 10px; }
+.cv-card__body { font-size: 14px; color: var(--cv-text-secondary); line-height: 1.7; }
+.cv-columns { display: flex; gap: 20px; align-items: stretch; flex-wrap: wrap; margin-bottom: 32px; }
+.cv-column { flex: 1; min-width: 280px; }
+.cv-column__label { font-size: 11px; font-weight: 600; color: var(--cv-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+.cv-module { border: 1px solid var(--cv-border); border-radius: var(--glass-radius); padding: 16px; background: rgba(255,255,255,0.03); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); margin-bottom: 12px; transition: border-color 250ms ease; }
+.cv-module:hover { border-color: var(--glass-border-hover); }
+.cv-module--new { background: rgba(96,165,250,0.06); border-color: rgba(96,165,250,0.20); box-shadow: 0 0 40px rgba(96,165,250,0.06); position: relative; }
+.cv-module--new::before { content: ''; position: absolute; inset: -1px; border-radius: calc(var(--glass-radius) + 1px); background: linear-gradient(135deg, rgba(96,165,250,0.3), rgba(236,72,153,0.15), rgba(56,189,248,0.3)); z-index: -1; opacity: 0.5; }
+.cv-module__name { font-size: 13px; font-weight: 600; color: var(--cv-add); margin-bottom: 10px; }
+.cv-module__items { display: flex; gap: 8px; flex-wrap: wrap; }
+.cv-arrow { display: flex; align-items: center; justify-content: center; min-width: 48px; flex-shrink: 0; font-size: 20px; color: var(--cv-muted); font-weight: 400; }
+.cv-badge { display: inline-flex; align-items: center; font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 8px; background: rgba(255,255,255,0.06); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); color: var(--cv-muted); border: 1px solid var(--cv-border); }
+.cv-badge--add { background: rgba(96,165,250,0.10); color: var(--cv-add); border-color: rgba(96,165,250,0.15); }
+.cv-badge--del { background: rgba(251,146,60,0.10); color: var(--cv-del); border-color: rgba(251,146,60,0.15); }
+.cv-badge--mod { background: rgba(251,191,36,0.08); color: var(--cv-mod); border-color: rgba(251,191,36,0.12); }
+.cv-badge--new { background: var(--cv-add); color: #0c0a1a; font-weight: 600; border-color: transparent; }
+.cv-badge--module { background: rgba(96,165,250,0.10); color: var(--cv-add); border-color: rgba(96,165,250,0.15); }
+.cv-code { border-radius: var(--glass-radius); overflow: hidden; margin-bottom: 20px; }
+.cv-code pre { background: rgba(0,0,0,0.35); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); color: var(--cv-text); border-radius: var(--glass-radius); padding: 16px 20px; font-size: 13px; font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace; line-height: 1.6; margin: 0; overflow-x: auto; white-space: pre-wrap; border: 1px solid var(--cv-border); }
+.cv-h2 { font-size: 20px; font-weight: 600; color: var(--cv-text); letter-spacing: -0.01em; margin-bottom: 12px; }
+.cv-h3 { font-size: 15px; font-weight: 600; color: var(--cv-text); margin-bottom: 8px; }
+.cv-body { font-size: 14px; color: var(--cv-text-secondary); line-height: 1.7; }
+.cv-muted { font-size: 12px; color: var(--cv-muted); }
+.cv-text-add { color: var(--cv-add); }
+.cv-text-del { color: var(--cv-del); }
+.cv-text-mod { color: var(--cv-mod); }
+.cv-text-mov { color: var(--cv-mov); }
+.cv-citations { margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--cv-border); }
+.cv-citations__toggle { background: none; border: none; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--cv-muted); padding: 0; display: flex; align-items: center; gap: 8px; transition: color 200ms ease; }
+.cv-citations__toggle:hover { color: var(--cv-text-secondary); }
+.cv-citations__content { overflow: hidden; max-height: 0; transition: max-height 300ms ease; }
+.cv-citations__content.open { max-height: 600px; }
+.cv-footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--cv-border); font-size: 12px; color: var(--cv-muted); }
+@keyframes cv-fade-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="cv-hero">
+  <div class="cv-hero__glow cv-hero__glow--tr"></div>
+  <div class="cv-hero__glow cv-hero__glow--bl"></div>
+  <h1 class="cv-hero__title">PRJ-284 베스트탭 2차 실험</h1>
+  <p class="cv-hero__subtitle">컬렉션 섹션 UI를 Grid 랭킹 레이아웃에서 플랫 LazyRow 카드 리스트로 전환. 이벤트 처리를 ViewModel에서 ViewHolder로 이동. Position 기반 동적 섹션 삽입 파이프라인 추가.</p>
+</div>
+
+<!-- Legend -->
+<div class="cv-legend">
+  <span class="cv-legend__item"><span class="cv-legend__dot" style="color:var(--cv-add);background:var(--cv-add);"></span> + 추가</span>
+  <span class="cv-legend__item"><span class="cv-legend__dot" style="color:var(--cv-del);background:var(--cv-del);"></span> - 삭제</span>
+  <span class="cv-legend__item"><span class="cv-legend__dot" style="color:var(--cv-mod);background:var(--cv-mod);"></span> ~ 수정</span>
+  <span class="cv-legend__item"><span class="cv-legend__dot" style="color:var(--cv-mov);background:var(--cv-mov);"></span> → 이동</span>
+</div>
+
+<!-- Section 1: UI Layout Transform -->
+<section class="cv-section">
+
+  <h2 class="cv-h2">UI Layout Transform — Grid 랭킹 → 플랫 카드 리스트</h2>
+
+  <div class="cv-columns">
+    <div class="cv-column">
+      <div class="cv-column__label">Before</div>
+      <div class="cv-card cv-card--del">
+        <div class="cv-badge cv-badge--del" style="margin-bottom:8px;">- REMOVED</div>
+        <p class="cv-body" style="font-weight:600;">HorizontalGridLayout</p>
+        <p class="cv-muted">products.chunked(spanCount) → 페이지별 Contents 그룹</p>
+        <div style="display:flex;gap:12px;align-items:center;margin-top:12px;">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+            <div style="width:56px;height:56px;border-radius:8px;border:1px solid var(--cv-border);display:flex;align-items:center;justify-content:center;">
+              <span class="cv-muted" style="font-size:11px;">56dp</span>
+            </div>
+            <span class="cv-muted" style="font-size:10px;">썸네일</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <span class="cv-body" style="font-size:12px;">Row( 순위 텍스트 + 썸네일 + 상품정보 )</span>
+            <span class="cv-muted" style="font-size:11px;">+ COMPACT 장바구니</span>
+            <span class="cv-muted" style="font-size:11px;">+ WindowSizeClass 기반 width</span>
+            <span class="cv-muted" style="font-size:11px;">+ 전체보기 더보기 버튼</span>
+          </div>
+        </div>
+        <div style="margin-top:12px;padding:8px;border-radius:6px;background:var(--cv-del-surface);">
+          <p class="cv-muted" style="font-size:11px;">모델 계층 3단계 · 페이지 분할 스크롤 제한 · ViewModel에 이벤트 결합</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="cv-column">
+      <div class="cv-column__label">After</div>
+      <div class="cv-card cv-card--add">
+        <div class="cv-badge cv-badge--add" style="margin-bottom:8px;">+ ADDED</div>
+        <p class="cv-body" style="font-weight:600;">HorizontalListLayout</p>
+        <p class="cv-muted">products 플랫 리스트 · position 기반 삽입</p>
+        <div style="display:flex;gap:12px;align-items:center;margin-top:12px;">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+            <div style="width:109px;height:109px;border-radius:8px;border:1px solid var(--cv-border);display:flex;align-items:center;justify-content:center;">
+              <span class="cv-muted" style="font-size:11px;">109dp</span>
+            </div>
+            <span class="cv-muted" style="font-size:10px;">썸네일</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <span class="cv-body" style="font-size:12px;">Column( aspectRatio(1f) 썸네일 )</span>
+            <span class="cv-muted" style="font-size:11px;">+ FILL 장바구니</span>
+            <span class="cv-muted" style="font-size:11px;">+ 상품정보 · 109dp 고정폭</span>
+            <span class="cv-muted" style="font-size:11px;">+ maxHeight 유지 로직</span>
+          </div>
+        </div>
+        <div style="margin-top:12px;padding:8px;border-radius:6px;background:var(--cv-add-surface);">
+          <p class="cv-muted" style="font-size:11px;">ViewHolder + ProductEventConfigProvider 패턴 · 이벤트 처리 분리</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Motivation -->
+  <div class="cv-card cv-card--why" style="margin-top:16px;">
+    <div class="cv-badge cv-badge--mod" style="margin-bottom:8px;">~ MOTIVATION</div>
+    <p class="cv-body">베스트탭 2차 A/B 실험 — 카드형 세로 레이아웃이 전환율 향상에 효과적인지 검증</p>
+    <div style="display:flex;gap:24px;margin-top:12px;flex-wrap:wrap;">
+      <div style="display:flex;flex-direction:column;gap:2px;">
+        <span class="cv-muted" style="font-size:11px;">레이아웃 방향</span>
+        <span class="cv-body" style="font-size:13px;"><span style="color:var(--cv-del);">Row (가로)</span> → <span style="color:var(--cv-add);">Column (세로)</span></span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:2px;">
+        <span class="cv-muted" style="font-size:11px;">스크롤 모델</span>
+        <span class="cv-body" style="font-size:13px;"><span style="color:var(--cv-del);">페이지 분할</span> → <span style="color:var(--cv-add);">연속 LazyRow</span></span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:2px;">
+        <span class="cv-muted" style="font-size:11px;">이벤트 처리</span>
+        <span class="cv-body" style="font-size:13px;"><span style="color:var(--cv-del);">ViewModel 결합</span> → <span style="color:var(--cv-add);">ViewHolder + ConfigProvider</span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Impact -->
+  <div class="cv-card" style="margin-top:16px;">
+    <div class="cv-badge cv-badge--add" style="margin-bottom:8px;">+ IMPACT</div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:120px;">
+        <span class="cv-body" style="font-size:28px;font-weight:700;color:var(--cv-add);">67%</span>
+        <span class="cv-muted" style="font-size:11px;text-align:center;">모델 계층 감소</span>
+        <span class="cv-muted" style="font-size:10px;">3단계 → 1단계</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:120px;">
+        <span class="cv-body" style="font-size:28px;font-weight:700;color:var(--cv-add);">3.8×</span>
+        <span class="cv-muted" style="font-size:11px;text-align:center;">이미지 면적 확대</span>
+        <span class="cv-muted" style="font-size:10px;">56dp → 109dp</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:120px;">
+        <span class="cv-body" style="font-size:28px;font-weight:700;color:var(--cv-add);">62%</span>
+        <span class="cv-muted" style="font-size:11px;text-align:center;">코드 감소</span>
+        <span class="cv-muted" style="font-size:10px;">170줄 → 64줄</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Removed -->
+  <div class="cv-card" style="margin-top:16px;">
+    <div class="cv-badge cv-badge--del" style="margin-bottom:8px;">- REMOVED</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+      <span class="cv-badge cv-badge--del">순위 텍스트</span>
+      <span class="cv-badge cv-badge--del">더보기 버튼</span>
+      <span class="cv-badge cv-badge--del">WindowSizeClass 계산</span>
+      <span class="cv-badge cv-badge--del">chunked 페이지 분할</span>
+      <span class="cv-badge cv-badge--del">3단계 모델 계층</span>
+    </div>
+  </div>
+</section>
+
+<!-- Section 2: Position-based Section Insertion -->
+<section class="cv-section">
+
+  <h2 class="cv-h2">섹션 삽입 방식 변경</h2>
+  <p class="cv-body" style="margin-bottom:24px;">서버가 내려주는 <code style="background:var(--cv-code-bg);padding:2px 6px;border-radius:4px;font-size:12px;">position</code> 값에 따라 섹션이 상품 그리드 안 원하는 위치에 나타납니다.</p>
+
+  <!-- Before/After 화면 비교 -->
+  <div class="cv-columns" style="gap:24px;">
+
+    <!-- ===== BEFORE: 화면 Mock ===== -->
+    <div class="cv-column" style="min-width:260px;">
+      <div class="cv-column__label" style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+        <span class="cv-badge cv-badge--del">- Before</span>
+        <span class="cv-muted">섹션은 항상 헤더에 고정</span>
+      </div>
+
+      <!-- 폰 프레임 -->
+      <div style="border:2px solid var(--cv-border);border-radius:20px;padding:12px;background:var(--cv-surface);max-width:320px;">
+        <!-- 상단 노치 -->
+        <div style="width:60px;height:4px;background:var(--cv-border);border-radius:4px;margin:0 auto 12px;"></div>
+
+        <!-- 헤더 영역: 섹션 고정 -->
+        <div style="border:2px dashed var(--cv-del);border-radius:12px;padding:12px;margin-bottom:8px;background:var(--cv-del-surface);">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+            <span style="font-size:11px;font-weight:600;color:var(--cv-del);">HeaderAdapter</span>
+            <span class="cv-badge cv-badge--del" style="font-size:9px;padding:1px 6px;">고정 위치</span>
+          </div>
+          <!-- 미니 섹션 카드 -->
+          <div style="background:var(--cv-card-bg);border:1px solid var(--cv-border);border-radius:8px;padding:8px;">
+            <div style="font-size:10px;font-weight:600;color:var(--cv-text);">🏷️ 추천 컬렉션</div>
+            <div style="display:flex;gap:4px;margin-top:4px;">
+              <div style="width:32px;height:32px;border-radius:4px;background:var(--cv-mod-surface);"></div>
+              <div style="width:32px;height:32px;border-radius:4px;background:var(--cv-mod-surface);"></div>
+              <div style="width:32px;height:32px;border-radius:4px;background:var(--cv-mod-surface);"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 상품 그리드 (ProductListAdapter) -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+          <div style="background:var(--cv-card-bg);border:1px solid var(--cv-border);border-radius:8px;padding:8px;text-align:center;">
+            <div style="height:40px;background:var(--cv-surface);border-radius:4px;margin-bottom:4px;"></div>
+            <div style="font-size:9px;color:var(--cv-muted);">상품 1</div>
+          </div>
+          <div style="background:var(--cv-card-bg);border:1px solid var(--cv-border);border-radius:8px;padding:8px;text-align:center;">
+            <div style="height:40px;background:var(--cv-surface);border-radius:4px;margin-bottom:4px;"></div>
+            <div style="font-size:9px;color:var(--cv-muted);">상품 2</div>
+          </div>
+          <div style="background:var(--cv-card-bg);border:1px solid var(--cv-border);border-radius:8px;padding:8px;text-align:center;">
+            <div style="height:40px;background:var(--cv-surface);border-radius:4px;margin-bottom:4px;"></div>
+            <div style="font-size:9px;color:var(--cv-muted);">상품 3</div>
+          </div>
+          <div style="background:var(--cv-card-bg);border:1px solid var(--cv-border);border-radius:8px;padding:8px;text-align:center;">
+            <div style="height:40px;background:var(--cv-surface);border-radius:4px;margin-bottom:4px;"></div>
+            <div style="font-size:9px;color:var(--cv-muted);">상품 4</div>
+          </div>
+          <div style="background:var(--cv-card-bg);border:1px solid var(--cv-border);border-radius:8px;padding:8px;text-align:center;">
+            <div style="height:40px;background:var(--cv-surface);border-radius:4px;margin-bottom:4px;"></div>
+            <div style="font-size:9px;color:var(--cv-muted);">상품 5</div>
+          </div>
+          <div style="background:var(--cv-card-bg);border:1px solid var(--cv-border);border-radius:8px;padding:8px;text-align:center;">
+            <div style="height:40px;background:var(--cv-surface);border-radius:4px;margin-bottom:4px;"></div>
+            <div style="font-size:9px;color:var(--cv-muted);">상품 6</div>
+          </div>
+        </div>
+
+        <!-- 하단 바 -->
+        <div style="width:40px;height:4px;background:var(--cv-border);border-radius:4px;margin:12px auto 0;"></div>
+      </div>
+    </div>
+
+    <!-- ===== AFTER: 화면 Mock ===== -->
+    <div class="cv-column" style="min-width:260px;">
+      <div class="cv-column__label" style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+        <span class="cv-badge cv-badge--add">+ After</span>
+        <span class="cv-muted">섹션이 그리드 중간에 삽입</span>
+      </div>
+
+      <!-- 폰 프레임 -->
+      <div style="border:2px solid rgba(96,165,250,0.25);border-radius:20px;padding:12px;background:var(--cv-surface);max-width:320px;">
+        <!-- 상단 노치 -->
+        <div style="width:60px;height:4px;background:var(--cv-border);border-radius:4px;margin:0 auto 12px;"></div>
+
+        <!-- 상품 그리드 (섹션이 중간에 삽입) -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+          <!-- Row 1 -->
+          <div style="background:var(--cv-card-bg);border:1px solid var(--cv-border);border-radius:8px;padding:8px;text-align:center;">
+            <div style="height:40px;background:var(--cv-surface);border-radius:4px;margin-bottom:4px;"></div>
+            <div style="font-size:9px;color:var(--cv-muted);">상품 1</div>
+          </div>
+          <div style="background:var(--cv-card-bg);border:1px solid var(--cv-border);border-radius:8px;padding:8px;text-align:center;">
+            <div style="height:40px;background:var(--cv-surface);border-radius:4px;margin-bottom:4px;"></div>
+            <div style="font-size:9px;color:var(--cv-muted);">상품 2</div>
+          </div>
+
+          <!-- Row 2: 섹션 삽입 (position=2) — spans full width -->
+          <div style="grid-column:1/-1;border:2px solid var(--cv-add);border-radius:12px;padding:10px;background:var(--cv-add-surface);position:relative;">
+            <!-- position 라벨 -->
+            <div style="position:absolute;top:-10px;right:12px;background:var(--cv-add);color:var(--cv-bg);font-size:10px;font-weight:700;padding:2px 10px;border-radius:10px;">
+              position = 2
+            </div>
+            <div style="font-size:10px;font-weight:600;color:var(--cv-add);margin-bottom:4px;">🏷️ 추천 컬렉션</div>
+            <div style="display:flex;gap:4px;overflow:hidden;">
+              <div style="width:32px;height:32px;border-radius:4px;background:rgba(96,165,250,0.15);flex-shrink:0;"></div>
+              <div style="width:32px;height:32px;border-radius:4px;background:rgba(96,165,250,0.15);flex-shrink:0;"></div>
+              <div style="width:32px;height:32px;border-radius:4px;background:rgba(96,165,250,0.15);flex-shrink:0;"></div>
+              <div style="width:32px;height:32px;border-radius:4px;background:rgba(96,165,250,0.15);flex-shrink:0;"></div>
+            </div>
+          </div>
+
+          <!-- Row 3 -->
+          <div style="background:var(--cv-card-bg);border:1px solid var(--cv-border);border-radius:8px;padding:8px;text-align:center;">
+            <div style="height:40px;background:var(--cv-surface);border-radius:4px;margin-bottom:4px;"></div>
+            <div style="font-size:9px;color:var(--cv-muted);">상품 3</div>
+          </div>
+          <div style="background:var(--cv-card-bg);border:1px solid var(--cv-border);border-radius:8px;padding:8px;text-align:center;">
+            <div style="height:40px;background:var(--cv-surface);border-radius:4px;margin-bottom:4px;"></div>
+            <div style="font-size:9px;color:var(--cv-muted);">상품 4</div>
+          </div>
+          <!-- Row 4 -->
+          <div style="background:var(--cv-card-bg);border:1px solid var(--cv-border);border-radius:8px;padding:8px;text-align:center;">
+            <div style="height:40px;background:var(--cv-surface);border-radius:4px;margin-bottom:4px;"></div>
+            <div style="font-size:9px;color:var(--cv-muted);">상품 5</div>
+          </div>
+          <div style="background:var(--cv-card-bg);border:1px solid var(--cv-border);border-radius:8px;padding:8px;text-align:center;">
+            <div style="height:40px;background:var(--cv-surface);border-radius:4px;margin-bottom:4px;"></div>
+            <div style="font-size:9px;color:var(--cv-muted);">상품 6</div>
+          </div>
+        </div>
+
+        <!-- 하단 바 -->
+        <div style="width:40px;height:4px;background:var(--cv-border);border-radius:4px;margin:12px auto 0;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 삽입 로직 설명 -->
+  <div class="cv-card cv-card--add" style="margin-top:24px;">
+    <h3 class="cv-h3" style="display:flex;align-items:center;gap:8px;">
+      <span class="cv-badge cv-badge--new">NEW</span>
+      insertSection() — 삽입 위치 계산
+    </h3>
+
+    <!-- 시각적 수식 -->
+    <div style="display:flex;align-items:center;gap:12px;margin-top:16px;flex-wrap:wrap;">
+      <div style="background:var(--cv-code-bg);border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:8px;">
+        <span style="font-size:13px;color:var(--cv-muted);font-family:monospace;">서버 응답</span>
+        <span style="font-size:20px;font-weight:700;color:var(--cv-add);font-family:monospace;">position = 3</span>
+      </div>
+      <span class="cv-arrow">→</span>
+      <div style="background:var(--cv-code-bg);border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:8px;">
+        <span style="font-size:13px;color:var(--cv-muted);font-family:monospace;">삽입 인덱스</span>
+        <span style="font-size:13px;color:var(--cv-text);font-family:monospace;">(3-1) × 2 = </span>
+        <span style="font-size:20px;font-weight:700;color:var(--cv-add);font-family:monospace;">4번째 상품 뒤</span>
+      </div>
+    </div>
+
+    <!-- 3단계 과정 -->
+    <div style="display:flex;gap:12px;margin-top:16px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:160px;border-left:2px solid var(--cv-border);padding-left:12px;">
+        <div class="cv-body" style="font-weight:600;">1. 래핑</div>
+        <p class="cv-muted" style="margin-top:4px;">각 상품을 Product 타입으로 래핑</p>
+        <span class="cv-badge cv-badge--mod" style="font-size:9px;margin-top:4px;">UIModel → DisplayItem.Product</span>
+      </div>
+      <div style="flex:1;min-width:160px;border-left:2px solid var(--cv-add);padding-left:12px;">
+        <div class="cv-body" style="font-weight:600;">2. 삽입</div>
+        <p class="cv-muted" style="margin-top:4px;">target 위치에 Section 아이템 삽입</p>
+        <span class="cv-badge cv-badge--add" style="font-size:9px;margin-top:4px;">insertSeparators()</span>
+      </div>
+      <div style="flex:1;min-width:160px;border-left:2px solid var(--cv-border);padding-left:12px;">
+        <div class="cv-body" style="font-weight:600;">3. 렌더링</div>
+        <p class="cv-muted" style="margin-top:4px;">ViewType으로 분기하여 각각 렌더링</p>
+        <div style="display:flex;gap:4px;margin-top:4px;">
+          <span class="cv-badge" style="font-size:9px;">20 Product</span>
+          <span class="cv-badge cv-badge--add" style="font-size:9px;">32 Section</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 하위 호환 -->
+  <div class="cv-card cv-card--why" style="margin-top:16px;">
+    <h3 class="cv-h3">하위 호환</h3>
+    <p class="cv-body" style="margin-top:8px;">
+      서버가 <code style="background:var(--cv-code-bg);padding:2px 6px;border-radius:4px;font-size:12px;">position</code>을
+      내려주지 않으면 <code style="background:var(--cv-code-bg);padding:2px 6px;border-radius:4px;font-size:12px;">isInsert = false</code> →
+      기존 HeaderAdapter 경로를 그대로 사용합니다.
+    </p>
+    <div style="display:flex;gap:16px;margin-top:12px;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="cv-badge cv-badge--add">position &gt; 0</span>
+        <span class="cv-arrow" style="min-width:auto;">→</span>
+        <span class="cv-body" style="font-size:13px;">그리드 중간 삽입</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="cv-badge">position 없음</span>
+        <span class="cv-arrow" style="min-width:auto;">→</span>
+        <span class="cv-body" style="font-size:13px;">헤더 고정 (기존)</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Citations -->
+<div class="cv-citations">
+  <button class="cv-citations__toggle" onclick="var c=this.nextElementSibling;var open=c.classList.toggle('open');this.querySelector('.arrow').style.transform=open?'rotate(90deg)':'rotate(0deg)';">
+    <span class="arrow" style="display:inline-block;transition:transform 200ms ease;font-size:12px;">&#9654;</span>
+    적용된 설계 근거
+  </button>
+  <div class="cv-citations__content">
+    <div style="padding:16px 0;">
+      <table style="width:100%;border-collapse:collapse;font-size:11px;line-height:1.5;">
+        <thead>
+          <tr style="background:var(--cv-surface);">
+            <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--cv-border);font-weight:600;color:var(--cv-text);width:60px;">규칙</th>
+            <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--cv-border);font-weight:600;color:var(--cv-text);width:140px;">원칙</th>
+            <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--cv-border);font-weight:600;color:var(--cv-text);">학술 근거</th>
+            <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--cv-border);font-weight:600;color:var(--cv-text);">적용</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid var(--cv-border);">
+            <td style="padding:6px 8px;color:var(--cv-add);font-weight:600;">COM-01</td>
+            <td style="padding:6px 8px;color:var(--cv-text-secondary);">동시 요소 ≤ 4</td>
+            <td style="padding:6px 8px;color:var(--cv-muted);font-style:italic;">Cowan (2001). BBS.</td>
+            <td style="padding:6px 8px;color:var(--cv-text-secondary);">파이프라인 노드 4개 이내</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--cv-border);">
+            <td style="padding:6px 8px;color:var(--cv-add);font-weight:600;">COM-06</td>
+            <td style="padding:6px 8px;color:var(--cv-text-secondary);">Okabe-Ito 팔레트</td>
+            <td style="padding:6px 8px;color:var(--cv-muted);font-style:italic;">Okabe &amp; Ito (2008).</td>
+            <td style="padding:6px 8px;color:var(--cv-text-secondary);">Glass 테마 accent 색상</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--cv-border);">
+            <td style="padding:6px 8px;color:var(--cv-add);font-weight:600;">COM-09</td>
+            <td style="padding:6px 8px;color:var(--cv-text-secondary);">변경의 "왜"</td>
+            <td style="padding:6px 8px;color:var(--cv-muted);font-style:italic;">Riche et al. (2018).</td>
+            <td style="padding:6px 8px;color:var(--cv-text-secondary);">Motivation에 A/B 실험 목적 명시</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--cv-border);">
+            <td style="padding:6px 8px;color:var(--cv-add);font-weight:600;">COM-31</td>
+            <td style="padding:6px 8px;color:var(--cv-text-secondary);">정량 비교</td>
+            <td style="padding:6px 8px;color:var(--cv-muted);font-style:italic;">Cleveland &amp; McGill (1984).</td>
+            <td style="padding:6px 8px;color:var(--cv-text-secondary);">Impact 수치 (67%, 3.8×, 62%)</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--cv-border);">
+            <td style="padding:6px 8px;color:var(--cv-add);font-weight:600;">Glass</td>
+            <td style="padding:6px 8px;color:var(--cv-text-secondary);">Glassmorphism</td>
+            <td style="padding:6px 8px;color:var(--cv-muted);font-style:italic;">backdrop-filter + ambient gradient</td>
+            <td style="padding:6px 8px;color:var(--cv-text-secondary);">시맨틱 클래스 + CSS 변수 기반 테마</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="cv-footer">
+  Generated by diff-viz (glass theme) | 2026-04-10
+</div>
+
+</body>
+</html>
