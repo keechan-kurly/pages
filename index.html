@@ -950,11 +950,13 @@
 
 <script>
 // ── View Toggle ──
+let currentView = 'grid';
 document.querySelectorAll('.vt-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.vt-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     const v = btn.dataset.view;
+    currentView = v;
     document.getElementById('gridView').style.display = v === 'grid' ? '' : 'none';
     document.getElementById('gridView').classList.toggle('active', v === 'grid');
     document.getElementById('listView').classList.toggle('active', v === 'list');
@@ -1021,19 +1023,22 @@ function applyFilters() {
 
     const show = matchNav && matchTag && matchSearch;
     el.style.display = show ? '' : 'none';
-    if (show && !el.classList.contains('list-row')) total++;
+    const isGridItem = !el.classList.contains('list-row');
+    if (show && (currentView === 'grid' ? isGridItem : !isGridItem)) total++;
   });
 
-  // Year group visibility
-  document.querySelectorAll('.year-group').forEach(group => {
-    const visCards = group.querySelectorAll('.card:not([style*="display: none"]), .list-row:not([style*="display: none"])');
-    group.style.display = visCards.length ? '' : 'none';
+  // Year group visibility (per view)
+  const visSelector = currentView === 'grid'
+    ? '.card:not([style*="display: none"])'
+    : '.list-row:not([style*="display: none"])';
+  document.querySelectorAll(`#${currentView}View .year-group`).forEach(group => {
+    group.style.display = group.querySelectorAll(visSelector).length ? '' : 'none';
   });
 
   document.getElementById('noResults').style.display = total === 0 ? 'block' : 'none';
 }
 
-// ── Sort items by ticket/PR number (descending) ──
+// ── Sort items by PR/KMA number (descending) ──
 const SORT_KEYS = {
   'pr-review-automation.html': 7461,
   'boot-route-strategy.html': 7446,
@@ -1053,43 +1058,42 @@ const SORT_KEYS = {
   'blog-composeview-height-issue.html': 4211,
 };
 
-(function sortItems() {
-  document.querySelectorAll('.year-content').forEach(content => {
-    const grid = content.querySelector('.grid');
-    if (grid) {
-      const cards = [...grid.querySelectorAll('.card')];
-      cards.sort((a, b) => (SORT_KEYS[b.getAttribute('href')] || 0) - (SORT_KEYS[a.getAttribute('href')] || 0));
-      cards.forEach(c => grid.appendChild(c));
-    }
-    const rows = [...content.querySelectorAll('.list-row')];
-    if (rows.length) {
-      const parent = rows[0].parentElement;
-      rows.sort((a, b) => (SORT_KEYS[b.getAttribute('href')] || 0) - (SORT_KEYS[a.getAttribute('href')] || 0));
-      rows.forEach(r => parent.appendChild(r));
-    }
-  });
-})();
+function getSortKey(el) {
+  const search = el.dataset.search ?? '';
+  const prs = (search.match(/pr-(\d+)/gi) ?? []).map(s => parseInt(s.slice(3)));
+  if (prs.length > 0) return Math.max(...prs);
+  const kmas = (search.match(/kma-(\d+)/gi) ?? []).map(s => parseInt(s.slice(4)));
+  if (kmas.length > 0) return Math.max(...kmas);
+  return SORT_KEYS[el.getAttribute('href')] || 0;
+}
 
-// ── PR Number Sort (KMA ticket as fallback) ──
-(function () {
-  function sortKey(el) {
-    const search = el.dataset.search ?? '';
-    const prs = (search.match(/pr-(\d+)/gi) ?? []).map(s => parseInt(s.slice(3)));
-    if (prs.length > 0) return Math.max(...prs);
-    const kmas = (search.match(/kma-(\d+)/gi) ?? []).map(s => parseInt(s.slice(4)));
-    if (kmas.length > 0) return Math.max(...kmas);
-    return 0;
-  }
-  document.querySelectorAll('.year-group').forEach(group => {
-    ['.grid', '.list-view'].forEach(selector => {
-      const container = group.querySelector(selector);
-      if (!container) return;
-      [...container.children]
-        .sort((a, b) => sortKey(b) - sortKey(a))
-        .forEach(el => container.appendChild(el));
-    });
+// Grid: CSS order property — no DOM moves, animations are never restarted
+document.querySelectorAll('#gridView .year-content').forEach(content => {
+  const grid = content.querySelector('.grid');
+  if (!grid) return;
+  [...grid.children]
+    .sort((a, b) => getSortKey(b) - getSortKey(a))
+    .forEach((el, i) => { el.style.order = i; });
+});
+
+// List: single DOM sort pass
+document.querySelectorAll('#listView .year-content').forEach(content => {
+  const rows = [...content.querySelectorAll('.list-row')];
+  if (!rows.length) return;
+  rows.sort((a, b) => getSortKey(b) - getSortKey(a));
+  rows.forEach(r => content.appendChild(r));
+});
+
+// ── Clickable div-cards (multi-page cards) ──
+document.querySelectorAll('.card:not(a), .list-row:not(a)').forEach(card => {
+  const firstLink = card.querySelector('a[href]');
+  if (!firstLink) return;
+  card.style.cursor = 'pointer';
+  card.addEventListener('click', e => {
+    if (e.target.closest('a')) return;
+    window.location.href = firstLink.href;
   });
-})();
+});
 </script>
 
 </body>
