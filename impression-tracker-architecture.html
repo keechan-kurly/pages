@@ -3,538 +3,1233 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KMA-4188 Impression 이벤트 전송 구조 개선</title>
+<title>KMA-4188 — Impression 이벤트 전송 구조 개선</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,600;0,700;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --color-bg: #0a0e1a;
-    --color-surface: #1e293b;
-    --color-surface-elevated: #253348;
-    --color-surface-inner: #334155;
-    --color-on-surface: #f1f5f9;
-    --color-on-surface-body: #94a3b8;
-    --color-outline: #64748b;
-    --color-border: rgba(148, 163, 184, 0.15);
-    --viz-color-add: #4ade80;
-    --viz-color-move: #60a5fa;
-    --viz-color-emphasis: #a78bfa;
-    --viz-color-merge: #fb923c;
-    --viz-color-ai: #f472b6;
-  }
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--color-bg); color: var(--color-on-surface-body); line-height: 1.6; min-height: 100vh; }
-  .container { max-width: 1100px; margin: 0 auto; padding: 48px 24px; }
+:root {
+  --ink:    #0f1b2d;
+  --paper:  #0a1220;
+  --grid:   rgba(173, 216, 230, 0.06);
+  --rule:   rgba(173, 216, 230, 0.12);
+  --dim:    rgba(176, 210, 240, 0.35);
+  --body:   #7fb3d3;
+  --text:   #c8dff0;
+  --white:  #e8f4fc;
+  --red:    #ff5e5e;
+  --green:  #3ecf8e;
+  --amber:  #ffcc44;
+  --blue:   #4db8ff;
+  --purple: #b794f4;
+}
 
-  /* ── Hero ── */
-  .hero { text-align: center; padding: 40px 24px 32px; position: relative; overflow: hidden; margin-bottom: 32px; }
-  .hero::before { content: ''; position: absolute; top: -50%; left: 50%; transform: translateX(-50%); width: 600px; height: 600px; background: radial-gradient(circle, rgba(96,165,250,0.12) 0%, transparent 70%); pointer-events: none; }
-  .hero::after { content: ''; position: absolute; bottom: -30%; right: 20%; width: 400px; height: 400px; background: radial-gradient(circle, rgba(167,139,250,0.08) 0%, transparent 70%); pointer-events: none; }
-  .hero-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 16px; background: linear-gradient(135deg, rgba(96,165,250,0.12), rgba(167,139,250,0.12)); border: 1px solid rgba(96,165,250,0.2); border-radius: 9999px; font-size: 0.7rem; font-weight: 600; color: var(--viz-color-move); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 24px; position: relative; }
-  .hero h1 { font-size: 2.5rem; font-weight: 800; line-height: 1.2; margin-bottom: 16px; position: relative; background: linear-gradient(135deg, var(--color-on-surface) 0%, var(--viz-color-move) 50%, var(--viz-color-emphasis) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-  .hero h1 .accent { background: linear-gradient(135deg, var(--viz-color-move) 0%, var(--viz-color-emphasis) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-  .hero-desc { font-size: 1.05rem; color: var(--color-outline); max-width: 700px; margin: 0 auto; position: relative; line-height: 1.7; }
-  .hero-stats { display: flex; justify-content: center; gap: 32px; margin-top: 24px; position: relative; }
-  .hero-stat { text-align: center; }
-  .hero-stat-value { font-size: 1.5rem; font-weight: 800; color: var(--viz-color-move); }
-  .hero-stat-label { font-size: 0.68rem; color: var(--color-outline); margin-top: 2px; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  /* ── Architecture Layers ── */
-  .arch { display: flex; flex-direction: column; gap: 12px; margin-bottom: 48px; }
-  .arch-layer { border-radius: 20px; padding: 24px; border: 1px solid; transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-  .arch-layer:hover { transform: translateY(-2px); }
-  .arch-layer.core { background: linear-gradient(135deg, rgba(167,139,250,0.05) 0%, var(--color-surface) 100%); border-color: rgba(167,139,250,0.15); }
-  .arch-layer.core:hover { border-color: rgba(167,139,250,0.3); }
-  .arch-layer.features { background: linear-gradient(135deg, rgba(96,165,250,0.05) 0%, var(--color-surface) 100%); border-color: rgba(96,165,250,0.15); }
-  .arch-layer.features:hover { border-color: rgba(96,165,250,0.3); }
-  .arch-layer.screens { background: linear-gradient(135deg, rgba(74,222,128,0.04) 0%, var(--color-surface) 100%); border-color: rgba(74,222,128,0.12); }
-  .arch-layer.screens:hover { border-color: rgba(74,222,128,0.25); }
+body {
+  font-family: 'IBM Plex Mono', monospace;
+  background: var(--paper);
+  color: var(--body);
+  min-height: 100vh;
+  line-height: 1.6;
+  position: relative;
+}
 
-  .layer-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
-  .layer-tag { font-size: 0.65rem; font-weight: 700; padding: 4px 12px; border-radius: 9999px; letter-spacing: 0.08em; text-transform: uppercase; }
-  .layer-tag.core-tag { color: var(--viz-color-emphasis); background: rgba(167,139,250,0.1); border: 1px solid rgba(167,139,250,0.2); }
-  .layer-tag.feat-tag { color: var(--viz-color-move); background: rgba(96,165,250,0.1); border: 1px solid rgba(96,165,250,0.2); }
-  .layer-tag.screen-tag { color: var(--viz-color-add); background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.2); }
-  .layer-title { font-size: 1.1rem; font-weight: 700; color: var(--color-on-surface); }
-  .layer-desc { font-size: 0.82rem; color: var(--color-outline); margin-bottom: 16px; }
+/* Blueprint grid */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px),
+    linear-gradient(var(--grid) .25px, transparent .25px),
+    linear-gradient(90deg, var(--grid) .25px, transparent .25px);
+  background-size: 80px 80px, 80px 80px, 16px 16px, 16px 16px;
+  pointer-events: none;
+  z-index: 0;
+}
 
-  /* ── Component Grid ── */
-  .comp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
-  .comp-card { padding: 14px 16px; border-radius: 14px; border: 1px solid; transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-  .comp-card:hover { transform: translateY(-2px); }
-  .comp-card.tracker { border-color: rgba(167,139,250,0.2); background: rgba(167,139,250,0.04); }
-  .comp-card.strategy { border-color: rgba(251,146,60,0.2); background: rgba(251,146,60,0.04); }
-  .comp-card.listener { border-color: rgba(96,165,250,0.2); background: rgba(96,165,250,0.04); }
-  .comp-card.entry { border-color: rgba(74,222,128,0.2); background: rgba(74,222,128,0.04); }
-  .comp-card.compose { border-color: rgba(244,114,182,0.2); background: rgba(244,114,182,0.04); }
-  .comp-card.screen { border-color: rgba(74,222,128,0.15); background: rgba(74,222,128,0.03); }
+.page {
+  position: relative;
+  z-index: 1;
+  max-width: 1060px;
+  margin: 0 auto;
+  padding: 60px 28px 100px;
+}
 
-  .comp-icon { font-size: 1.1rem; margin-bottom: 6px; }
-  .comp-name { font-size: 0.78rem; font-weight: 700; font-family: 'JetBrains Mono', Consolas, monospace; margin-bottom: 4px; }
-  .comp-card.tracker .comp-name { color: var(--viz-color-emphasis); }
-  .comp-card.strategy .comp-name { color: var(--viz-color-merge); }
-  .comp-card.listener .comp-name { color: var(--viz-color-move); }
-  .comp-card.entry .comp-name { color: var(--viz-color-add); }
-  .comp-card.compose .comp-name { color: var(--viz-color-ai); }
-  .comp-card.screen .comp-name { color: var(--viz-color-add); }
-  .comp-desc { font-size: 0.65rem; color: var(--color-outline); line-height: 1.5; }
+/* ══ Typography ══ */
+.mono { font-family: 'IBM Plex Mono', monospace; }
+.sans { font-family: 'IBM Plex Sans', sans-serif; }
 
-  /* ── Sequence Diagram ── */
-  .seq-diagram { margin-bottom: 48px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 20px; padding: 28px; overflow-x: auto; }
-  .seq-actors { display: flex; gap: 0; margin-bottom: 0; position: relative; }
-  .seq-actor { flex: 1; text-align: center; padding: 12px 8px; position: relative; min-width: 120px; }
-  .seq-actor-box { padding: 10px 12px; border-radius: 12px; border: 1px solid; display: inline-block; min-width: 100px; }
-  .seq-actor-box .actor-name { font-size: 0.72rem; font-weight: 700; font-family: 'JetBrains Mono', Consolas, monospace; }
-  .seq-actor-box .actor-type { font-size: 0.55rem; margin-top: 2px; }
-  .seq-actor-box.a-user { border-color: rgba(148,163,184,0.25); background: var(--color-surface-inner); }
-  .seq-actor-box.a-user .actor-name { color: var(--color-on-surface); }
-  .seq-actor-box.a-user .actor-type { color: var(--color-outline); }
-  .seq-actor-box.a-purple { border-color: rgba(167,139,250,0.25); background: rgba(167,139,250,0.06); }
-  .seq-actor-box.a-purple .actor-name { color: var(--viz-color-emphasis); }
-  .seq-actor-box.a-purple .actor-type { color: var(--viz-color-emphasis); opacity: 0.7; }
-  .seq-actor-box.a-orange { border-color: rgba(251,146,60,0.25); background: rgba(251,146,60,0.06); }
-  .seq-actor-box.a-orange .actor-name { color: var(--viz-color-merge); }
-  .seq-actor-box.a-orange .actor-type { color: var(--viz-color-merge); opacity: 0.7; }
-  .seq-actor-box.a-blue { border-color: rgba(96,165,250,0.25); background: rgba(96,165,250,0.06); }
-  .seq-actor-box.a-blue .actor-name { color: var(--viz-color-move); }
-  .seq-actor-box.a-blue .actor-type { color: var(--viz-color-move); opacity: 0.7; }
-  .seq-actor-box.a-green { border-color: rgba(74,222,128,0.25); background: rgba(74,222,128,0.06); }
-  .seq-actor-box.a-green .actor-name { color: var(--viz-color-add); }
-  .seq-actor-box.a-green .actor-type { color: var(--viz-color-add); opacity: 0.7; }
+/* ══ Technical header stamp ══ */
+.doc-stamp {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 56px;
+  padding-bottom: 28px;
+  border-bottom: 1px solid var(--rule);
+  position: relative;
+}
 
-  /* Lifelines */
-  .seq-body { position: relative; }
-  .seq-lifelines { display: flex; gap: 0; position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 0; }
-  .seq-lifeline { flex: 1; display: flex; justify-content: center; }
-  .seq-lifeline-bar { width: 2px; background: var(--color-border); }
+.doc-stamp::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 60px;
+  height: 1px;
+  background: var(--blue);
+}
 
-  /* Messages */
-  .seq-messages { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 6px; padding: 12px 0; }
-  .seq-msg { display: flex; align-items: center; min-height: 36px; position: relative; }
-  .seq-msg-arrow { position: absolute; height: 2px; top: 50%; }
-  .seq-msg-arrow.solid { background: var(--viz-color-emphasis); }
-  .seq-msg-arrow.solid-blue { background: var(--viz-color-move); }
-  .seq-msg-arrow.solid-orange { background: var(--viz-color-merge); }
-  .seq-msg-arrow.solid-green { background: var(--viz-color-add); }
-  .seq-msg-arrow.dashed { background: none; border-top: 2px dashed var(--color-outline); }
-  .seq-msg-arrow::after { content: ''; position: absolute; right: -1px; top: -4px; border: 5px solid transparent; }
-  .seq-msg-arrow.solid::after { border-left-color: var(--viz-color-emphasis); }
-  .seq-msg-arrow.solid-blue::after { border-left-color: var(--viz-color-move); }
-  .seq-msg-arrow.solid-orange::after { border-left-color: var(--viz-color-merge); }
-  .seq-msg-arrow.solid-green::after { border-left-color: var(--viz-color-add); }
-  .seq-msg-arrow.dashed::after { border-left-color: var(--color-outline); }
-  /* Return arrows (right to left) */
-  .seq-msg-arrow.return::after { right: auto; left: -1px; border-left-color: transparent; }
-  .seq-msg-arrow.return.dashed::after { border-right-color: var(--color-outline); }
+.stamp-left {}
 
-  .seq-msg-label { position: absolute; font-size: 0.68rem; font-weight: 600; white-space: nowrap; padding: 2px 8px; border-radius: 6px; top: -18px; }
-  .seq-msg-label code { font-family: 'JetBrains Mono', Consolas, monospace; font-size: 0.62rem; }
-  .seq-msg-label.l-purple { color: var(--viz-color-emphasis); background: rgba(167,139,250,0.08); }
-  .seq-msg-label.l-blue { color: var(--viz-color-move); background: rgba(96,165,250,0.08); }
-  .seq-msg-label.l-orange { color: var(--viz-color-merge); background: rgba(251,146,60,0.08); }
-  .seq-msg-label.l-green { color: var(--viz-color-add); background: rgba(74,222,128,0.08); }
-  .seq-msg-label.l-grey { color: var(--color-outline); background: rgba(148,163,184,0.08); }
+.doc-id {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--blue);
+  text-transform: uppercase;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
 
-  /* Note box */
-  .seq-note { margin: 4px 0; padding: 8px 14px; border-radius: 8px; font-size: 0.65rem; color: var(--color-outline); line-height: 1.5; border: 1px dashed; text-align: center; }
-  .seq-note.note-orange { border-color: rgba(251,146,60,0.2); background: rgba(251,146,60,0.04); }
-  .seq-note.note-blue { border-color: rgba(96,165,250,0.2); background: rgba(96,165,250,0.04); }
+.doc-id::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: var(--blue);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--blue);
+}
 
-  /* ── Event Flow Pipeline (legacy, kept for other pages) ── */
-  .flow-pipe { display: flex; flex-direction: column; gap: 0; margin-bottom: 48px; }
-  .flow-stage { display: flex; gap: 14px; }
-  .flow-rail { display: flex; flex-direction: column; align-items: center; width: 28px; flex-shrink: 0; }
-  .flow-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; z-index: 1; }
-  .flow-dot.d-purple { background: var(--viz-color-emphasis); }
-  .flow-dot.d-orange { background: var(--viz-color-merge); }
-  .flow-dot.d-blue { background: var(--viz-color-move); }
-  .flow-dot.d-green { background: var(--viz-color-add); }
-  .flow-dot.d-pink { background: var(--viz-color-ai); }
-  .flow-wire { flex: 1; width: 2px; background: var(--color-border); min-height: 8px; }
-  .flow-wire.active { background: rgba(167,139,250,0.3); }
+h1 {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: clamp(1.6rem, 4vw, 2.8rem);
+  font-weight: 700;
+  color: var(--white);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin-bottom: 14px;
+}
 
-  .flow-card { flex: 1; padding: 16px 20px; margin-bottom: 8px; border-radius: 14px; border: 1px solid; transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-  .flow-card:hover { transform: translateX(4px); }
-  .flow-card.fc-purple { border-color: rgba(167,139,250,0.2); background: rgba(167,139,250,0.04); }
-  .flow-card.fc-orange { border-color: rgba(251,146,60,0.2); background: rgba(251,146,60,0.04); }
-  .flow-card.fc-blue { border-color: rgba(96,165,250,0.2); background: rgba(96,165,250,0.04); }
-  .flow-card.fc-green { border-color: rgba(74,222,128,0.2); background: rgba(74,222,128,0.04); }
-  .flow-card.fc-pink { border-color: rgba(244,114,182,0.2); background: rgba(244,114,182,0.04); }
+.doc-subtitle {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 300;
+  color: var(--body);
+  max-width: 520px;
+  line-height: 1.7;
+}
 
-  .flow-card .fc-step { font-size: 0.55rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
-  .flow-card.fc-purple .fc-step { color: var(--viz-color-emphasis); }
-  .flow-card.fc-orange .fc-step { color: var(--viz-color-merge); }
-  .flow-card.fc-blue .fc-step { color: var(--viz-color-move); }
-  .flow-card.fc-green .fc-step { color: var(--viz-color-add); }
-  .flow-card.fc-pink .fc-step { color: var(--viz-color-ai); }
-  .flow-card .fc-title { font-size: 0.85rem; font-weight: 700; color: var(--color-on-surface); margin-bottom: 4px; }
-  .flow-card .fc-title code { font-family: 'JetBrains Mono', Consolas, monospace; font-size: 0.78rem; padding: 1px 6px; border-radius: 4px; background: rgba(148,163,184,0.1); }
-  .flow-card .fc-desc { font-size: 0.72rem; color: var(--color-outline); line-height: 1.5; }
-  .flow-card .fc-detail { font-size: 0.65rem; color: var(--color-outline); margin-top: 6px; padding: 8px 10px; background: var(--color-surface-inner); border-radius: 8px; font-family: 'JetBrains Mono', Consolas, monospace; line-height: 1.6; }
+.stamp-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  flex-shrink: 0;
+  padding-top: 4px;
+}
 
-  /* Branch indicator */
-  .flow-branch-row { display: flex; gap: 8px; margin-left: 42px; margin-bottom: 8px; }
-  .flow-branch-chip { padding: 6px 12px; border-radius: 10px; font-size: 0.68rem; font-weight: 600; border: 1px solid; text-align: center; flex: 1; }
-  .flow-branch-chip.fb-orange { border-color: rgba(251,146,60,0.2); color: var(--viz-color-merge); background: rgba(251,146,60,0.04); }
-  .flow-branch-chip .fb-label { font-size: 0.55rem; color: var(--color-outline); margin-top: 2px; }
+.stat-box {
+  display: flex;
+  gap: 2px;
+}
 
-  /* ── Class Hierarchy ── */
-  .hierarchy { display: flex; flex-direction: column; gap: 0; }
-  .h-row { display: flex; align-items: stretch; gap: 0; }
-  .h-rail { display: flex; flex-direction: column; align-items: center; width: 24px; flex-shrink: 0; padding-top: 14px; }
-  .h-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-  .h-dot.purple { background: var(--viz-color-emphasis); }
-  .h-dot.orange { background: var(--viz-color-merge); }
-  .h-dot.blue { background: var(--viz-color-move); }
-  .h-dot.green { background: var(--viz-color-add); }
-  .h-dot.pink { background: var(--viz-color-ai); }
-  .h-wire { flex: 1; width: 2px; background: var(--color-border); }
-  .h-node { flex: 1; padding: 10px 14px; margin-bottom: 6px; border-radius: 12px; border: 1px solid; transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-  .h-node:hover { transform: translateX(4px); }
-  .h-node .h-type { font-size: 0.55rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 2px; }
-  .h-node .h-name { font-size: 0.78rem; font-weight: 700; font-family: 'JetBrains Mono', Consolas, monospace; margin-bottom: 3px; }
-  .h-node .h-desc { font-size: 0.65rem; color: var(--color-outline); line-height: 1.5; }
-  .h-node .h-members { list-style: none; display: flex; flex-direction: column; gap: 1px; margin-top: 4px; font-family: 'JetBrains Mono', Consolas, monospace; font-size: 0.58rem; }
-  .h-node .h-members li { color: var(--color-outline); }
-  .h-node .h-members li.key { color: var(--color-on-surface-body); }
+.stat-cell {
+  padding: 10px 16px;
+  border: 1px solid var(--rule);
+  text-align: center;
+  min-width: 72px;
+}
 
-  .h-node.n-purple { border-color: rgba(167,139,250,0.2); background: rgba(167,139,250,0.04); }
-  .h-node.n-purple .h-type { color: var(--viz-color-emphasis); }
-  .h-node.n-purple .h-name { color: var(--viz-color-emphasis); }
-  .h-node.n-orange { border-color: rgba(251,146,60,0.2); background: rgba(251,146,60,0.04); }
-  .h-node.n-orange .h-type { color: var(--viz-color-merge); }
-  .h-node.n-orange .h-name { color: var(--viz-color-merge); }
-  .h-node.n-blue { border-color: rgba(96,165,250,0.2); background: rgba(96,165,250,0.04); }
-  .h-node.n-blue .h-type { color: var(--viz-color-move); }
-  .h-node.n-blue .h-name { color: var(--viz-color-move); }
-  .h-node.n-green { border-color: rgba(74,222,128,0.2); background: rgba(74,222,128,0.04); }
-  .h-node.n-green .h-type { color: var(--viz-color-add); }
-  .h-node.n-green .h-name { color: var(--viz-color-add); }
-  .h-node.n-pink { border-color: rgba(244,114,182,0.2); background: rgba(244,114,182,0.04); }
-  .h-node.n-pink .h-type { color: var(--viz-color-ai); }
-  .h-node.n-pink .h-name { color: var(--viz-color-ai); }
+.stat-cell:first-child { border-right: none; }
+.stat-cell:last-child { border-left: none; }
 
-  /* Indented children */
-  .h-children { margin-left: 36px; display: flex; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
-  .h-child { padding: 8px 12px; border-radius: 10px; border: 1px solid; font-size: 0.68rem; font-weight: 600; font-family: 'JetBrains Mono', Consolas, monospace; }
-  .h-child.c-orange { border-color: rgba(251,146,60,0.15); background: rgba(251,146,60,0.03); color: var(--viz-color-merge); }
-  .h-child.c-blue { border-color: rgba(96,165,250,0.15); background: rgba(96,165,250,0.03); color: var(--viz-color-move); }
-  .h-child .h-child-sub { font-size: 0.55rem; color: var(--color-outline); font-weight: 400; margin-top: 2px; }
+.stat-val {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--white);
+  display: block;
+  line-height: 1;
+  margin-bottom: 4px;
+}
 
-  /* Relationship label */
-  .h-rel { font-size: 0.55rem; color: var(--color-outline); margin-left: 36px; margin-bottom: 4px; font-style: italic; }
+.stat-val.positive { color: var(--green); }
+.stat-val.negative { color: var(--red); }
 
-  /* ── Flow Connector ── */
-  .flow-conn { text-align: center; padding: 4px 0; color: var(--color-outline); font-size: 0.8rem; }
+.stat-label {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--dim);
+  text-transform: uppercase;
+  display: block;
+}
 
-  /* ── Before/After Summary ── */
-  .ba-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 48px; }
-  .ba-card { border-radius: 20px; padding: 24px; }
-  .ba-card.before-card { background: var(--color-surface); border: 1px solid var(--color-border); }
-  .ba-card.after-card { background: linear-gradient(135deg, rgba(96,165,250,0.04) 0%, var(--color-surface) 100%); border: 1px solid rgba(96,165,250,0.15); }
-  .ba-tag { font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; padding: 3px 10px; border-radius: 9999px; display: inline-block; margin-bottom: 14px; }
-  .ba-tag.before-tag { color: var(--color-on-surface-body); background: rgba(148,163,184,0.12); }
-  .ba-tag.after-tag { color: var(--viz-color-move); background: rgba(96,165,250,0.1); border: 1px solid rgba(96,165,250,0.2); }
-  .ba-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
-  .ba-list li { font-size: 0.82rem; padding: 10px 14px; border-radius: 10px; line-height: 1.5; }
-  .ba-list li.pain { background: rgba(248,113,113,0.06); border: 1px solid rgba(248,113,113,0.12); color: var(--color-on-surface-body); }
-  .ba-list li.gain { background: rgba(74,222,128,0.06); border: 1px solid rgba(74,222,128,0.12); color: var(--color-on-surface-body); }
-  .ba-list li strong { color: var(--color-on-surface); }
+/* ══ Section header ══ */
+.sec-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
 
-  /* ── Rationale ── */
-  .rationale { border: 1px solid var(--color-border); border-radius: 20px; background: var(--color-surface); }
-  .rationale summary { font-size: 0.72rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-outline); padding: 20px 28px; cursor: pointer; user-select: none; list-style: none; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--color-border); }
-  .rationale summary::before { content: '▸'; transition: transform 0.15s; }
-  .rationale[open] summary::before { transform: rotate(90deg); }
-  .rationale-body { padding: 20px 28px; display: flex; flex-direction: column; gap: 16px; }
-  .rationale-block-label { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-outline); margin-bottom: 4px; }
-  .rationale-text { font-size: 0.78rem; color: var(--color-on-surface-body); line-height: 1.55; }
-  .eval-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-  .eval-cell { text-align: center; padding: 8px; background: var(--color-surface-inner); border-radius: 8px; border: 1px solid var(--color-border); }
-  .eval-score { font-size: 1.1rem; font-weight: 700; color: var(--viz-color-emphasis); }
-  .eval-label { font-size: 0.58rem; text-transform: uppercase; color: var(--color-outline); margin-top: 2px; }
-  .rule-id { font-family: 'JetBrains Mono', Consolas, monospace; font-size: 0.65rem; font-weight: 700; color: var(--viz-color-emphasis); margin-right: 6px; }
-  .principle-ref { font-family: 'JetBrains Mono', Consolas, monospace; font-size: 0.58rem; color: var(--color-outline); margin-left: 4px; }
-  .rationale-rules-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
-  .rationale-rules-list li { font-size: 0.78rem; padding: 6px 10px; background: var(--color-surface-inner); border-radius: 8px; border: 1px solid var(--color-border); }
-  .evidence-list { list-style: none; display: flex; flex-direction: column; gap: 3px; }
-  .evidence-list li { font-size: 0.7rem; color: var(--color-outline); line-height: 1.4; padding-left: 12px; position: relative; }
-  .evidence-list li::before { content: '·'; position: absolute; left: 0; font-weight: 700; }
-  .evidence-level { font-family: 'JetBrains Mono', Consolas, monospace; font-size: 0.58rem; font-weight: 700; padding: 1px 4px; border-radius: 3px; margin-right: 4px; }
-  .evidence-level.l2 { background: rgba(96,165,250,0.15); color: var(--viz-color-move); }
+.sec-num {
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 0.08em;
+  flex-shrink: 0;
+  min-width: 32px;
+}
 
-  @media (max-width: 768px) {
-    .hero h1 { font-size: 1.8rem; }
-    .comp-grid { grid-template-columns: 1fr; }
-    .ba-summary { grid-template-columns: 1fr; }
-    .eval-grid { grid-template-columns: repeat(2, 1fr); }
-    .hero-stats { flex-direction: column; gap: 12px; }
-  }
+.sec-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--text);
+}
+
+.sec-line {
+  flex: 1;
+  height: 1px;
+  background: var(--rule);
+}
+
+/* ══ Principles ══ */
+.principles {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 64px;
+}
+
+.principle {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  border: 1px solid var(--rule);
+  transition: border-color 0.2s, background 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.principle + .principle { border-top: none; }
+
+.principle:hover {
+  border-color: var(--dim);
+  background: rgba(255,255,255,0.01);
+}
+
+.principle::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+}
+
+.principle.soc::before  { background: var(--purple); }
+.principle.strat::before { background: var(--amber); }
+.principle.dx::before   { background: var(--green); }
+
+.principle-label {
+  padding: 20px 20px 20px 24px;
+  border-right: 1px solid var(--rule);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+}
+
+.p-tag {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  display: inline-block;
+  width: fit-content;
+}
+
+.soc  .p-tag { color: var(--purple); background: rgba(183, 148, 244, 0.08); border: 1px solid rgba(183,148,244,0.2); }
+.strat .p-tag { color: var(--amber);  background: rgba(255, 204, 68, 0.08);  border: 1px solid rgba(255,204,68,0.2);  }
+.dx   .p-tag { color: var(--green);  background: rgba(62, 207, 142, 0.08);  border: 1px solid rgba(62,207,142,0.2);  }
+
+.p-title {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--white);
+}
+
+.principle-body {
+  display: grid;
+  grid-template-columns: 1fr 40px 1fr;
+  align-items: stretch;
+}
+
+.p-side {
+  padding: 20px 22px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  color: var(--body);
+  line-height: 1.65;
+}
+
+.p-side strong { color: var(--text); font-weight: 500; font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
+
+.p-side.before-side {
+  background: rgba(255, 94, 94, 0.03);
+  border-right: 1px dashed rgba(255,94,94,0.12);
+}
+
+.p-side.after-side {
+  background: rgba(62, 207, 142, 0.02);
+}
+
+.p-dir {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--dim);
+  font-size: 14px;
+  border-right: 1px solid var(--rule);
+}
+
+.p-before-label, .p-after-label {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 7px;
+}
+
+.p-before-label { color: var(--red); }
+.p-after-label  { color: var(--green); }
+
+/* ══ Class Hierarchy ══ */
+.hierarchy-section {
+  margin-bottom: 64px;
+}
+
+.class-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+}
+
+.class-card {
+  border: 1px solid var(--rule);
+  padding: 20px;
+  position: relative;
+  transition: border-color 0.2s;
+}
+
+.class-card:hover { border-color: var(--dim); }
+
+.class-card.full { grid-column: 1 / -1; }
+
+.class-kind {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.kind-interface { color: var(--purple); }
+.kind-class     { color: var(--blue); }
+.kind-sealed    { color: var(--amber); }
+
+.class-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--white);
+  margin-bottom: 8px;
+  letter-spacing: -0.01em;
+}
+
+.class-desc {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  color: var(--body);
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+
+.method-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.method-list li {
+  font-size: 10px;
+  color: var(--dim);
+  padding: 3px 8px;
+  background: rgba(255,255,255,0.02);
+  border-left: 2px solid var(--rule);
+  line-height: 1.4;
+}
+
+.method-list li.key-method { color: var(--text); border-left-color: var(--blue); }
+
+.impl-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.impl-chip {
+  font-size: 9px;
+  padding: 3px 8px;
+  border: 1px solid var(--rule);
+  color: var(--body);
+  letter-spacing: 0.04em;
+}
+
+.impl-chip.c-orange { border-color: rgba(255,204,68,0.2); color: var(--amber); }
+.impl-chip.c-blue   { border-color: rgba(77,184,255,0.2); color: var(--blue); }
+.impl-chip.c-green  { border-color: rgba(62,207,142,0.2); color: var(--green); }
+
+/* ══ Flow diagram ══ */
+.flow-section {
+  margin-bottom: 64px;
+}
+
+.flow-diagram {
+  border: 1px solid var(--rule);
+  padding: 32px;
+  position: relative;
+  overflow: hidden;
+}
+
+.flow-diagram::before {
+  content: 'SEQUENCE / EVENT FLOW';
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  font-size: 8px;
+  letter-spacing: 0.2em;
+  color: var(--dim);
+}
+
+/* Actors row */
+.actors {
+  display: flex;
+  margin-bottom: 0;
+}
+
+.actor {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.actor-box {
+  padding: 8px 12px;
+  border: 1px solid var(--rule);
+  text-align: center;
+  position: relative;
+  width: 100%;
+  max-width: 130px;
+}
+
+.actor-name {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--white);
+  display: block;
+  margin-bottom: 2px;
+}
+
+.actor-role {
+  font-size: 8px;
+  color: var(--dim);
+  letter-spacing: 0.06em;
+  display: block;
+}
+
+.actor-box.a-purple { border-color: rgba(183,148,244,0.3); }
+.actor-box.a-orange { border-color: rgba(255,204,68,0.3); }
+.actor-box.a-blue   { border-color: rgba(77,184,255,0.3); }
+.actor-box.a-green  { border-color: rgba(62,207,142,0.3); }
+
+/* Lifelines + messages */
+.seq-body {
+  position: relative;
+  padding: 16px 0;
+}
+
+.lifelines {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  pointer-events: none;
+}
+
+.lifeline {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.lifeline-bar {
+  width: 1px;
+  background: var(--rule);
+  height: 100%;
+}
+
+.lifeline-bar.ll-purple { background: rgba(183,148,244,0.15); }
+.lifeline-bar.ll-orange { background: rgba(255,204,68,0.15); }
+.lifeline-bar.ll-blue   { background: rgba(77,184,255,0.15); }
+.lifeline-bar.ll-green  { background: rgba(62,207,142,0.15); }
+
+.messages {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.msg-row {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  position: relative;
+}
+
+.msg-spacer { flex: 1; }
+
+.msg-arrow {
+  position: absolute;
+  height: 1px;
+  top: 50%;
+}
+
+.msg-arrow.solid      { background: var(--purple); }
+.msg-arrow.solid-amb  { background: var(--amber); }
+.msg-arrow.solid-bl   { background: var(--blue); }
+.msg-arrow.solid-gr   { background: var(--green); }
+.msg-arrow.dashed     { background: none; border-top: 1px dashed var(--dim); }
+.msg-arrow.dashed-amb { background: none; border-top: 1px dashed var(--amber); }
+.msg-arrow.dashed-bl  { background: none; border-top: 1px dashed var(--blue); }
+
+.arrowhead-r::after {
+  content: '';
+  position: absolute;
+  right: -5px;
+  top: -4px;
+  border: 4px solid transparent;
+}
+
+.solid.arrowhead-r::after      { border-left-color: var(--purple); }
+.solid-amb.arrowhead-r::after  { border-left-color: var(--amber); }
+.solid-bl.arrowhead-r::after   { border-left-color: var(--blue); }
+.solid-gr.arrowhead-r::after   { border-left-color: var(--green); }
+.dashed.arrowhead-r::after     { border-left-color: var(--dim); }
+.dashed-bl.arrowhead-r::after  { border-left-color: var(--blue); }
+.dashed-amb.arrowhead-r::after { border-left-color: var(--amber); }
+
+.arrowhead-l::after {
+  content: '';
+  position: absolute;
+  left: -5px;
+  top: -4px;
+  border: 4px solid transparent;
+}
+
+.dashed.arrowhead-l::after     { border-right-color: var(--dim); }
+.dashed-amb.arrowhead-l::after { border-right-color: var(--amber); }
+.dashed-bl.arrowhead-l::after  { border-right-color: var(--blue); }
+
+.msg-label {
+  position: absolute;
+  font-size: 9px;
+  white-space: nowrap;
+  padding: 2px 6px;
+  top: calc(50% - 18px);
+}
+
+.msg-label.lc-purple { color: var(--purple); }
+.msg-label.lc-amb    { color: var(--amber); }
+.msg-label.lc-blue   { color: var(--blue); }
+.msg-label.lc-green  { color: var(--green); }
+.msg-label.lc-dim    { color: var(--dim); }
+
+.note-row {
+  padding: 8px 0;
+}
+
+.note-box {
+  font-size: 10px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  padding: 8px 14px;
+  border: 1px dashed var(--rule);
+  color: var(--body);
+  line-height: 1.5;
+  text-align: center;
+}
+
+.note-box strong { color: var(--text); font-family: 'IBM Plex Mono', monospace; font-size: 9px; }
+.note-box code   { color: var(--blue); font-size: 9px; }
+
+/* ══ Pipeline steps ══ */
+.pipeline-section {
+  margin-bottom: 64px;
+}
+
+.pipeline {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pipe-step {
+  display: flex;
+  border: 1px solid var(--rule);
+  position: relative;
+  transition: border-color 0.2s;
+  overflow: hidden;
+}
+
+.pipe-step + .pipe-step { border-top: none; }
+.pipe-step:hover { border-color: var(--dim); }
+
+.pipe-step::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+}
+
+.ps-1::before { background: var(--purple); }
+.ps-2::before { background: var(--amber); }
+.ps-3::before { background: var(--amber); }
+.ps-4::before { background: var(--blue); }
+.ps-5::before { background: var(--green); }
+
+.pipe-num {
+  padding: 16px 18px 16px 22px;
+  font-size: 22px;
+  font-weight: 700;
+  color: rgba(200,223,240,0.12);
+  flex-shrink: 0;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  border-right: 1px solid var(--rule);
+  min-width: 64px;
+  justify-content: center;
+}
+
+.pipe-content {
+  padding: 16px 20px;
+  flex: 1;
+}
+
+.pipe-step-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--white);
+  margin-bottom: 4px;
+}
+
+.pipe-code {
+  font-size: 10px;
+  color: var(--blue);
+  margin-bottom: 6px;
+  display: block;
+}
+
+.pipe-desc {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 11px;
+  color: var(--body);
+  line-height: 1.6;
+}
+
+.pipe-timing {
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--amber);
+  border-left: 1px solid var(--rule);
+  min-width: 80px;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+/* ══ Config table ══ */
+.config-section {
+  margin-bottom: 64px;
+}
+
+.config-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--rule);
+}
+
+.config-table th {
+  padding: 10px 16px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--dim);
+  border-bottom: 1px solid var(--rule);
+  text-align: left;
+  background: rgba(255,255,255,0.02);
+}
+
+.config-table td {
+  padding: 12px 16px;
+  font-size: 11px;
+  border-bottom: 1px solid rgba(173,216,230,0.06);
+  vertical-align: top;
+  line-height: 1.5;
+}
+
+.config-table tr:last-child td { border-bottom: none; }
+
+.config-table tr:hover td { background: rgba(255,255,255,0.01); }
+
+.config-key {
+  color: var(--blue);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.config-value {
+  color: var(--amber);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.config-desc {
+  color: var(--body);
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 11px;
+}
+
+.config-note {
+  color: var(--dim);
+  font-size: 10px;
+  font-family: 'IBM Plex Sans', sans-serif;
+}
+
+/* ══ Footer ══ */
+.doc-footer {
+  padding-top: 28px;
+  border-top: 1px solid var(--rule);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--dim);
+  text-transform: uppercase;
+}
+
+.doc-footer .live-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  background: var(--green);
+  border-radius: 50%;
+  margin-right: 8px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(62,207,142,0.4); }
+  50%       { opacity: 0.6; box-shadow: 0 0 0 4px rgba(62,207,142,0); }
+}
+
+/* animated packet on flow diagram */
+@keyframes travel {
+  0%   { opacity: 0; left: 0; }
+  8%   { opacity: 1; }
+  92%  { opacity: 1; }
+  100% { opacity: 0; left: 100%; }
+}
+
+.packet {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  top: -2.5px;
+  animation: travel 2.4s linear infinite;
+}
+
+.packet.p-purple { background: var(--purple); box-shadow: 0 0 6px var(--purple); }
+.packet.p-amber  { background: var(--amber);  box-shadow: 0 0 6px var(--amber);  }
+.packet.p-blue   { background: var(--blue);   box-shadow: 0 0 6px var(--blue);   }
+.packet.p-green  { background: var(--green);  box-shadow: 0 0 6px var(--green);  }
+
+/* ══ Responsive ══ */
+@media (max-width: 760px) {
+  .doc-stamp       { flex-direction: column; gap: 28px; }
+  .stamp-right     { align-items: flex-start; }
+  .principle       { grid-template-columns: 1fr; }
+  .principle-label { border-right: none; border-bottom: 1px solid var(--rule); }
+  .principle-body  { grid-template-columns: 1fr; }
+  .p-dir           { display: none; }
+  .p-side.before-side { border-right: none; border-bottom: 1px dashed rgba(255,94,94,0.12); }
+  .class-grid      { grid-template-columns: 1fr; }
+  .class-card.full { grid-column: auto; }
+  .pipe-timing     { display: none; }
+}
 </style>
 </head>
 <body>
-<div class="container">
+<div class="page">
 
-<header class="hero">
-  <div class="hero-badge">KMA-4188 &middot; Impression 이벤트</div>
-  <h1>Impression 이벤트<br><span class="accent">전송 구조 개선</span></h1>
-  <p class="hero-desc">관심사 분리 + 전략 캡슐화로 산재된 노출 이벤트 로직을 통합 프레임워크로 재설계</p>
-  <div class="hero-stats">
-    <div class="hero-stat"><div class="hero-stat-value">100+</div><div class="hero-stat-label">변경 파일</div></div>
-    <div class="hero-stat"><div class="hero-stat-value">+2,357</div><div class="hero-stat-label">추가</div></div>
-    <div class="hero-stat"><div class="hero-stat-value">-1,978</div><div class="hero-stat-label">삭제</div></div>
+<!-- ══ Document Header ══ -->
+<div class="doc-stamp">
+  <div class="stamp-left">
+    <div class="doc-id">KMA-4188 · Impression 이벤트 전송 구조 개선</div>
+    <h1>Impression<br>Tracker</h1>
+    <p class="doc-subtitle">관심사 분리 + 전략 캡슐화로 화면별 산재된 노출 이벤트 로직을<br>단일 추적 프레임워크로 통합 재설계</p>
   </div>
-</header>
-
-<!-- ═══ 3 Principles ═══ -->
-<div style="display:flex;flex-direction:column;gap:14px;margin-bottom:48px;">
-
-  <!-- 관심사 분리 -->
-  <div style="border-radius:20px;padding:24px;background:linear-gradient(135deg,rgba(167,139,250,0.05) 0%,var(--color-surface) 100%);border:1px solid rgba(167,139,250,0.15);transition:0.3s cubic-bezier(0.4,0,0.2,1);">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
-      <span style="font-size:0.65rem;font-weight:700;padding:4px 12px;border-radius:9999px;color:var(--viz-color-emphasis);background:rgba(167,139,250,0.1);border:1px solid rgba(167,139,250,0.2);letter-spacing:0.08em;text-transform:uppercase;">관심사 분리</span>
-      <span style="font-size:0.95rem;font-weight:700;color:var(--color-on-surface);">Separation of Concerns</span>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:stretch;">
-      <div style="padding:14px;border-radius:12px;background:rgba(248,113,113,0.04);border:1px solid rgba(248,113,113,0.12);font-size:0.78rem;color:var(--color-on-surface-body);line-height:1.6;">
-        <div style="font-size:0.6rem;font-weight:700;color:#f87171;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Before</div>
-        <strong style="color:var(--color-on-surface);">ViewHolder</strong>가 노출 상태 + 이벤트 생성 + 중복 체크를 모두 담당<br>
-        <strong style="color:var(--color-on-surface);">Adapter</strong>가 isConsumed/accept 4개 메서드 반복 구현
+  <div class="stamp-right">
+    <div class="stat-box">
+      <div class="stat-cell">
+        <span class="stat-val">100+</span>
+        <span class="stat-label">변경 파일</span>
       </div>
-      <div style="display:flex;align-items:center;color:var(--color-outline);font-size:1.2rem;">→</div>
-      <div style="padding:14px;border-radius:12px;background:rgba(74,222,128,0.04);border:1px solid rgba(74,222,128,0.12);font-size:0.78rem;color:var(--color-on-surface-body);line-height:1.6;">
-        <div style="font-size:0.6rem;font-weight:700;color:var(--viz-color-add);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">After</div>
-        <strong style="color:var(--color-on-surface);">ImpressionTracker</strong> = 추적 조율<br>
-        <strong style="color:var(--color-on-surface);">ImpressionCapturable</strong> = 이벤트 생성<br>
-        <strong style="color:var(--color-on-surface);">AnalyticsEventConsumer</strong> = 중복 필터 + 전송
+      <div class="stat-cell">
+        <span class="stat-val positive">+2,357</span>
+        <span class="stat-label">Lines added</span>
+      </div>
+      <div class="stat-cell">
+        <span class="stat-val negative">−1,978</span>
+        <span class="stat-label">Lines removed</span>
       </div>
     </div>
   </div>
-
-  <!-- 전략 캡슐화 -->
-  <div style="border-radius:20px;padding:24px;background:linear-gradient(135deg,rgba(251,146,60,0.05) 0%,var(--color-surface) 100%);border:1px solid rgba(251,146,60,0.15);transition:0.3s cubic-bezier(0.4,0,0.2,1);">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
-      <span style="font-size:0.65rem;font-weight:700;padding:4px 12px;border-radius:9999px;color:var(--viz-color-merge);background:rgba(251,146,60,0.1);border:1px solid rgba(251,146,60,0.2);letter-spacing:0.08em;text-transform:uppercase;">전략 캡슐화</span>
-      <span style="font-size:0.95rem;font-weight:700;color:var(--color-on-surface);">Strategy Encapsulation</span>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:stretch;">
-      <div style="padding:14px;border-radius:12px;background:rgba(248,113,113,0.04);border:1px solid rgba(248,113,113,0.12);font-size:0.78rem;color:var(--color-on-surface-body);line-height:1.6;">
-        <div style="font-size:0.6rem;font-weight:700;color:#f87171;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Before</div>
-        스크롤 감지 + 노출 비율 판정이 <strong style="color:var(--color-on-surface);">하드코딩</strong><br>
-        화면마다 다른 정책을 적용할 수 없음
-      </div>
-      <div style="display:flex;align-items:center;color:var(--color-outline);font-size:1.2rem;">→</div>
-      <div style="padding:14px;border-radius:12px;background:rgba(74,222,128,0.04);border:1px solid rgba(74,222,128,0.12);font-size:0.78rem;color:var(--color-on-surface-body);line-height:1.6;">
-        <div style="font-size:0.6rem;font-weight:700;color:var(--viz-color-add);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">After</div>
-        <strong style="color:var(--color-on-surface);">ScrollImpressionStrategy</strong> — Idle / Velocity<br>
-        <strong style="color:var(--color-on-surface);">ViewImpressionStrategy</strong> — Ratio / Nested<br>
-        화면별로 정책을 교체하여 주입 가능
-      </div>
-    </div>
-  </div>
-
-  <!-- 사용성 개선 -->
-  <div style="border-radius:20px;padding:24px;background:linear-gradient(135deg,rgba(74,222,128,0.04) 0%,var(--color-surface) 100%);border:1px solid rgba(74,222,128,0.12);transition:0.3s cubic-bezier(0.4,0,0.2,1);">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
-      <span style="font-size:0.65rem;font-weight:700;padding:4px 12px;border-radius:9999px;color:var(--viz-color-add);background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.2);letter-spacing:0.08em;text-transform:uppercase;">사용성 개선</span>
-      <span style="font-size:0.95rem;font-weight:700;color:var(--color-on-surface);">Developer Experience</span>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:stretch;">
-      <div style="padding:14px;border-radius:12px;background:rgba(248,113,113,0.04);border:1px solid rgba(248,113,113,0.12);font-size:0.78rem;color:var(--color-on-surface-body);line-height:1.6;">
-        <div style="font-size:0.6rem;font-weight:700;color:#f87171;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Before</div>
-        Adapter + ViewHolder + Fragment에 <strong style="color:var(--color-on-surface);">보일러플레이트 산재</strong><br>
-        RecyclerView 전용 — <strong style="color:var(--color-on-surface);">Compose 미지원</strong>
-      </div>
-      <div style="display:flex;align-items:center;color:var(--color-outline);font-size:1.2rem;">→</div>
-      <div style="padding:14px;border-radius:12px;background:rgba(74,222,128,0.04);border:1px solid rgba(74,222,128,0.12);font-size:0.78rem;color:var(--color-on-surface-body);line-height:1.6;">
-        <div style="font-size:0.6rem;font-weight:700;color:var(--viz-color-add);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">After</div>
-        <code style="font-size:0.72rem;padding:2px 6px;border-radius:4px;background:rgba(74,222,128,0.08);">recyclerView.asTracker()</code> <strong style="color:var(--color-on-surface);">한 줄로 완료</strong><br>
-        RecyclerView + <strong style="color:var(--color-on-surface);">Compose 양쪽 지원</strong>
-      </div>
-    </div>
-  </div>
-
 </div>
 
-<!-- ═══ Sequence Diagram ═══ -->
-<div class="seq-diagram">
 
-  <!-- Actors -->
-  <div class="seq-actors">
-    <div class="seq-actor"><div class="seq-actor-box a-user"><div class="actor-name">User</div><div class="actor-type">스크롤</div></div></div>
-    <div class="seq-actor"><div class="seq-actor-box a-purple"><div class="actor-name">ScrollListener</div><div class="actor-type">Idle / Velocity</div></div></div>
-    <div class="seq-actor"><div class="seq-actor-box a-purple"><div class="actor-name">ImpressionTracker</div><div class="actor-type">중앙 추적기</div></div></div>
-    <div class="seq-actor"><div class="seq-actor-box a-orange"><div class="actor-name">ViewHolder</div><div class="actor-type">ImpressionCapturable</div></div></div>
-    <div class="seq-actor"><div class="seq-actor-box a-blue"><div class="actor-name">EventConsumer</div><div class="actor-type">Analytics</div></div></div>
-    <div class="seq-actor"><div class="seq-actor-box a-green"><div class="actor-name">Amplitude</div><div class="actor-type">서버</div></div></div>
+<!-- ══ 01 / Principles ══ -->
+<div style="margin-bottom:64px">
+  <div class="sec-head">
+    <span class="sec-num">01</span>
+    <span class="sec-title">설계 원칙</span>
+    <div class="sec-line"></div>
   </div>
 
-  <!-- Messages (table-based for alignment) -->
-  <div style="display:flex;flex-direction:column;gap:0;position:relative;">
-    <!-- Lifelines background -->
-    <div style="position:absolute;top:0;left:0;right:0;bottom:0;display:flex;pointer-events:none;z-index:0;">
-      <div style="flex:1;display:flex;justify-content:center;"><div style="width:2px;background:var(--color-border);"></div></div>
-      <div style="flex:1;display:flex;justify-content:center;"><div style="width:2px;background:rgba(167,139,250,0.15);"></div></div>
-      <div style="flex:1;display:flex;justify-content:center;"><div style="width:2px;background:rgba(167,139,250,0.15);"></div></div>
-      <div style="flex:1;display:flex;justify-content:center;"><div style="width:2px;background:rgba(251,146,60,0.15);"></div></div>
-      <div style="flex:1;display:flex;justify-content:center;"><div style="width:2px;background:rgba(96,165,250,0.15);"></div></div>
-      <div style="flex:1;display:flex;justify-content:center;"><div style="width:2px;background:rgba(74,222,128,0.15);"></div></div>
+  <div class="principles">
+
+    <!-- SoC -->
+    <div class="principle soc">
+      <div class="principle-label">
+        <span class="p-tag">관심사 분리</span>
+        <span class="p-title">Separation of Concerns</span>
+      </div>
+      <div class="principle-body">
+        <div class="p-side before-side">
+          <span class="p-before-label">Before</span>
+          <strong>ViewHolder</strong>가 노출 상태 + 이벤트 생성 + 중복 체크 일괄 담당.<br>
+          각 Adapter마다 <strong>isConsumed / accept</strong> 4개 메서드 반복 구현.
+        </div>
+        <div class="p-dir">→</div>
+        <div class="p-side after-side">
+          <span class="p-after-label">After</span>
+          <strong>ImpressionTracker</strong> — 추적 조율<br>
+          <strong>ImpressionCapturable</strong> — 이벤트 생성<br>
+          <strong>AnalyticsEventConsumer</strong> — 중복 필터 + 전송
+        </div>
+      </div>
     </div>
 
-    <!-- Message rows -->
-    <div style="position:relative;z-index:1;display:flex;flex-direction:column;gap:0;padding:8px 0;">
-
-      <!-- 0: Setup -->
-      <div style="padding:12px 0;">
-        <div class="seq-note note-blue" style="margin:0 8% 0 8%;">
-          <strong style="color:var(--viz-color-move);">초기화</strong> — <code style="font-size:0.62rem;">recyclerView.asTracker(scrollStrategy, viewStrategy)</code><br>
-          ImpressionTracker 생성 + ScrollListener 부착
+    <!-- Strategy -->
+    <div class="principle strat">
+      <div class="principle-label">
+        <span class="p-tag">전략 캡슐화</span>
+        <span class="p-title">Strategy Encapsulation</span>
+      </div>
+      <div class="principle-body">
+        <div class="p-side before-side">
+          <span class="p-before-label">Before</span>
+          스크롤 감지 + 노출 비율 판정이 <strong>하드코딩</strong>.<br>
+          화면마다 다른 감지 정책을 적용할 수 없음.
+        </div>
+        <div class="p-dir">→</div>
+        <div class="p-side after-side">
+          <span class="p-after-label">After</span>
+          <strong>ScrollImpressionStrategy</strong> — Idle / Velocity<br>
+          <strong>ViewImpressionStrategy</strong> — Ratio / Nested<br>
+          화면별 정책을 주입해서 교체 가능.
         </div>
       </div>
-
-      <!-- 1: User → ScrollListener -->
-      <div style="display:flex;align-items:center;padding:20px 0;position:relative;">
-        <div style="flex:1;text-align:center;"></div>
-        <div style="flex:4;position:relative;height:2px;background:var(--viz-color-emphasis);">
-          <div style="position:absolute;right:-6px;top:-4px;border:5px solid transparent;border-left-color:var(--viz-color-emphasis);"></div>
-          <div class="seq-msg-label l-purple" style="left:4px;">사용자 스크롤</div>
-        </div>
-        <div style="flex:1;"></div>
-      </div>
-
-      <!-- Note: Strategy -->
-      <div style="padding:4px 0;">
-        <div class="seq-note note-orange" style="margin:0 12% 0 12%;">
-          <strong style="color:var(--viz-color-merge);">ScrollImpressionStrategy</strong> 에 따라 캡처 시점 결정<br>
-          Idle: 스크롤 멈춤 시 · Velocity: 속도 임계값 이하 시
-        </div>
-      </div>
-
-      <!-- 2: ScrollListener → ImpressionTracker -->
-      <div style="display:flex;align-items:center;padding:20px 0;position:relative;">
-        <div style="flex:1;"></div>
-        <div style="flex:1;text-align:center;"></div>
-        <div style="flex:2;position:relative;height:2px;background:var(--viz-color-emphasis);">
-          <div style="position:absolute;right:-6px;top:-4px;border:5px solid transparent;border-left-color:var(--viz-color-emphasis);"></div>
-          <div class="seq-msg-label l-purple" style="left:4px;"><code>onScrollStateChanged()</code></div>
-        </div>
-        <div style="flex:2;"></div>
-      </div>
-
-      <!-- 3: ImpressionTracker → ViewHolder (노출 판정 + 캡처) -->
-      <div style="display:flex;align-items:center;padding:20px 0;position:relative;">
-        <div style="flex:2;"></div>
-        <div style="flex:1;text-align:center;"></div>
-        <div style="flex:2;position:relative;height:2px;background:var(--viz-color-merge);">
-          <div style="position:absolute;right:-6px;top:-4px;border:5px solid transparent;border-left-color:var(--viz-color-merge);"></div>
-          <div class="seq-msg-label l-orange" style="left:4px;"><code>capture()</code> — 노출 70% 이상 ViewHolder만</div>
-        </div>
-        <div style="flex:1;"></div>
-      </div>
-
-      <!-- 4: ViewHolder → ImpressionTracker (return) -->
-      <div style="display:flex;align-items:center;padding:20px 0;position:relative;">
-        <div style="flex:2;"></div>
-        <div style="flex:2;position:relative;height:0;border-top:2px dashed var(--viz-color-merge);">
-          <div style="position:absolute;left:-6px;top:-5px;border:5px solid transparent;border-right-color:var(--viz-color-merge);"></div>
-          <div class="seq-msg-label l-orange" style="left:30%;"><code>List&lt;ImpressionTrackUnit&gt;</code> 반환</div>
-        </div>
-        <div style="flex:1;text-align:center;"></div>
-        <div style="flex:1;"></div>
-      </div>
-
-      <!-- 5: ImpressionTracker → EventConsumer (중복 확인) -->
-      <div style="display:flex;align-items:center;padding:20px 0;position:relative;">
-        <div style="flex:2;"></div>
-        <div style="flex:1;text-align:center;"></div>
-        <div style="flex:3;position:relative;height:2px;background:var(--viz-color-move);">
-          <div style="position:absolute;right:-6px;top:-4px;border:5px solid transparent;border-left-color:var(--viz-color-move);"></div>
-          <div class="seq-msg-label l-blue" style="left:4px;"><code>isConsumed(identifier)</code></div>
-        </div>
-      </div>
-
-      <!-- 6: EventConsumer → ImpressionTracker (return) -->
-      <div style="display:flex;align-items:center;padding:20px 0;position:relative;">
-        <div style="flex:2;"></div>
-        <div style="flex:3;position:relative;height:0;border-top:2px dashed var(--viz-color-move);">
-          <div style="position:absolute;left:-6px;top:-5px;border:5px solid transparent;border-right-color:var(--viz-color-move);"></div>
-          <div class="seq-msg-label l-blue" style="left:30%;">미소비 항목만 통과</div>
-        </div>
-        <div style="flex:1;"></div>
-      </div>
-
-      <!-- 7: ImpressionTracker → EventConsumer (전송) -->
-      <div style="display:flex;align-items:center;padding:20px 0;position:relative;">
-        <div style="flex:2;"></div>
-        <div style="flex:1;text-align:center;"></div>
-        <div style="flex:3;position:relative;height:2px;background:var(--viz-color-move);">
-          <div style="position:absolute;right:-6px;top:-4px;border:5px solid transparent;border-left-color:var(--viz-color-move);"></div>
-          <div class="seq-msg-label l-blue" style="left:4px;"><code>sendEvent(trackUnits)</code></div>
-        </div>
-      </div>
-
-      <!-- 8: EventConsumer → Amplitude -->
-      <div style="display:flex;align-items:center;padding:20px 0;position:relative;">
-        <div style="flex:4;"></div>
-        <div style="flex:1;text-align:center;"></div>
-        <div style="flex:2;position:relative;height:2px;background:var(--viz-color-add);">
-          <div style="position:absolute;right:-6px;top:-4px;border:5px solid transparent;border-left-color:var(--viz-color-add);"></div>
-          <div class="seq-msg-label l-green" style="left:4px;">Amplitude 이벤트 전송</div>
-        </div>
-      </div>
-
-      <!-- Note: Compose -->
-      <div style="padding:12px 0;">
-        <div class="seq-note note-blue" style="margin:0 8% 0 8%;">
-          <strong style="color:var(--viz-color-ai);">Compose 지원</strong> — <code style="font-size:0.62rem;">ImpressionCapturableElement</code>로 LazyList에서도 동일 파이프라인 적용
-        </div>
-      </div>
-
     </div>
+
+    <!-- DX -->
+    <div class="principle dx">
+      <div class="principle-label">
+        <span class="p-tag">사용성 개선</span>
+        <span class="p-title">Developer Experience</span>
+      </div>
+      <div class="principle-body">
+        <div class="p-side before-side">
+          <span class="p-before-label">Before</span>
+          Adapter + ViewHolder + Fragment에<br>
+          <strong>보일러플레이트 산재</strong>.<br>
+          RecyclerView 전용 — <strong>Compose 미지원</strong>.
+        </div>
+        <div class="p-dir">→</div>
+        <div class="p-side after-side">
+          <span class="p-after-label">After</span>
+          <strong>recyclerView.asTracker()</strong> 한 줄로 완료.<br>
+          RecyclerView + <strong>Compose 양쪽 지원</strong>.<br>
+          Lifecycle 연동 자동화.
+        </div>
+      </div>
+    </div>
+
   </div>
-
 </div>
 
-<!-- ═══ RATIONALE ═══ -->
-<details class="rationale">
-  <summary>Cognitive Rationale — 이 시각화가 이런 형태인 이유</summary>
-  <div class="rationale-body">
-    <div>
-      <div class="rationale-block-label">패턴</div>
-      <div class="rationale-text">
-        <strong>PAT-025</strong> — 시스템 아키텍처 (System Architecture)<br>
-        100+ 파일에 걸친 프레임워크 도입이므로 개별 파일 비교가 아닌 전체 시스템 조감도가 필요.
-        3개 레이어(core 프레임워크 → features 정책 → 화면 적용)로 구조화.
-        EVAL-0006 편향 방지: Step 1에서 "시스템 전체"로 판별 → PAT-025 선택.
+
+<!-- ══ 02 / Class Structure ══ -->
+<div class="hierarchy-section">
+  <div class="sec-head">
+    <span class="sec-num">02</span>
+    <span class="sec-title">클래스 구조</span>
+    <div class="sec-line"></div>
+  </div>
+
+  <div class="class-grid">
+
+    <!-- ImpressionTracker -->
+    <div class="class-card full">
+      <div class="class-kind kind-class">class · :core/impression</div>
+      <div class="class-name">ImpressionTracker</div>
+      <div class="class-desc">중앙 추적 조율자. RecyclerView LifecycleObserver를 보유하며 ScrollListener → ViewHolder.capture() → EventConsumer.sendEvent() 파이프라인을 구성한다.</div>
+      <div class="method-list">
+        <li class="key-method">fun start(lifecycle: Lifecycle)</li>
+        <li class="key-method">fun stop()</li>
+        <li>fun trackOnScrollStateChanged(state: Int)</li>
+        <li>fun captureVisibleItems()</li>
       </div>
     </div>
-    <div>
-      <div class="rationale-block-label">적용 규칙</div>
-      <ul class="rationale-rules-list">
-        <li><span class="rule-id">RULE-CMP02</span> 100+ 파일을 3개 레이어(core/features/screens)로 청킹 <span class="principle-ref">← WM-001</span></li>
-        <li><span class="rule-id">RULE-C01</span> 레이어별 색상 — 보라(core) / 파랑(features) / 초록(screens) <span class="principle-ref">← PRC-003</span></li>
-        <li><span class="rule-id">RULE-L01</span> 위→아래 의존성 방향 = 자연스러운 시선 흐름 <span class="principle-ref">← AES-003</span></li>
-        <li><span class="rule-id">Stage 3 #9</span> Before/After 비대칭 — Before 4줄 pain vs After 4줄 gain <span class="principle-ref">← IP-001</span></li>
-        <li><span class="rule-id">EVAL-0006</span> 3단계 패턴 선택 → "시스템 전체" → PAT-025 <span class="principle-ref">← DM-001</span></li>
-      </ul>
-    </div>
-    <div>
-      <div class="rationale-block-label">자체 평가</div>
-      <div class="eval-grid">
-        <div class="eval-cell"><div class="eval-score">4/5</div><div class="eval-label">Clarity</div></div>
-        <div class="eval-cell"><div class="eval-score">5/5</div><div class="eval-label">Change Visibility</div></div>
-        <div class="eval-cell"><div class="eval-score">5/5</div><div class="eval-label">Anchor Stability</div></div>
-        <div class="eval-cell"><div class="eval-score">4/5</div><div class="eval-label">Text Economy</div></div>
+
+    <!-- ScrollImpressionStrategy -->
+    <div class="class-card">
+      <div class="class-kind kind-sealed">sealed interface · :core/impression</div>
+      <div class="class-name">ScrollImpressionStrategy</div>
+      <div class="class-desc">스크롤 감지 시점을 캡슐화. Adapter / ViewHolder와 독립적으로 정책 교체 가능.</div>
+      <div class="impl-chips">
+        <span class="impl-chip c-orange">Idle — 스크롤 멈춤 시 캡처</span>
+        <span class="impl-chip c-orange">Velocity — 속도 임계값 이하 시</span>
       </div>
     </div>
-    <div>
-      <div class="rationale-block-label">근거 추적</div>
-      <ul class="evidence-list">
-        <li><span class="evidence-level l2">L2</span> Shneiderman (1996) — Overview first, details on demand → 3-layer overview + 컴포넌트 카드로 drill-down</li>
-        <li><span class="evidence-level l2">L2</span> Ware (2004) — 색상 채널의 전주의적 분리 → 레이어별 색상 코딩으로 즉각 구분</li>
-      </ul>
+
+    <!-- ViewImpressionStrategy -->
+    <div class="class-card">
+      <div class="class-kind kind-sealed">sealed interface · :core/impression</div>
+      <div class="class-name">ViewImpressionStrategy</div>
+      <div class="class-desc">ViewHolder 가시 영역 비율 판정 로직을 전략으로 분리. 화면별 임계값 다름.</div>
+      <div class="impl-chips">
+        <span class="impl-chip c-blue">Ratio — 비율 임계값 (default 70%)</span>
+        <span class="impl-chip c-blue">Nested — 중첩 스크롤 대응</span>
+      </div>
+    </div>
+
+    <!-- ImpressionCapturable -->
+    <div class="class-card">
+      <div class="class-kind kind-interface">interface · :core/impression</div>
+      <div class="class-name">ImpressionCapturable</div>
+      <div class="class-desc">ViewHolder가 구현. 가시성 비율을 계산하고 ImpressionTrackUnit 리스트를 반환한다.</div>
+      <div class="method-list">
+        <li class="key-method">fun capture(strategy: ViewImpressionStrategy): List&lt;ImpressionTrackUnit&gt;</li>
+        <li>fun getVisibilityRatio(): Float</li>
+      </div>
+    </div>
+
+    <!-- AnalyticsEventConsumer -->
+    <div class="class-card">
+      <div class="class-kind kind-interface">interface · :core/impression</div>
+      <div class="class-name">AnalyticsEventConsumer</div>
+      <div class="class-desc">중복 제거 + 이벤트 전송 추상화. 화면별 Amplitude 이벤트 명세를 주입해 공통 파이프라인에서 처리.</div>
+      <div class="method-list">
+        <li class="key-method">fun isConsumed(identifier: String): Boolean</li>
+        <li class="key-method">fun sendEvent(units: List&lt;ImpressionTrackUnit&gt;)</li>
+        <li>fun markConsumed(identifier: String)</li>
+      </div>
+    </div>
+
+    <!-- Compose -->
+    <div class="class-card full">
+      <div class="class-kind kind-class">@Composable · :core/impression</div>
+      <div class="class-name">ImpressionCapturableElement</div>
+      <div class="class-desc">LazyList 아이템을 동일 파이프라인에 연결하는 Compose 어댑터. LazyListState.visibleItemsInfo 로 가시 비율을 계산한 뒤 ImpressionTracker에 위임한다.</div>
+      <div class="method-list">
+        <li class="key-method">@Composable fun ImpressionCapturableElement(tracker, capturable, content)</li>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══ 03 / Sequence ══ -->
+<div class="flow-section">
+  <div class="sec-head">
+    <span class="sec-num">03</span>
+    <span class="sec-title">시퀀스 다이어그램</span>
+    <div class="sec-line"></div>
+  </div>
+
+  <div class="flow-diagram">
+    <!-- Actor boxes -->
+    <div class="actors">
+      <div class="actor"><div class="actor-box"><span class="actor-name">User</span><span class="actor-role">스크롤</span></div></div>
+      <div class="actor"><div class="actor-box a-purple"><span class="actor-name">ScrollListener</span><span class="actor-role">Idle / Velocity</span></div></div>
+      <div class="actor"><div class="actor-box a-purple"><span class="actor-name">ImpressionTracker</span><span class="actor-role">중앙 추적기</span></div></div>
+      <div class="actor"><div class="actor-box a-orange"><span class="actor-name">ViewHolder</span><span class="actor-role">Capturable</span></div></div>
+      <div class="actor"><div class="actor-box a-blue"><span class="actor-name">EventConsumer</span><span class="actor-role">Analytics</span></div></div>
+      <div class="actor"><div class="actor-box a-green"><span class="actor-name">Amplitude</span><span class="actor-role">서버</span></div></div>
+    </div>
+
+    <!-- Sequence body -->
+    <div class="seq-body" style="min-height:480px;">
+      <!-- Lifelines -->
+      <div class="lifelines">
+        <div class="lifeline"><div class="lifeline-bar"></div></div>
+        <div class="lifeline"><div class="lifeline-bar ll-purple"></div></div>
+        <div class="lifeline"><div class="lifeline-bar ll-purple"></div></div>
+        <div class="lifeline"><div class="lifeline-bar ll-orange"></div></div>
+        <div class="lifeline"><div class="lifeline-bar ll-blue"></div></div>
+        <div class="lifeline"><div class="lifeline-bar ll-green"></div></div>
+      </div>
+
+      <!-- Messages -->
+      <div class="messages">
+
+        <!-- Init note -->
+        <div class="note-row">
+          <div class="note-box" style="margin:0 8%">
+            <strong>초기화</strong> — <code>recyclerView.asTracker(scrollStrategy, viewStrategy)</code><br>
+            ImpressionTracker 생성 + ScrollListener 부착
+          </div>
+        </div>
+
+        <!-- 1. user → ScrollListener (span 4 of 6 → 5/6 = 83.3%) -->
+        <div class="msg-row" style="height:56px;">
+          <div class="msg-arrow solid arrowhead-r" style="left:calc(100%/12); width:calc(100%/6 * 4 - 100%/12);">
+            <div class="packet p-purple" style="animation-delay:0s"></div>
+            <div class="msg-label lc-purple" style="left:16px;">사용자 스크롤</div>
+          </div>
+        </div>
+
+        <!-- Strategy note -->
+        <div class="note-row">
+          <div class="note-box" style="margin:0 12%">
+            <strong>ScrollImpressionStrategy</strong> 에 따라 캡처 시점 결정<br>
+            Idle: 스크롤 멈춤 · Velocity: 속도 임계값 이하
+          </div>
+        </div>
+
+        <!-- 2. ScrollListener → ImpressionTracker -->
+        <div class="msg-row" style="height:56px;">
+          <div class="msg-arrow solid arrowhead-r" style="left:calc(100%/6); width:calc(100%/6);">
+            <div class="packet p-purple" style="animation-delay:0.4s"></div>
+            <div class="msg-label lc-purple" style="left:4px;">onScrollStateChanged()</div>
+          </div>
+        </div>
+
+        <!-- 3. ImpressionTracker → ViewHolder -->
+        <div class="msg-row" style="height:56px;">
+          <div class="msg-arrow solid-amb arrowhead-r" style="left:calc(100%/3); width:calc(100%/6);">
+            <div class="packet p-amber" style="animation-delay:0.8s"></div>
+            <div class="msg-label lc-amb" style="left:4px;">capture() — 70% 이상 VH만</div>
+          </div>
+        </div>
+
+        <!-- 4. return List<TrackUnit> -->
+        <div class="msg-row" style="height:56px;">
+          <div class="msg-arrow dashed-amb arrowhead-l" style="left:calc(100%/3); width:calc(100%/6);">
+            <div class="msg-label lc-amb" style="left:16px;">List&lt;ImpressionTrackUnit&gt;</div>
+          </div>
+        </div>
+
+        <!-- 5. ImpressionTracker → EventConsumer (isConsumed) -->
+        <div class="msg-row" style="height:56px;">
+          <div class="msg-arrow solid-bl arrowhead-r" style="left:calc(100%/3); width:calc(100%/3);">
+            <div class="packet p-blue" style="animation-delay:1.2s"></div>
+            <div class="msg-label lc-blue" style="left:4px;">isConsumed(identifier)</div>
+          </div>
+        </div>
+
+        <!-- 6. return: 미소비만 통과 -->
+        <div class="msg-row" style="height:56px;">
+          <div class="msg-arrow dashed-bl arrowhead-l" style="left:calc(100%/3); width:calc(100%/3);">
+            <div class="msg-label lc-blue" style="left:40%;">미소비 항목만 통과</div>
+          </div>
+        </div>
+
+        <!-- 7. ImpressionTracker → EventConsumer (sendEvent) -->
+        <div class="msg-row" style="height:56px;">
+          <div class="msg-arrow solid-bl arrowhead-r" style="left:calc(100%/3); width:calc(100%/3);">
+            <div class="packet p-blue" style="animation-delay:1.6s"></div>
+            <div class="msg-label lc-blue" style="left:4px;">sendEvent(trackUnits)</div>
+          </div>
+        </div>
+
+        <!-- 8. EventConsumer → Amplitude -->
+        <div class="msg-row" style="height:56px;">
+          <div class="msg-arrow solid-gr arrowhead-r" style="left:calc(100%/6*4); width:calc(100%/6);">
+            <div class="packet p-green" style="animation-delay:2s"></div>
+            <div class="msg-label lc-green" style="left:4px;">Amplitude 전송</div>
+          </div>
+        </div>
+
+        <!-- Compose note -->
+        <div class="note-row">
+          <div class="note-box" style="margin:0 8%">
+            <strong style="color:var(--purple)">Compose 지원</strong> — <code>ImpressionCapturableElement</code>로 LazyList에서도 동일 파이프라인 적용
+          </div>
+        </div>
+
+      </div>
     </div>
   </div>
-</details>
-
 </div>
+
+
+<!-- ══ 04 / Pipeline steps ══ -->
+<div class="pipeline-section">
+  <div class="sec-head">
+    <span class="sec-num">04</span>
+    <span class="sec-title">이벤트 파이프라인</span>
+    <div class="sec-line"></div>
+  </div>
+
+  <div class="pipeline">
+
+    <div class="pipe-step ps-1">
+      <div class="pipe-num">1</div>
+      <div class="pipe-content">
+        <div class="pipe-step-title">스크롤 감지</div>
+        <span class="pipe-code">onScrollStateChanged() / visibleItemsInfo</span>
+        <div class="pipe-desc">RecyclerView OnScrollListener 또는 LazyListState 변화 감지. ScrollImpressionStrategy가 캡처 시점(Idle / Velocity)을 결정.</div>
+      </div>
+      <div class="pipe-timing">t = 0ms</div>
+    </div>
+
+    <div class="pipe-step ps-2">
+      <div class="pipe-num">2</div>
+      <div class="pipe-content">
+        <div class="pipe-step-title">가시성 계산</div>
+        <span class="pipe-code">ViewImpressionStrategy.isVisible(view, threshold)</span>
+        <div class="pipe-desc">각 ViewHolder의 getLocalVisibleRect()로 실제 노출 영역 비율 계산. ViewImpressionStrategy가 판정 기준(Ratio / Nested)을 캡슐화.</div>
+      </div>
+      <div class="pipe-timing">t = 0ms</div>
+    </div>
+
+    <div class="pipe-step ps-3">
+      <div class="pipe-num">3</div>
+      <div class="pipe-content">
+        <div class="pipe-step-title">이벤트 캡처</div>
+        <span class="pipe-code">ImpressionCapturable.capture() → List&lt;ImpressionTrackUnit&gt;</span>
+        <div class="pipe-desc">임계값(기본 70%) 이상인 ViewHolder만 통과. ImpressionTrackUnit에 itemId, position, 이벤트 파라미터 패킹.</div>
+      </div>
+      <div class="pipe-timing">t = 0ms</div>
+    </div>
+
+    <div class="pipe-step ps-4">
+      <div class="pipe-num">4</div>
+      <div class="pipe-content">
+        <div class="pipe-step-title">중복 제거</div>
+        <span class="pipe-code">AnalyticsEventConsumer.isConsumed(identifier)</span>
+        <div class="pipe-desc">세션 내 이미 전송한 identifier는 HashSet으로 제외. 리스트 재사용 시 중복 이벤트 방지.</div>
+      </div>
+      <div class="pipe-timing">t = 0ms</div>
+    </div>
+
+    <div class="pipe-step ps-5">
+      <div class="pipe-num">5</div>
+      <div class="pipe-content">
+        <div class="pipe-step-title">전송</div>
+        <span class="pipe-code">AnalyticsEventConsumer.sendEvent(units)</span>
+        <div class="pipe-desc">미소비 TrackUnit 일괄 전송. Amplitude logEvent 호출. markConsumed() 로 identifier 등록.</div>
+      </div>
+      <div class="pipe-timing">t + &lt;1ms</div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══ 05 / Config ══ -->
+<div class="config-section">
+  <div class="sec-head">
+    <span class="sec-num">05</span>
+    <span class="sec-title">설정값 레퍼런스</span>
+    <div class="sec-line"></div>
+  </div>
+
+  <table class="config-table">
+    <thead>
+      <tr>
+        <th>상수</th>
+        <th>기본값</th>
+        <th>설명</th>
+        <th>비고</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="config-key">VISIBILITY_THRESHOLD</span></td>
+        <td><span class="config-value">0.7f</span></td>
+        <td><span class="config-desc">ViewHolder 가시 비율 임계값 (70%). ViewImpressionStrategy 생성 시 오버라이드 가능.</span></td>
+        <td><span class="config-note">화면별 조정 가능</span></td>
+      </tr>
+      <tr>
+        <td><span class="config-key">VELOCITY_THRESHOLD</span></td>
+        <td><span class="config-value">1200 px/s</span></td>
+        <td><span class="config-desc">VelocityScrollStrategy 에서 캡처를 허용하는 최대 스크롤 속도.</span></td>
+        <td><span class="config-note">VelocityStrategy 전용</span></td>
+      </tr>
+      <tr>
+        <td><span class="config-key">SCROLL_STATE_IDLE</span></td>
+        <td><span class="config-value">SCROLL_STATE_IDLE</span></td>
+        <td><span class="config-desc">IdleScrollStrategy: RecyclerView.SCROLL_STATE_IDLE 진입 시 캡처 트리거.</span></td>
+        <td><span class="config-note">IdleStrategy 전용</span></td>
+      </tr>
+      <tr>
+        <td><span class="config-key">MAX_BATCH_SIZE</span></td>
+        <td><span class="config-value">없음 (즉시 전송)</span></td>
+        <td><span class="config-desc">현재 구현은 배치 없이 캡처 직후 즉시 전송. 향후 배치 지원 가능.</span></td>
+        <td><span class="config-note">추후 확장 포인트</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+
+<!-- ══ Footer ══ -->
+<div class="doc-footer">
+  <div><span class="live-dot"></span>KMA-4188 · Impression 이벤트 전송 구조 개선</div>
+  <div>Kurly Android · 2024</div>
+</div>
+
+</div><!-- /page -->
 </body>
 </html>
