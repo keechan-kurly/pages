@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>검색 AI 대화 추천 Ask Sophie의 블록 프로토콜 아키텍처</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    --grey-50: #f9fafb; --grey-100: #f2f4f6; --grey-200: #e5e8eb; --grey-300: #d1d6db;
+    --grey-400: #b0b8c1; --grey-500: #8b95a1; --grey-600: #6b7684; --grey-700: #4e5968;
+    --grey-800: #333d4b; --grey-900: #191f28;
+    --toss-blue: #0064FF; --toss-blue-light: rgba(0,100,255,0.08); --toss-blue-border: rgba(0,100,255,0.2);
+    --bg: #ffffff; --bg-elevated: var(--grey-50); --bg-highlight: #ffc34236; --bg-code: var(--grey-100);
+    --text-primary: var(--grey-900); --text-secondary: var(--grey-700); --text-tertiary: var(--grey-500);
+    --border-light: var(--grey-200); --border-blockquote: var(--grey-800);
+    --content-width: 680px; --wide-width: 780px; --radius: 16px; --radius-sm: 10px;
+    --font-body: 'Pretendard Variable','Pretendard',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+    --font-code: 'JetBrains Mono','SF Mono',Menlo,Consolas,monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:var(--font-body);background:var(--bg);color:var(--text-primary);line-height:1.8;font-size:16.5px;-webkit-font-smoothing:antialiased;word-break:keep-all;overflow-wrap:break-word}
+::selection{background:rgba(0,100,255,0.15);color:var(--grey-900)}
+a{color:var(--toss-blue);text-decoration:none}a:hover{text-decoration:underline}
+
+.article{max-width:var(--content-width);margin:0 auto;padding:0 24px}
+.hero{padding:80px 24px 48px;max-width:var(--content-width);margin:0 auto}
+.hero-meta{display:flex;align-items:center;gap:8px;margin-bottom:24px;font-size:.875rem;color:var(--text-tertiary)}
+.hero-meta .author{color:var(--text-secondary);font-weight:600}
+.hero-meta .dot{color:var(--grey-300)}
+.hero-title{font-size:2.2rem;font-weight:800;line-height:1.3;color:var(--text-primary);margin-bottom:16px;letter-spacing:-.02em}
+.hero-subtitle{font-size:1.1rem;line-height:1.7;color:var(--text-secondary);max-width:580px}
+.hero-tags{display:flex;gap:8px;margin-top:20px;flex-wrap:wrap}
+.hero-tag{padding:4px 12px;border-radius:var(--radius-sm);background:var(--toss-blue-light);border:1px solid var(--toss-blue-border);font-size:.8rem;font-weight:600;color:var(--toss-blue)}
+
+.toc{margin:0 0 48px;padding:24px 28px;background:var(--bg-elevated);border-radius:var(--radius);border:1px solid var(--border-light)}
+.toc-label{font-size:.75rem;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px}
+.toc-list{list-style:none;display:flex;flex-direction:column;gap:6px}
+.toc-list a{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:.92rem;color:var(--text-secondary);transition:color .2s}
+.toc-list a:hover{color:var(--toss-blue);text-decoration:none}
+.toc-num{width:24px;height:24px;border-radius:7px;background:var(--grey-200);display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:var(--text-secondary);flex-shrink:0}
+
+.article h2{font-size:1.55rem;font-weight:800;line-height:1.35;color:var(--text-primary);margin:56px 0 20px;letter-spacing:-.01em}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.2rem;font-weight:700;line-height:1.4;color:var(--text-primary);margin:40px 0 14px}
+.article p{margin:0 0 20px;color:var(--text-primary)}
+.article strong{font-weight:700;color:var(--grey-900)}
+.article blockquote{margin:28px 0;padding:0 0 0 20px;border-left:2.5px solid var(--border-blockquote);font-size:1.05rem;font-weight:600;line-height:1.7;color:var(--text-primary)}
+.article blockquote p{margin:0}
+
+.highlight-box{margin:28px 0;padding:20px 24px;background:var(--bg-highlight);border-radius:var(--radius);font-weight:600;line-height:1.7;color:var(--text-primary)}
+.content-box{margin:28px 0;padding:24px 28px;background:var(--bg-elevated);border-radius:var(--radius);border:1px solid var(--border-light)}
+.content-box-title{font-size:.95rem;font-weight:700;color:var(--text-primary);margin-bottom:12px}
+
+.article code{font-family:var(--font-code);font-size:.88em;padding:2px 6px;background:var(--bg-code);border-radius:5px;color:var(--grey-800)}
+.article pre{margin:24px 0;padding:24px;background:var(--grey-900);border-radius:var(--radius);overflow-x:auto;line-height:1.6}
+.article pre code{font-family:var(--font-code);font-size:.85rem;background:none;padding:0;color:#abb2bf;border-radius:0}
+.kw{color:#c678dd}.str{color:#98c379}.cmt{color:#5c6370;font-style:italic}.typ{color:#e5c07b}.fn{color:#61afef}.ann{color:#d19a66}.op{color:#56b6c2}
+
+.article ul,.article ol{margin:0 0 20px;padding-left:24px}
+.article li{margin-bottom:10px;line-height:1.7}
+.article li::marker{color:var(--text-tertiary)}
+
+.summary-box{margin:36px 0;padding:24px 28px;background:var(--toss-blue-light);border:1px solid var(--toss-blue-border);border-radius:var(--radius)}
+.summary-box-title{font-size:.82rem;font-weight:700;color:var(--toss-blue);margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em}
+.summary-box p,.summary-box li{color:var(--text-primary);font-size:.95rem}
+
+/* Architecture diagram */
+.arch-flow{display:flex;flex-direction:column;align-items:center;gap:0;margin:28px 0}
+.arch-layer{width:100%;padding:16px 20px;border-radius:12px;text-align:center}
+.arch-layer-label{font-size:.7rem;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+.arch-layer-main{font-size:.95rem;font-weight:700;color:var(--text-primary)}
+.arch-layer-sub{font-size:.8rem;color:var(--text-secondary);margin-top:2px}
+.arch-arrow{font-size:1rem;color:var(--grey-400);padding:4px 0}
+.layer-data{background:#f0f7ff;border:1px solid #d0e3ff}
+.layer-domain{background:#f0fdf4;border:1px solid #bbf7d0}
+.layer-ui{background:#fef3f2;border:1px solid #fecaca}
+.layer-api{background:var(--bg-elevated);border:1px solid var(--border-light)}
+
+/* State flow */
+.state-flow{display:flex;flex-direction:column;gap:0;margin:28px 0}
+.state-step{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:10px;background:var(--bg-elevated);border:1px solid var(--border-light)}
+.state-step-num{width:28px;height:28px;border-radius:8px;background:var(--toss-blue);display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;color:white;flex-shrink:0}
+.state-step-text{font-size:.9rem;font-weight:600;color:var(--text-primary)}
+.state-step-code{font-family:var(--font-code);font-size:.8rem;color:var(--text-tertiary)}
+.state-arrow{text-align:center;font-size:.9rem;color:var(--grey-400);padding:2px 0}
+
+/* End-to-end pipeline */
+.e2e-pipeline{display:flex;flex-direction:column;gap:0;margin:28px 0}
+.e2e-step{display:flex;gap:0;border-radius:10px;border:1px solid var(--border-light);overflow:hidden}
+.e2e-layer{writing-mode:vertical-rl;text-orientation:mixed;padding:8px 6px;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;display:flex;align-items:center;justify-content:center;min-width:36px;color:white}
+.e2e-layer-ui{background:#7c3aed}
+.e2e-layer-domain{background:#059669}
+.e2e-layer-data{background:#2563eb}
+.e2e-body{padding:12px 16px;flex:1;min-width:0}
+.e2e-title{font-size:.92rem;font-weight:700;color:var(--text-primary);margin-bottom:2px}
+.e2e-detail{font-size:.82rem;color:var(--text-secondary);margin-bottom:6px;line-height:1.5}
+.e2e-data{font-family:var(--font-code);font-size:.78rem;color:var(--text-tertiary);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.e2e-in{background:#dbeafe;color:#1d4ed8;padding:1px 6px;border-radius:4px;font-size:.75rem}
+.e2e-out{background:#dcfce7;color:#166534;padding:1px 6px;border-radius:4px;font-size:.75rem}
+.e2e-arrow{color:var(--grey-400);font-size:.85rem}
+.e2e-connector{display:flex;flex-direction:column;align-items:center;padding:0 0 0 18px;height:20px;position:relative}
+.e2e-line{width:2px;height:14px;background:var(--grey-300)}
+.e2e-arrow-head{width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-top:5px solid var(--grey-300)}
+
+.article hr{border:none;height:1px;background:var(--border-light);margin:48px 0}
+.footnotes{margin-top:56px;padding-top:24px;border-top:1px solid var(--border-light);font-size:.82rem;color:var(--text-tertiary);line-height:1.8}
+.article-footer{margin-top:56px;padding:32px 0;text-align:center;color:var(--text-tertiary);font-size:.82rem}
+.share-buttons{display:flex;justify-content:center;gap:12px;margin-top:16px}
+.share-btn{padding:8px 20px;border-radius:var(--radius-sm);background:var(--bg-elevated);border:1px solid var(--border-light);font-size:.82rem;font-weight:600;color:var(--text-secondary);cursor:pointer;transition:all .2s}
+.share-btn:hover{background:var(--grey-200);color:var(--text-primary)}
+
+@media(max-width:768px){
+.hero{padding:48px 20px 32px}.hero-title{font-size:1.7rem}
+.article{padding:0 20px}.article h2{font-size:1.35rem;margin-top:40px}.article h3{font-size:1.1rem}
+.article pre{padding:16px;margin-left:-8px;margin-right:-8px;border-radius:12px}
+}
+@media print{body{font-size:11pt}.hero{padding:24px 0}.article pre{white-space:pre-wrap}.toc,.share-buttons,.article-footer{display:none}}
+</style>
+</head>
+<body>
+
+<header class="hero">
+    <div class="hero-meta">
+        <span class="author">홍기찬</span>
+        <span class="dot">&middot;</span>
+        <span>Search Platform</span>
+        <span class="dot">&middot;</span>
+        <time>2026년 4월</time>
+    </div>
+    <h1 class="hero-title">검색 AI 대화 추천 Ask Sophie의<br>블록 프로토콜 아키텍처</h1>
+    <p class="hero-subtitle">다형적 AI 응답을 sealed interface &rarr; Registry &rarr; Resolver &rarr; Compose Block으로 관통시키는 구조</p>
+    <div class="hero-tags">
+        <span class="hero-tag">Android</span>
+        <span class="hero-tag">Compose</span>
+        <span class="hero-tag">Clean Architecture</span>
+        <span class="hero-tag">AI</span>
+        <span class="hero-tag">sealed interface</span>
+    </div>
+</header>
+
+<nav class="article">
+    <div class="toc">
+        <div class="toc-label">목차</div>
+        <ol class="toc-list">
+            <li><a href="#s1"><span class="toc-num">1</span> 세 가지 제약</a></li>
+            <li><a href="#s2"><span class="toc-num">2</span> 전체 아키텍처 멘탈 모델</a></li>
+            <li><a href="#s3"><span class="toc-num">3</span> 블록 프로토콜: sealed interface가 계약이 되기까지</a></li>
+            <li><a href="#s4"><span class="toc-num">4</span> Registry 패턴: 다형적 JSON을 도메인으로</a></li>
+            <li><a href="#s5"><span class="toc-num">5</span> Resolver 패턴: 도메인에서 UI로의 다리</a></li>
+            <li><a href="#s6"><span class="toc-num">6</span> 대화 상태 머신: ViewModel이 대화를 관리하는 법</a></li>
+            <li><a href="#s7"><span class="toc-num">7</span> 끝까지 따라가기: 질문 한 번의 여정</a></li>
+            <li><a href="#s8"><span class="toc-num">8</span> 설계 한계와 대안</a></li>
+            <li><a href="#s9"><span class="toc-num">9</span> 핵심 설계 원칙</a></li>
+        </ol>
+    </div>
+</nav>
+
+<article class="article">
+
+<h2 id="s1">세 가지 제약</h2>
+
+<p>AI 대화형 UI를 기존 커머스 검색에 얹으려고 했을 때, 일반적인 리스트 UI와는 다른 세 가지 제약에 직면했다.</p>
+
+<ol>
+<li><strong>응답이 다형적이다.</strong> AI가 돌려주는 응답은 텍스트일 수도, 상품 비교표일 수도, 추천 상품 목록일 수도 있다. 하나의 응답에 이 모든 블록이 섞여 온다.</li>
+<li><strong>대화가 누적된다.</strong> 채팅처럼, 이전 응답 위에 새 응답이 쌓인다. 후속 질문, 재시도, 다른 질문 보기 등 상태 전이가 복잡하다.</li>
+<li><strong>검색 결과 지면을 벗어나면 안 된다.</strong> 별도 Activity로 이동하면 돌아왔을 때 대화가 유지되는 것이 어색하다. 같은 키워드로 검색하는 동안에는 대화 맥락이 자연스럽게 이어져야 한다.</li>
+</ol>
+
+<p>세 번째 제약이 BottomSheet라는 컨테이너를 결정했다. 검색 결과 화면 위에 열고 닫을 수 있는 BottomSheet는, 열어 두면 대화가 이어지고 닫아도 다시 열면 이전 내용이 그대로인 것이 자연스럽다.</p>
+
+<p>이 글에서는 이 세 가지 제약을 해결하기 위해 설계한 <strong>블록 프로토콜 아키텍처</strong>를 해부한다. 도메인의 sealed interface가 계약을 정의하고, 데이터 레이어의 Registry가 다형적 JSON을 역직렬화하고, Resolver가 도메인을 UI 모델로 변환하고, ViewModel이 대화 상태를 관리하는 전체 흐름을 따라간다.</p>
+
+<h2 id="s2">전체 아키텍처 멘탈 모델</h2>
+
+<p>먼저 전체 구조를 한눈에 보자. 사용자의 질문이 AI 응답으로 변환되어 화면에 렌더링되기까지의 경로다.</p>
+
+<div class="arch-flow">
+    <div class="arch-layer layer-api">
+        <div class="arch-layer-label">API</div>
+        <div class="arch-layer-main">Sophie API &mdash; JSON { type, data }</div>
+        <div class="arch-layer-sub">블록 타입별로 type 문자열 + data 객체 쌍</div>
+    </div>
+    <div class="arch-arrow">&darr;</div>
+    <div class="arch-layer layer-data">
+        <div class="arch-layer-label">Data Layer</div>
+        <div class="arch-layer-main">TypeAdapter + 8 Mapper Registry</div>
+        <div class="arch-layer-sub">type 문자열로 Mapper를 찾아 data를 도메인 모델로 변환</div>
+    </div>
+    <div class="arch-arrow">&darr;</div>
+    <div class="arch-layer layer-domain">
+        <div class="arch-layer-label">Domain Layer</div>
+        <div class="arch-layer-main">AskSophieConversation sealed interface &mdash; 12 타입</div>
+        <div class="arch-layer-sub">블록 프로토콜 &mdash; 앱 전체가 합의하는 계약</div>
+    </div>
+    <div class="arch-arrow">&darr;</div>
+    <div class="arch-layer layer-ui">
+        <div class="arch-layer-label">UI Layer</div>
+        <div class="arch-layer-main">Resolver &rarr; UIModel &rarr; 9 Block Composables</div>
+        <div class="arch-layer-sub">도메인 12타입 &rarr; UIModel + 콜백 주입 &rarr; Compose 블록 렌더링</div>
+    </div>
+</div>
+
+<p>핵심 아이디어를 한 문장으로 요약하면 이렇다. <strong>서버가 보내는 블록 타입을 도메인 모델이 정의하고, 데이터 레이어가 역직렬화하고, UI 레이어가 렌더링한다.</strong> 우리는 이 구조를 "블록 프로토콜"이라 부르기로 했다. AI 응답의 각 조각을 독립적인 블록으로 취급하고, 새로운 블록 타입이 추가될 때마다 각 레이어에 하나씩 구현을 추가하는 방식이다.</p>
+
+<p>아래에서 이 다이어그램의 각 레이어를 하나씩 분해한다.</p>
+
+<h2 id="s3">블록 프로토콜: sealed interface가 계약이 되기까지</h2>
+
+<p>블록 프로토콜의 출발점은 도메인 레이어의 <code>AskSophieConversation</code> sealed interface다. AI 응답에 포함될 수 있는 모든 블록 타입을 여기서 정의한다.</p>
+
+<pre><code><span class="kw">sealed interface</span> <span class="typ">AskSophieConversation</span> {
+
+    <span class="kw">data object</span> <span class="typ">Loading</span> : <span class="typ">AskSophieConversation</span>
+    <span class="kw">data object</span> <span class="typ">Symbol</span> : <span class="typ">AskSophieConversation</span>
+    <span class="kw">data class</span> <span class="typ">Error</span>(<span class="kw">val</span> question: <span class="typ">String</span>, <span class="kw">val</span> questionId: <span class="typ">String</span>, ...) : <span class="typ">AskSophieConversation</span>
+
+    <span class="cmt">// 텍스트 블록</span>
+    <span class="kw">data class</span> <span class="typ">Intro</span>(<span class="kw">val</span> content: <span class="typ">String</span>) : <span class="typ">AskSophieConversation</span>
+    <span class="kw">data class</span> <span class="typ">Title</span>(<span class="kw">val</span> content: <span class="typ">String</span>) : <span class="typ">AskSophieConversation</span>
+    <span class="kw">data class</span> <span class="typ">Description</span>(<span class="kw">val</span> content: <span class="typ">String</span>) : <span class="typ">AskSophieConversation</span>
+    <span class="kw">data class</span> <span class="typ">Outro</span>(<span class="kw">val</span> content: <span class="typ">String</span>) : <span class="typ">AskSophieConversation</span>
+
+    <span class="cmt">// 리치 콘텐츠 블록</span>
+    <span class="kw">data class</span> <span class="typ">Comparison</span>(<span class="kw">val</span> headers: <span class="typ">List</span>&lt;<span class="typ">String</span>&gt;, <span class="kw">val</span> rows: <span class="typ">List</span>&lt;<span class="typ">Row</span>&gt;) : <span class="typ">AskSophieConversation</span>
+    <span class="kw">data class</span> <span class="typ">Products</span>(<span class="kw">val</span> products: <span class="typ">List</span>&lt;<span class="typ">SearchProduct</span>&gt;) : <span class="typ">AskSophieConversation</span>
+    <span class="kw">data class</span> <span class="typ">BulletList</span>(<span class="kw">val</span> contents: <span class="typ">List</span>&lt;<span class="typ">String</span>&gt;) : <span class="typ">AskSophieConversation</span>
+
+    <span class="cmt">// 인터랙션 블록</span>
+    <span class="kw">data class</span> <span class="typ">Summary</span>(<span class="kw">val</span> title: <span class="typ">String</span>, <span class="kw">val</span> questions: <span class="typ">List</span>&lt;<span class="typ">AskSophieQuestion</span>&gt;) : <span class="typ">AskSophieConversation</span>
+    <span class="kw">data class</span> <span class="typ">Suggestion</span>(<span class="kw">val</span> contents: <span class="typ">List</span>&lt;<span class="typ">AskSophieQuestion</span>&gt;) : <span class="typ">AskSophieConversation</span>
+}</code></pre>
+
+<p>12가지 타입이지만, 역할별로 세 그룹으로 나뉜다.</p>
+
+<ul>
+<li><strong>텍스트 블록</strong> (Intro, Title, Description, Outro) &mdash; 단순 텍스트. AI의 설명 문단을 표현한다.</li>
+<li><strong>리치 콘텐츠 블록</strong> (Comparison, Products, BulletList) &mdash; 구조화된 데이터. 비교표, 상품 카드, 글머리 기호 목록.</li>
+<li><strong>인터랙션 블록</strong> (Summary, Suggestion) &mdash; 사용자가 후속 질문을 선택할 수 있는 블록.</li>
+</ul>
+
+<p>여기서 눈여겨볼 점이 있다. <code>Loading</code>과 <code>Error</code>는 서버가 보내는 블록이 아니라 클라이언트가 생성하는 UI 전용 상태다. 그런데도 같은 sealed interface에 포함시켰다. UseCase가 응답을 조립할 때 이 타입들을 직접 리스트에 추가하기 때문이다. 도메인 레이어에서 이 타입을 알아야 ViewModel이 대화 리스트에 일관된 타입으로 블록을 쌓을 수 있다.</p>
+
+<div class="highlight-box">sealed interface를 사용하면 <code>when</code> 분기에서 새 타입을 추가했을 때 처리하지 않은 곳을 컴파일러가 잡아준다. 새 블록 타입이 추가될 때마다 TypeAdapter, Resolver, BottomSheet에서 컴파일 에러가 발생하고, 이 에러를 따라가면 누락 없이 구현을 완료할 수 있다.</div>
+
+<h2 id="s4">Registry 패턴: 다형적 JSON을 도메인으로</h2>
+
+<p>도메인이 계약을 정의했으니, 이제 서버 응답을 이 계약에 맞게 변환해야 한다. Sophie API의 응답은 이런 구조다.</p>
+
+<pre><code><span class="cmt">// Sophie API 응답 구조</span>
+{
+  <span class="str">"answer"</span>: [
+    { <span class="str">"type"</span>: <span class="str">"title"</span>,      <span class="str">"data"</span>: { <span class="str">"content"</span>: <span class="str">"유기농 우유 비교"</span> } },
+    { <span class="str">"type"</span>: <span class="str">"comparison"</span>, <span class="str">"data"</span>: { <span class="str">"headers"</span>: [...], <span class="str">"rows"</span>: [...] } },
+    { <span class="str">"type"</span>: <span class="str">"products"</span>,   <span class="str">"data"</span>: { <span class="str">"products"</span>: [...] } },
+    { <span class="str">"type"</span>: <span class="str">"suggestion"</span>, <span class="str">"data"</span>: { <span class="str">"contents"</span>: [...] } }
+  ]
+}</code></pre>
+
+<p><code>answer</code> 배열의 각 요소가 <code>type</code>과 <code>data</code>의 쌍이다. 같은 배열 안에 서로 다른 구조의 <code>data</code>가 섞여 있으므로, 일반적인 Gson 자동 역직렬화로는 처리할 수 없다. 이 문제를 해결하기 위해 <strong>Registry 패턴</strong>을 도입했다.</p>
+
+<h3>Mapper 추상 클래스</h3>
+
+<p>블록 하나를 변환하는 책임을 가진 <code>AskSophieMapper</code> 추상 클래스를 정의한다.</p>
+
+<pre><code><span class="kw">abstract class</span> <span class="typ">AskSophieMapper</span> {
+    <span class="kw">abstract val</span> type: <span class="typ">String</span>                      <span class="cmt">// "comparison", "title" 등</span>
+    <span class="kw">abstract fun</span> <span class="fn">mapping</span>(data: <span class="typ">JsonElement</span>): <span class="typ">AskSophieConversation</span>?
+    <span class="kw">protected val</span> gson = <span class="typ">Gson</span>()
+}</code></pre>
+
+<p>각 Mapper는 자신이 처리할 수 있는 <code>type</code> 문자열을 선언하고, <code>mapping()</code>에서 <code>JsonElement</code>를 도메인 모델로 변환한다. 예를 들어 <code>ComparisonBlockMapper</code>는 이렇게 생겼다.</p>
+
+<pre><code><span class="kw">object</span> <span class="typ">ComparisonBlockMapper</span> : <span class="typ">AskSophieMapper</span>() {
+
+    <span class="kw">override val</span> type = <span class="str">"comparison"</span>
+
+    <span class="kw">override fun</span> <span class="fn">mapping</span>(data: <span class="typ">JsonElement</span>): <span class="typ">AskSophieConversation</span>? {
+        <span class="kw">return</span> <span class="fn">runCatching</span> {
+            <span class="kw">val</span> obj = data.asJsonObject
+            <span class="kw">val</span> headers = obj.<span class="fn">getAsJsonArray</span>(<span class="str">"headers"</span>).<span class="fn">map</span> { it.asString }
+            <span class="kw">val</span> rows = obj.<span class="fn">getAsJsonArray</span>(<span class="str">"rows"</span>).<span class="fn">map</span> { rowElement -&gt;
+                <span class="typ">AskSophieConversation.Comparison.Row</span>(
+                    label = rowElement.asJsonObject.get(<span class="str">"label"</span>).asString,
+                    values = rowElement.asJsonObject.<span class="fn">getAsJsonArray</span>(<span class="str">"values"</span>).<span class="fn">map</span> { it.asString },
+                )
+            }
+            <span class="typ">AskSophieConversation.Comparison</span>(headers, rows)
+        }.<span class="fn">getOrNull</span>()
+    }
+}</code></pre>
+
+<p><code>runCatching</code>으로 감싼 이유는 서버 응답이 예상과 다를 때 해당 블록만 건너뛰기 위해서다. 하나의 블록 파싱 실패가 전체 응답을 날리지 않는다.</p>
+
+<h3>TypeAdapter: Registry로 디스패치</h3>
+
+<p>이제 이 Mapper들을 Registry로 묶는 <code>TypeAdapter</code>를 보자.</p>
+
+<pre><code><span class="kw">class</span> <span class="typ">AskSophieConversationTypeAdapter</span> <span class="ann">@Inject</span> <span class="kw">constructor</span>()
+    : <span class="typ">JsonDeserializer</span>&lt;<span class="typ">AskSophieResponse</span>&gt; {
+
+    <span class="kw">private val</span> registry = <span class="fn">listOf</span>(
+        <span class="typ">BulletListMapper</span>,       <span class="typ">ComparisonBlockMapper</span>,
+        <span class="typ">DescriptionBlockMapper</span>, <span class="typ">IntroBlockMapper</span>,
+        <span class="typ">OutroBlockMapper</span>,       <span class="typ">ProductsBlockMapper</span>,
+        <span class="typ">SuggestionsBlockMapper</span>, <span class="typ">TitleBlockMapper</span>,
+    )
+
+    <span class="kw">private fun</span> <span class="fn">mapping</span>(element: <span class="typ">JsonElement</span>): <span class="typ">AskSophieConversation</span>? {
+        <span class="kw">val</span> type = element.asJsonObject.get(<span class="str">"type"</span>).asString
+        <span class="kw">return</span> registry
+            .<span class="fn">find</span> { mapper -&gt; mapper.type.<span class="fn">equals</span>(type, ignoreCase = <span class="kw">true</span>) }
+            ?.<span class="fn">mapping</span>(data = element.asJsonObject.get(<span class="str">"data"</span>))
+    }
+}</code></pre>
+
+<p>동작은 단순하다. JSON 배열을 순회하면서 각 요소의 <code>type</code>을 읽고, registry에서 해당 type을 처리할 수 있는 Mapper를 <code>find</code>로 찾아 위임한다. 매칭되는 Mapper가 없으면 <code>null</code>을 반환하여 해당 블록을 건너뛴다.</p>
+
+<div class="content-box">
+    <div class="content-box-title">새 블록 추가 시 해야 할 일</div>
+    <p>서버에서 새로운 블록 타입(예: <code>"recipe"</code>)이 추가되면:</p>
+    <p><strong>1.</strong> 도메인에 <code>AskSophieConversation.Recipe</code> 추가<br>
+    <strong>2.</strong> <code>RecipeBlockMapper</code> object 생성 (type = "recipe")<br>
+    <strong>3.</strong> TypeAdapter의 registry 리스트에 한 줄 추가<br>
+    <strong>4.</strong> Resolver에 when 분기 추가, Composable 블록 구현</p>
+    <p>sealed interface 덕분에 4를 빠뜨리면 컴파일 에러가 발생한다.</p>
+</div>
+
+<h2 id="s5">Resolver 패턴: 도메인에서 UI로의 다리</h2>
+
+<p>도메인 모델이 UI에 직접 들어갈 수 없는 이유가 있다. <code>AskSophieConversation.Suggestion</code>에는 "사용자가 질문을 탭했을 때 실행할 콜백"이 없다. 도메인 모델은 순수한 데이터인 반면, UI 모델은 콜백, 스타일, 마진 같은 표현 정보를 품어야 한다.</p>
+
+<p><code>AskSophieConversationResolver</code>가 이 간극을 메운다.</p>
+
+<pre><code><span class="kw">object</span> <span class="typ">AskSophieConversationResolver</span> {
+
+    <span class="kw">fun</span> <span class="fn">resolve</span>(
+        keyword: <span class="typ">String</span>,
+        questionId: <span class="typ">String</span>?,
+        conversation: <span class="typ">AskSophieConversation</span>,
+        isRefreshEnabled: <span class="typ">Boolean</span>,
+        onNavigate: (<span class="typ">SearchNavigator.Destination</span>) -&gt; <span class="typ">Unit</span>,
+        onAsk: (<span class="typ">AskVariant</span>) -&gt; <span class="typ">Unit</span>,
+        onRefresh: (<span class="typ">RefreshSophieUseCase.Param</span>) -&gt; <span class="typ">Unit</span>,
+    ): <span class="typ">AskSophieConversationUIModel</span> = <span class="kw">when</span> (conversation) {
+        <span class="kw">is</span> <span class="typ">AskSophieConversation.Loading</span>    -&gt; <span class="typ">UIModel.Loading</span>
+        <span class="kw">is</span> <span class="typ">AskSophieConversation.Symbol</span>     -&gt; <span class="typ">UIModel.Symbol</span>()
+        <span class="kw">is</span> <span class="typ">AskSophieConversation.Title</span>      -&gt; <span class="typ">UIModel.Text</span>(text = it.content, ...)
+        <span class="kw">is</span> <span class="typ">AskSophieConversation.Products</span>   -&gt; <span class="typ">UIModel.Products</span>.<span class="fn">from</span>(it, onNavigate, onAsk)
+        <span class="kw">is</span> <span class="typ">AskSophieConversation.Suggestion</span> -&gt; <span class="typ">UIModel.Suggestion</span>.<span class="fn">from</span>(it, onAsk, onRefresh)
+        <span class="cmt">// ... 12가지 타입 모두 처리</span>
+    }
+}</code></pre>
+
+<p>Resolver가 하는 일은 세 가지다.</p>
+
+<ol>
+<li><strong>타입 매핑:</strong> 도메인의 12 sealed 타입을 UI의 sealed class로 변환한다. <code>Intro</code>, <code>Outro</code>, <code>Description</code>은 모두 <code>UIModel.Text</code>로 매핑되지만, 각각 다른 스타일과 마진을 갖는다.</li>
+<li><strong>콜백 주입:</strong> <code>onAsk</code>, <code>onNavigate</code>, <code>onRefresh</code> 같은 콜백을 UIModel에 주입한다. 이 콜백은 ViewModel에서 제공되며, 사용자 인터랙션을 ViewModel로 전달하는 역할을 한다.</li>
+<li><strong>컨텍스트 전파:</strong> <code>keyword</code>, <code>questionId</code>, <code>isRefreshEnabled</code> 같은 현재 대화 맥락을 UI 모델에 전달한다.</li>
+</ol>
+
+<p>처음에 Resolver는 <code>@Composable</code> 함수였다. 도메인 타입에 따라 UI 스타일(<code>KurlyTheme.typography</code> 등)을 직접 참조했기 때문이다. 그런데 Composable 컨텍스트 밖에서는 호출할 수 없으므로, 단위 테스트를 작성할 수 없었다.</p>
+
+<p>해결책은 UI 스타일 참조를 <code>@Composable</code> 람다로 지연시키는 것이었다.</p>
+
+<pre><code><span class="cmt">// UIModel.Text의 스타일 프로퍼티를 람다로 선언</span>
+<span class="kw">data class</span> <span class="typ">Text</span>(
+    <span class="kw">val</span> text: <span class="typ">String</span>,
+    <span class="kw">val</span> textColor: <span class="ann">@Composable</span> () -&gt; <span class="typ">Color</span>,      <span class="cmt">// 렌더링 시점에 평가</span>
+    <span class="kw">val</span> textStyle: <span class="ann">@Composable</span> () -&gt; <span class="typ">TextStyle</span>,  <span class="cmt">// Compose 컨텍스트에 의존</span>
+)</code></pre>
+
+<p>이렇게 하면 Resolver 자체는 <code>object</code>의 일반 함수로 남아 테스트가 가능하고, 테마 의존성은 Composable이 실제로 렌더링되는 시점에 해소된다.</p>
+
+<h2 id="s6">대화 상태 머신: ViewModel이 대화를 관리하는 법</h2>
+
+<p>블록 프로토콜의 마지막 조각은 ViewModel이다. <code>AskSophieBottomSheetViewModel</code>은 대화를 <code>List&lt;UIModel&gt;</code>로 관리한다. 새 블록이 오면 리스트에 추가하고, 재시도하면 일부를 제거한 뒤 다시 추가한다.</p>
+
+<h3>ask 흐름</h3>
+
+<p>사용자가 질문을 선택하면 <code>onAsk()</code>가 실행된다. 리스트를 어떻게 조작하는지 따라가 보자.</p>
+
+<div class="state-flow">
+    <div class="state-step"><div class="state-step-num">1</div><div><span class="state-step-text">이전 Suggestion 비활성화</span><br><span class="state-step-code">disabledSuggestion()</span></div></div>
+    <div class="state-arrow">&darr;</div>
+    <div class="state-step"><div class="state-step-num">2</div><div><span class="state-step-text">질문 텍스트를 우측 정렬 말풍선으로 추가</span><br><span class="state-step-code">generateQuestion(variant.question)</span></div></div>
+    <div class="state-arrow">&darr;</div>
+    <div class="state-step"><div class="state-step-num">3</div><div><span class="state-step-text">Loading 블록 추가 (최소 2초 유지)</span><br><span class="state-step-code">AskSophieConversationUIModel.Loading</span></div></div>
+    <div class="state-arrow">&darr;</div>
+    <div class="state-step"><div class="state-step-num">4</div><div><span class="state-step-text">API 호출 &amp; 응답 도착</span><br><span class="state-step-code">askSophieUseCase.execute(variant)</span></div></div>
+    <div class="state-arrow">&darr;</div>
+    <div class="state-step"><div class="state-step-num">5</div><div><span class="state-step-text">Loading 제거, Resolver로 변환한 블록들을 리스트에 추가</span><br><span class="state-step-code">AskSophieConversationResolver.resolve(...)</span></div></div>
+</div>
+
+<p>핵심 코드를 보자.</p>
+
+<pre><code><span class="kw">private fun</span> <span class="fn">onAsk</span>(variant: <span class="typ">AskVariant</span>) {
+    <span class="kw">if</span> (!<span class="fn">isIdle</span>()) <span class="kw">return</span>                          <span class="cmt">// 동시 요청 방어</span>
+    job = viewModelScope.<span class="fn">launch</span> {
+        <span class="cmt">// Step 1-3: Suggestion 비활성화 + 질문 + Loading</span>
+        <span class="fn">updateState</span> { prev -&gt;
+            <span class="kw">val</span> conversations = <span class="fn">buildList</span> {
+                <span class="fn">addAll</span>(prev.conversations.<span class="fn">dropTailFor</span>(variant))
+                <span class="fn">add</span>(prev.conversations.<span class="fn">disabledSuggestion</span>())
+                <span class="fn">add</span>(<span class="typ">UIModel</span>.<span class="fn">generateQuestion</span>(variant.question))
+                <span class="fn">add</span>(<span class="typ">UIModel</span>.<span class="typ">Loading</span>)
+            }.<span class="fn">filterNotNull</span>()
+            prev.<span class="fn">copy</span>(conversations = conversations)
+        }
+
+        <span class="cmt">// Step 4: API 호출 (최소 로딩 시간 보장)</span>
+        <span class="kw">val</span> result = <span class="fn">await</span>(<span class="typ">UIModel</span>.<span class="typ">Loading</span>.duration) {
+            askSophieUseCase.<span class="fn">execute</span>(variant)
+        }
+
+        <span class="cmt">// Step 5: Loading 제거, 응답 블록 추가</span>
+        <span class="fn">updateState</span> { prev -&gt;
+            <span class="kw">val</span> newItems = <span class="typ">Resolver</span>.<span class="fn">resolve</span>(...)
+            prev.<span class="fn">copy</span>(conversations = prev.conversations
+                .<span class="fn">filterNot</span> { it <span class="kw">is</span> <span class="typ">UIModel</span>.<span class="typ">Loading</span> } + newItems)
+        }
+    }
+}</code></pre>
+
+<h3>await: 최소 로딩 지속시간 보장</h3>
+
+<p><code>await()</code>는 API 응답이 너무 빨리 오더라도 Loading 애니메이션이 최소 시간 동안 유지되도록 하는 패턴이다.</p>
+
+<pre><code><span class="kw">private suspend fun</span> &lt;<span class="typ">T</span>&gt; <span class="fn">await</span>(minDurationMillis: <span class="typ">Long</span>, block: <span class="kw">suspend</span> () -&gt; <span class="typ">T</span>): <span class="typ">T</span> {
+    <span class="kw">val</span> startedAt = <span class="typ">System</span>.<span class="fn">currentTimeMillis</span>()
+    <span class="kw">val</span> result = <span class="fn">block</span>()
+    <span class="kw">val</span> remaining = (minDurationMillis - (<span class="typ">System</span>.<span class="fn">currentTimeMillis</span>() - startedAt))
+        .<span class="fn">coerceAtLeast</span>(<span class="ann">0L</span>)
+    <span class="fn">delay</span>(remaining)
+    <span class="kw">return</span> result
+}</code></pre>
+
+<p>Loading 블록에는 "금방 알려드릴게요", "잠시만 기다려주세요!" 두 문장이 순차적으로 표시되며, 이 전환 애니메이션에 최소 2초가 필요하다. API가 500ms 만에 응답하면 <code>delay(1500)</code>으로 남은 시간을 채운다.</p>
+
+<h3>refresh: 질문 메모리와 "다른 질문 보기"</h3>
+
+<p>Suggestion 블록 하단에는 "다른 질문 보기" 버튼이 있다. 이 버튼을 누르면 서버에 새 질문 목록을 요청하는데, 이미 보여준 질문이 다시 나오면 안 된다. 이 제약을 데이터 레이어의 <code>SearchAskSophieQuestionMemory</code>가 해결한다.</p>
+
+<pre><code><span class="kw">class</span> <span class="typ">SearchAskSophieQuestionMemory</span> <span class="ann">@Inject</span> <span class="kw">constructor</span>() {
+    <span class="kw">private val</span> cache = <span class="fn">mutableSetOf</span>&lt;<span class="typ">String</span>&gt;()    <span class="cmt">// 이미 보여준 질문 ID</span>
+
+    <span class="kw">fun</span> <span class="fn">consume</span>(questionIds: <span class="typ">List</span>&lt;<span class="typ">String</span>&gt;): <span class="typ">Set</span>&lt;<span class="typ">String</span>&gt; {
+        cache.<span class="fn">addAll</span>(questionIds)
+        <span class="kw">return</span> cache                              <span class="cmt">// 서버에 exclude 목록으로 전달</span>
+    }
+}</code></pre>
+
+<p>Refresh API 호출 시 이 캐시를 <code>questionIdsToExclude</code>로 전달하여, 서버가 이미 노출된 질문을 제외하고 새 질문을 반환하도록 한다. 세션(같은 키워드 검색) 동안 캐시가 누적되므로, 사용자가 "다른 질문 보기"를 반복해도 중복이 발생하지 않는다.</p>
+
+<h3>retry: 마지막 질문부터 다시</h3>
+
+<p>에러 발생 시 재시도하면, 마지막 질문과 그에 대한 응답을 제거한 뒤 같은 질문을 다시 보내야 한다. <code>calculateDropCount()</code>가 이 역할을 한다.</p>
+
+<pre><code><span class="kw">private fun</span> <span class="typ">List</span>&lt;<span class="typ">UIModel</span>&gt;.<span class="fn">calculateDropCount</span>(variant: <span class="typ">AskVariant</span>): <span class="typ">Int</span> {
+    <span class="kw">return when</span> (variant) {
+        <span class="kw">is</span> <span class="typ">AskVariant.Retry</span> -&gt; {
+            <span class="kw">val</span> lastQ = <span class="kw">this</span>.<span class="fn">filterIsInstance</span>&lt;<span class="typ">UIModel.Text</span>&gt;()
+                .<span class="fn">lastOrNull</span> { !it.isLeft }    <span class="cmt">// 우측 정렬 = 사용자 질문</span>
+            <span class="kw">if</span> (lastQ != <span class="kw">null</span>) <span class="kw">this</span>.size - <span class="kw">this</span>.<span class="fn">indexOf</span>(lastQ)
+            <span class="kw">else</span> <span class="ann">1</span>
+        }
+        <span class="kw">else</span> -&gt; <span class="ann">1</span>                        <span class="cmt">// 일반 질문: 마지막 Suggestion만 제거</span>
+    }
+}</code></pre>
+
+<h3>동시성 방어: isIdle</h3>
+
+<p>사용자가 빠르게 질문을 연타하는 경우를 방어한다. <code>job</code> 필드가 현재 진행 중인 코루틴을 추적하고, <code>isIdle()</code>이 <code>false</code>면 새 요청을 무시한다.</p>
+
+<pre><code><span class="kw">private var</span> job: <span class="typ">Job</span>? = <span class="kw">null</span>
+
+<span class="kw">fun</span> <span class="fn">isIdle</span>(): <span class="typ">Boolean</span> = job == <span class="kw">null</span> || job?.<span class="fn">isActive</span> == <span class="kw">false</span></code></pre>
+
+<h2 id="s7">끝까지 따라가기: 질문 한 번의 여정</h2>
+
+<p>지금까지 분해한 컴포넌트들이 실제로 어떻게 협력하는지, 사용자가 "이 상품과 비슷한 상품은?"이라는 질문을 탭하는 시나리오를 끝까지 추적해 보자.</p>
+
+<p>그 전에, BottomSheet에 진입하는 경로가 두 가지임을 짚어두자.</p>
+
+<div class="content-box">
+    <div class="content-box-title">두 가지 진입 경로</div>
+    <p><strong>Intro</strong> &mdash; 검색 결과 상단 AI 섹션에서 진입. 서버가 미리 생성한 추천 질문 목록(Summary)을 표시하고, 사용자가 질문을 선택하면 API 호출.<br>
+    <strong>Conversation</strong> &mdash; 플로팅 버튼 또는 상품 카드의 "더 알아보기"에서 진입. 즉시 <code>AskVariant</code>를 생성하여 API 호출을 시작. 상품 수준 질문은 <code>AskVariant.Product</code>를 사용하며, <code>questionId</code>가 <code>"learn_more_$productNo"</code>로 자동 생성된다.</p>
+</div>
+
+<p>아래 파이프라인은 두 번째 경로(Conversation)의 후속 질문 시나리오를 추적한다.</p>
+
+<div class="e2e-pipeline">
+    <div class="e2e-step">
+        <div class="e2e-layer e2e-layer-ui">UI</div>
+        <div class="e2e-body">
+            <div class="e2e-title">SuggestionBlock &mdash; 사용자 질문 탭</div>
+            <div class="e2e-data"><span class="e2e-out">onAsk(AskVariant.Suggestion)</span></div>
+        </div>
+    </div>
+    <div class="e2e-connector"><div class="e2e-line"></div><div class="e2e-arrow-head"></div></div>
+    <div class="e2e-step">
+        <div class="e2e-layer e2e-layer-ui">UI</div>
+        <div class="e2e-body">
+            <div class="e2e-title">ViewModel.onAsk() &mdash; 대화 리스트 즉시 갱신</div>
+            <div class="e2e-detail">이전 Suggestion 비활성화 &rarr; 질문 말풍선 추가 &rarr; Loading 추가</div>
+            <div class="e2e-data"><span class="e2e-in">AskVariant</span> <span class="e2e-arrow">&rarr;</span> <span class="e2e-out">StateFlow 갱신 (질문 + Loading 포함)</span></div>
+        </div>
+    </div>
+    <div class="e2e-connector"><div class="e2e-line"></div><div class="e2e-arrow-head"></div></div>
+    <div class="e2e-step">
+        <div class="e2e-layer e2e-layer-domain">Domain</div>
+        <div class="e2e-body">
+            <div class="e2e-title">AskSophieUseCase.execute() &mdash; API 호출 + Symbol 삽입</div>
+            <div class="e2e-detail">SearchRepository.ask() 호출, 결과 앞에 Symbol(아이콘) 블록 삽입, 실패 시 Error 블록 생성</div>
+            <div class="e2e-data"><span class="e2e-in">AskVariant</span> <span class="e2e-arrow">&rarr;</span> <span class="e2e-out">List&lt;AskSophieConversation&gt;</span></div>
+        </div>
+    </div>
+    <div class="e2e-connector"><div class="e2e-line"></div><div class="e2e-arrow-head"></div></div>
+    <div class="e2e-step">
+        <div class="e2e-layer e2e-layer-data">Data</div>
+        <div class="e2e-body">
+            <div class="e2e-title">TypeAdapter &mdash; Registry 디스패치</div>
+            <div class="e2e-detail">answer 배열 순회 &rarr; 각 요소의 type으로 Mapper 탐색 &rarr; data를 도메인 모델로 변환</div>
+            <div class="e2e-data"><span class="e2e-in">JSON { type, data }[]</span> <span class="e2e-arrow">&rarr;</span> <span class="e2e-out">List&lt;AskSophieConversation&gt;</span></div>
+        </div>
+    </div>
+    <div class="e2e-connector"><div class="e2e-line"></div><div class="e2e-arrow-head"></div></div>
+    <div class="e2e-step">
+        <div class="e2e-layer e2e-layer-ui">UI</div>
+        <div class="e2e-body">
+            <div class="e2e-title">Resolver.resolve() &mdash; 도메인 &rarr; UIModel 변환</div>
+            <div class="e2e-detail">12 sealed 타입 각각을 UIModel로 매핑, onAsk·onNavigate·onRefresh 콜백 주입</div>
+            <div class="e2e-data"><span class="e2e-in">List&lt;AskSophieConversation&gt; + 콜백</span> <span class="e2e-arrow">&rarr;</span> <span class="e2e-out">List&lt;UIModel&gt;</span></div>
+        </div>
+    </div>
+    <div class="e2e-connector"><div class="e2e-line"></div><div class="e2e-arrow-head"></div></div>
+    <div class="e2e-step">
+        <div class="e2e-layer e2e-layer-ui">UI</div>
+        <div class="e2e-body">
+            <div class="e2e-title">ViewModel &mdash; Loading 제거 + 응답 블록 추가</div>
+            <div class="e2e-detail">Loading 필터링, 새 UIModel 리스트를 StateFlow에 반영</div>
+            <div class="e2e-data"><span class="e2e-out">StateFlow&lt;List&lt;UIModel&gt;&gt; emit</span></div>
+        </div>
+    </div>
+    <div class="e2e-connector"><div class="e2e-line"></div><div class="e2e-arrow-head"></div></div>
+    <div class="e2e-step">
+        <div class="e2e-layer e2e-layer-ui">UI</div>
+        <div class="e2e-body">
+            <div class="e2e-title">BottomSheet LazyColumn &mdash; 블록별 Composable 렌더링</div>
+            <div class="e2e-detail">when(uiModel) 분기로 9개 Block Composable 중 해당 블록 호출, 스태거 애니메이션 적용</div>
+            <div class="e2e-data"><span class="e2e-in">UIModel</span> <span class="e2e-arrow">&rarr;</span> <span class="e2e-out">TextBlock | ComparisonTableBlock | ProductsBlock | ...</span></div>
+        </div>
+    </div>
+</div>
+
+<p>마지막 단계에서 눈여겨볼 것이 <strong>스태거 애니메이션</strong>이다. 새로 추가된 블록들은 동시에 나타나는 게 아니라, 250ms 간격으로 순차적으로 fade-in + slide-up된다. 이전 대화까지의 블록은 <code>staggerBaseIndex</code>로 제외하고, 그 이후 블록만 순차 등장시킨다. AI가 "생각하고 있다"는 인상을 시각적으로 전달하는 장치다.</p>
+
+<p>이 경로에서 응답에 Comparison 블록이 포함되어 있다면, <code>ComparisonTableBlock</code>이 렌더링된다. 이 컴포넌트는 Compose의 <code>Layout {}</code>을 직접 구현하여 테이블을 그린다.</p>
+
+<h3>ComparisonTable: 왜 custom Layout인가</h3>
+
+<p>비교표의 요구사항은 세 가지였다. 첫 번째 열(항목명)은 내용에 맞게 wrap되어야 하고, 나머지 열(비교 대상)은 남은 공간을 균등하게 나눠야 하며, 같은 행의 모든 셀은 높이가 같아야 한다.</p>
+
+<p>처음에는 <code>IntrinsicSize.Max</code>를 적용한 Row/Column 조합으로 시도했다. 그런데 첫 번째 열의 너비를 "전체 행에서 가장 넓은 항목명"에 맞추려면 행 간 intrinsic width를 조율해야 한다. Compose의 intrinsic measurement만으로는 이 조율이 자연스럽지 않았다.</p>
+
+<p>결국 <code>Layout {}</code>을 직접 구현했다. 핵심은 2-pass 접근이다.</p>
+
+<pre><code><span class="typ">Layout</span>(content, modifier) { measurables, constraints -&gt;
+    <span class="cmt">// Pass 1: 열 너비 확정</span>
+    <span class="kw">val</span> labelColWidth = (<span class="ann">0</span> until rowCount).<span class="fn">maxOf</span> { row -&gt;
+        measurables[row * columnCount].<span class="fn">maxIntrinsicWidth</span>(<span class="typ">Int</span>.MAX_VALUE)
+    }
+    <span class="kw">val</span> dataColWidth =
+        (constraints.maxWidth - labelColWidth - dividers) / (columnCount - <span class="ann">1</span>)
+
+    <span class="cmt">// Pass 2: 행 높이 = 해당 행 셀 중 최대값</span>
+    <span class="kw">val</span> rowHeights = <span class="typ">IntArray</span>(rowCount) { row -&gt;
+        (<span class="ann">0</span> until columnCount).<span class="fn">maxOf</span> { col -&gt;
+            measurables[row * columnCount + col].<span class="fn">maxIntrinsicHeight</span>(colWidths[col])
+        }
+    }
+    <span class="cmt">// 각 셀을 고정 크기로 measure &amp; place</span>
+}</code></pre>
+
+<p>전체 셀의 intrinsic 크기를 먼저 수집하고, 열 너비와 행 높이를 확정한 뒤, 각 셀을 고정 크기로 measure한다. 셀 사이 1dp 간격은 부모 배경색(Gray200)이 비쳐서 구분선 역할을 한다.</p>
+
+<h2 id="s8">설계 한계와 대안</h2>
+
+<p>이 아키텍처가 모든 상황에 최적인 것은 아니다.</p>
+
+<p><strong>Gson TypeAdapter의 한계.</strong> 프로젝트가 Gson 기반이므로 자연스러운 선택이었지만, 타입 안전성 측면에서 Kotlin Serialization의 <code>@Polymorphic</code> serializer가 우위에 있다. Kotlin Serialization은 컴파일 타임에 직렬화 코드를 생성하므로, 런타임에 type 문자열을 수동으로 매칭하는 현재 방식보다 오류 가능성이 낮다. 프로젝트 전체의 직렬화 라이브러리가 전환되면 Registry 패턴 자체가 불필요해질 수 있다.</p>
+
+<p><strong>Resolver의 when 분기 증가.</strong> 블록 타입이 12개일 때는 관리 가능하지만, 20개, 30개로 늘어나면 Resolver가 비대해진다. 대안으로, 각 UIModel의 companion에 <code>from(domain)</code> 패턴을 두어 변환 책임을 분산하는 방식이 있다. 현재도 <code>Products.from()</code>, <code>Suggestion.from()</code> 등 일부 타입에는 이 패턴이 적용되어 있다.</p>
+
+<p><strong>List 기반 상태 관리의 취약성.</strong> 대화 상태를 <code>List</code>로 관리하고 <code>dropLast</code>, <code>indexOf</code> 등 인덱스 기반으로 조작한다. 대화 흐름이 복잡해지면 의미 기반 조작이 인덱스 연산으로 번역되는 과정에서 버그 표면이 넓어진다. 각 대화 턴에 ID를 부여하고 트리 구조로 관리하는 방식이 더 안전할 수 있다.</p>
+
+<h2 id="s9">핵심 설계 원칙</h2>
+
+<p>Ask Sophie의 블록 프로토콜 아키텍처를 관통하는 원칙을 정리한다.</p>
+
+<div class="summary-box">
+    <div class="summary-box-title">TAKEAWAYS</div>
+    <ul>
+        <li><strong>sealed interface를 계약으로.</strong> AI 응답의 가능한 모든 블록 타입을 도메인 레이어에서 선언한다. 새 타입 추가 시 컴파일러가 누락된 처리를 잡아준다.</li>
+        <li><strong>Registry 패턴으로 다형적 역직렬화.</strong> type 문자열 &rarr; Mapper 디스패치로, 각 블록의 파싱 로직을 독립적인 object로 캡슐화한다. 하나의 블록 파싱 실패가 전체 응답을 날리지 않는다.</li>
+        <li><strong>Resolver로 레이어 간극 메우기.</strong> 순수 도메인 모델에 UI 콜백과 스타일을 주입하는 중간 계층. @Composable 의존성을 람다로 지연시키면 테스트가 가능해진다.</li>
+        <li><strong>리스트가 곧 대화 상태.</strong> 대화를 블록의 리스트로 모델링하면 LazyColumn과 1:1로 매핑된다. 단, 인덱스 기반 조작은 의미 기반 추상화로 감싸야 한다.</li>
+    </ul>
+</div>
+
+<p>이 패턴은 Ask Sophie에 한정되지 않는다. 서버가 다형적 콘텐츠 블록을 보내고, 클라이언트가 이를 해석하여 각 블록 타입에 맞는 UI로 렌더링하는 구조&mdash;이른바 Server-Driven UI의 변형&mdash;는 AI 대화뿐 아니라 콘텐츠 피드, 동적 폼, 커스텀 페이지 등 다양한 영역에 적용할 수 있다.</p>
+
+<p>블록 프로토콜의 확장력은 sealed interface의 컴파일 타임 안전성에 달려 있다. 새 블록을 추가할 때 "어디를 수정해야 하지?"라고 고민할 필요가 없다. 컴파일러가 알려준다.</p>
+
+<div class="summary-box">
+    <div class="summary-box-title">시각화 자료</div>
+    <p>이 글의 핵심 다이어그램을 한 페이지로 정리한 시각화 문서를 제공합니다. 데이터 파이프라인, 아키텍처 레이어 구조, 변경 규모를 인터랙티브하게 확인할 수 있습니다.<br>
+    <a href="search-ai-agent-block-architecture.html">&rarr; PR #7448 시각화 페이지 보기</a></p>
+</div>
+
+<hr>
+
+</article>
+
+<div class="article">
+    <div class="footnotes">
+        <p>PR #7448 &middot; 97 files changed &middot; +5,582 / -78</p>
+    </div>
+</div>
+
+<footer class="article-footer">
+    <div class="share-buttons">
+        <button class="share-btn" onclick="navigator.clipboard.writeText(location.href)">링크 복사</button>
+    </div>
+</footer>
+
+</body>
+</html>
