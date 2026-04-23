@@ -521,7 +521,8 @@
   @keyframes indicator1 {
     0%,15%    { background:var(--phase-1); box-shadow:0 0 6px rgba(0,114,178,0.6); }
     17%       { background:#30363d; box-shadow:none; }
-    100%      { background:#30363d; box-shadow:none; }
+    88%       { background:#30363d; box-shadow:none; }
+    90%,100%  { background:var(--phase-1); box-shadow:0 0 6px rgba(0,114,178,0.6); }
   }
   @keyframes indicator2 {
     0%,16%    { background:#30363d; box-shadow:none; }
@@ -1127,11 +1128,11 @@
 (function(){
   var el = document.getElementById('phase-num');
   if (!el) return;
-  var phases = ['1','2','3','4'];
-  var timings = [0, 0.17, 0.34, 0.67];
+  var phases = ['1','2','3','4','1'];
+  var timings = [0, 0.17, 0.34, 0.67, 0.90];
   var duration = 12000;
   function update() {
-    var t = (Date.now() % duration) / duration;
+    var t = (performance.now() % duration) / duration;
     var idx = 0;
     for (var j = timings.length - 1; j >= 0; j--) {
       if (t >= timings[j]) { idx = j; break; }
