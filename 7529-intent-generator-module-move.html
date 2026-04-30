@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PR #7529 — IntentGenerator 모듈 이동</title>
+<style>
+/* diff-viz: glass theme */
+:root {
+  --cv-add: #60a5fa;
+  --cv-del: #fb923c;
+  --cv-mod: #fbbf24;
+  --cv-mov: #38bdf8;
+  --cv-bg: #0c0a1a;
+  --cv-text: #f1f5f9;
+  --cv-text-secondary: #c1c7d0;
+  --cv-muted: #8892a4;
+  --cv-border: rgba(255,255,255,0.10);
+  --cv-surface: rgba(255,255,255,0.04);
+  --cv-card-bg: rgba(255,255,255,0.06);
+  --cv-code-bg: rgba(0,0,0,0.35);
+  --cv-add-surface: rgba(96,165,250,0.08);
+  --cv-del-surface: rgba(251,146,60,0.08);
+  --cv-mod-surface: rgba(251,191,36,0.06);
+  --cv-mov-surface: rgba(56,189,248,0.08);
+  --glass-blur: 16px;
+  --glass-saturation: 180%;
+  --glass-border: rgba(255,255,255,0.12);
+  --glass-border-hover: rgba(255,255,255,0.20);
+  --glass-radius: 16px;
+  --glass-radius-lg: 24px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  color: var(--cv-text);
+  background: var(--cv-bg);
+  line-height: 1.7;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 48px 32px;
+  -webkit-font-smoothing: antialiased;
+  position: relative;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background:
+    radial-gradient(ellipse 50% 40% at 20% 20%, rgba(99,102,241,0.15) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 50% at 80% 30%, rgba(236,72,153,0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 50% 80%, rgba(56,189,248,0.08) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+body > * { position: relative; z-index: 1; }
+
+/* ── HERO ── */
+.cv-hero {
+  position: relative;
+  padding: 64px 40px 56px;
+  margin-bottom: 48px;
+  border-radius: var(--glass-radius-lg);
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(24px) saturate(var(--glass-saturation));
+  -webkit-backdrop-filter: blur(24px) saturate(var(--glass-saturation));
+  border: 1px solid var(--glass-border);
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06);
+}
+.cv-hero::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%);
+}
+.cv-hero__title {
+  font-size: 32px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 16px;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  position: relative;
+}
+.cv-hero__subtitle {
+  font-size: 16px;
+  color: var(--cv-muted);
+  margin: 0;
+  line-height: 1.6;
+  position: relative;
+  max-width: 640px;
+}
+.cv-hero__glow {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.cv-hero__glow--tr {
+  top: -80px; right: -60px;
+  width: 260px; height: 260px;
+  background: radial-gradient(circle, rgba(99,102,241,0.20) 0%, transparent 60%);
+}
+.cv-hero__glow--bl {
+  bottom: -60px; left: -40px;
+  width: 200px; height: 200px;
+  background: radial-gradient(circle, rgba(236,72,153,0.12) 0%, transparent 60%);
+}
+
+/* ── Legend ── */
+.cv-legend {
+  display: flex; gap: 20px; flex-wrap: wrap;
+  padding: 14px 20px;
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  border: 1px solid var(--cv-border);
+  border-radius: var(--glass-radius);
+  margin-bottom: 32px;
+  font-size: 13px;
+  color: var(--cv-muted);
+}
+.cv-legend__item { display: flex; align-items: center; gap: 8px; }
+.cv-legend__dot {
+  width: 10px; height: 10px; border-radius: 50%; display: inline-block;
+  box-shadow: 0 0 10px currentColor, 0 0 20px currentColor;
+}
+
+/* ── Section ── */
+.cv-section { margin-bottom: 48px; animation: cv-fade-in 500ms ease-out both; }
+.cv-section:nth-child(2) { animation-delay: 60ms; }
+.cv-section:nth-child(3) { animation-delay: 120ms; }
+.cv-section:nth-child(4) { animation-delay: 180ms; }
+
+/* ── Card (Glass) ── */
+.cv-card {
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius);
+  padding: 20px 24px;
+  margin-bottom: 16px;
+  transition: border-color 250ms ease, box-shadow 250ms ease, transform 250ms ease;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.04);
+}
+.cv-card:hover {
+  border-color: var(--glass-border-hover);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06);
+  transform: translateY(-1px);
+}
+.cv-card--add {
+  border-color: rgba(96,165,250,0.20);
+  background: rgba(96,165,250,0.06);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15), 0 0 24px rgba(96,165,250,0.06), inset 0 1px 0 rgba(96,165,250,0.08);
+}
+.cv-card--del {
+  border-color: rgba(251,146,60,0.20);
+  background: rgba(251,146,60,0.06);
+}
+.cv-card--mod {
+  border-color: rgba(251,191,36,0.15);
+  background: rgba(251,191,36,0.04);
+}
+.cv-card--why {
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  border: 1px solid var(--cv-border);
+  border-left: 3px solid var(--cv-mod);
+  border-radius: 0 var(--glass-radius) var(--glass-radius) 0;
+}
+.cv-card__header { font-size: 15px; font-weight: 600; color: var(--cv-text); margin-bottom: 10px; }
+.cv-card__body { font-size: 14px; color: var(--cv-text-secondary); line-height: 1.7; }
+
+/* ── Columns ── */
+.cv-columns {
+  display: flex;
+  gap: 20px;
+  align-items: stretch;
+  flex-wrap: wrap;
+  margin-bottom: 32px;
+}
+.cv-column { flex: 1; min-width: 280px; }
+.cv-column__label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--cv-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+}
+
+/* ── Module ── */
+.cv-module {
+  border: 1px solid var(--cv-border);
+  border-radius: var(--glass-radius);
+  padding: 16px;
+  background: rgba(255,255,255,0.03);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  margin-bottom: 12px;
+  transition: border-color 250ms ease;
+}
+.cv-module:hover { border-color: var(--glass-border-hover); }
+.cv-module--new {
+  background: rgba(96,165,250,0.06);
+  border-color: rgba(96,165,250,0.20);
+  box-shadow: 0 0 40px rgba(96,165,250,0.06);
+  position: relative;
+}
+.cv-module--new::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: calc(var(--glass-radius) + 1px);
+  background: linear-gradient(135deg, rgba(96,165,250,0.3), rgba(236,72,153,0.15), rgba(56,189,248,0.3));
+  z-index: -1;
+  opacity: 0.5;
+}
+.cv-module__name { font-size: 13px; font-weight: 600; color: var(--cv-add); margin-bottom: 10px; }
+.cv-module__items { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ── Arrow ── */
+.cv-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  flex-shrink: 0;
+  font-size: 20px;
+  color: var(--cv-muted);
+  font-weight: 400;
+}
+
+/* ── Badge ── */
+.cv-badge {
+  display: inline-flex; align-items: center;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--cv-muted);
+  border: 1px solid var(--cv-border);
+}
+.cv-badge--add { background: rgba(96,165,250,0.10); color: var(--cv-add); border-color: rgba(96,165,250,0.15); }
+.cv-badge--del { background: rgba(251,146,60,0.10); color: var(--cv-del); border-color: rgba(251,146,60,0.15); }
+.cv-badge--mod { background: rgba(251,191,36,0.08); color: var(--cv-mod); border-color: rgba(251,191,36,0.12); }
+.cv-badge--new { background: var(--cv-add); color: #0c0a1a; font-weight: 600; border-color: transparent; }
+.cv-badge--module { background: rgba(96,165,250,0.10); color: var(--cv-add); border-color: rgba(96,165,250,0.15); }
+
+/* ── Code ── */
+.cv-code { border-radius: var(--glass-radius); overflow: hidden; margin-bottom: 20px; }
+.cv-code__label { font-size: 11px; font-weight: 600; letter-spacing: 0.5px; margin-bottom: 6px; }
+.cv-code--before .cv-code__label { color: var(--cv-del); }
+.cv-code--after .cv-code__label { color: var(--cv-add); }
+.cv-code pre {
+  background: rgba(0,0,0,0.35);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--cv-text);
+  border-radius: var(--glass-radius);
+  padding: 16px 20px;
+  font-size: 13px;
+  font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+  line-height: 1.6;
+  margin: 0;
+  overflow-x: auto;
+  white-space: pre;
+  border: 1px solid var(--cv-border);
+}
+
+/* ── Typography ── */
+.cv-h2 { font-size: 20px; font-weight: 600; color: var(--cv-text); letter-spacing: -0.01em; margin-bottom: 12px; }
+.cv-h3 { font-size: 15px; font-weight: 600; color: var(--cv-text); margin-bottom: 8px; }
+.cv-body { font-size: 14px; color: var(--cv-text-secondary); line-height: 1.7; }
+.cv-muted { font-size: 12px; color: var(--cv-muted); }
+.cv-strong { font-weight: 600; }
+.cv-text-add { color: var(--cv-add); }
+.cv-text-del { color: var(--cv-del); }
+.cv-text-mod { color: var(--cv-mod); }
+.cv-text-mov { color: var(--cv-mov); }
+
+/* ── Section Title ── */
+.section-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 16px;
+  padding-left: 14px;
+  border-left: 3px solid var(--cv-add);
+  line-height: 1.4;
+}
+.section-title--del { border-left-color: var(--cv-del); }
+.section-title--mod { border-left-color: var(--cv-mod); }
+.section-title--mov { border-left-color: var(--cv-mov); }
+
+/* ── Citations ── */
+.cv-citations { margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--cv-border); }
+.cv-citations__toggle { background: none; border: none; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--cv-muted); padding: 0; display: flex; align-items: center; gap: 8px; transition: color 200ms ease; }
+.cv-citations__toggle:hover { color: var(--cv-text-secondary); }
+.cv-citations__content { overflow: hidden; max-height: 0; transition: max-height 300ms ease; }
+.cv-citations__content.open { max-height: 800px; }
+
+/* ── Footer ── */
+.cv-footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--cv-border); font-size: 12px; color: var(--cv-muted); }
+
+/* ── Animation ── */
+@keyframes cv-fade-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Flow Pipeline Animations ── */
+@keyframes flow-step-glow {
+  0%, 10% { box-shadow: 0 4px 16px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.04); border-color: var(--glass-border); }
+  16%, 30% { box-shadow: 0 4px 16px rgba(0,0,0,0.15), 0 0 24px rgba(96,165,250,0.15), inset 0 1px 0 rgba(96,165,250,0.08); border-color: rgba(96,165,250,0.35); }
+  40%, 100% { box-shadow: 0 4px 16px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.04); border-color: var(--glass-border); }
+}
+
+@keyframes flow-connector-pulse {
+  0%, 10% { opacity: 0.3; }
+  16%, 30% { opacity: 1; }
+  40%, 100% { opacity: 0.3; }
+}
+
+@keyframes flow-badge-pulse {
+  0%, 10% { transform: scale(1); }
+  16%, 30% { transform: scale(1.05); }
+  40%, 100% { transform: scale(1); }
+}
+
+/* ── Code Compare Grid Fix ── */
+.code-compare > div { min-width: 0; overflow: hidden; }
+.code-compare .cv-code pre {
+  white-space: pre;
+  overflow-x: auto;
+  max-width: 100%;
+  font-size: 11.5px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 700px) {
+  body { padding: 24px 16px; }
+  .cv-hero { padding: 40px 24px 36px; }
+  .cv-hero__title { font-size: 24px; }
+  .cv-columns { flex-direction: column; }
+  .cv-column { min-width: 100%; }
+  .grid-2col { grid-template-columns: 1fr !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════ HERO ═══════════════════ -->
+<div class="cv-hero">
+  <div class="cv-hero__glow cv-hero__glow--tr"></div>
+  <div class="cv-hero__glow cv-hero__glow--bl"></div>
+  <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+    <span class="cv-badge cv-badge--module" style="font-size:12px;">PR #7529</span>
+    <span class="cv-badge" style="font-size:12px;">KMA-7705</span>
+    <span class="cv-badge" style="font-size:12px;">95 files</span>
+  </div>
+  <h1 class="cv-hero__title">
+    <span style="color:var(--cv-add);">IntentGenerator</span> 모듈 이동
+  </h1>
+  <p class="cv-hero__subtitle">
+    <code>:app</code> 모듈에 밀집되어 있던 30여 개의 IntentGenerator를 각 <code>:features/*</code> 모듈로 분산 이동하고,
+    <code>MainActivity</code> 직접 참조를 <code style="color:var(--cv-add);">MainActivityNavigator</code> 인터페이스 위임으로 교체하여
+    Clean Architecture 의존성 역전을 달성합니다.
+  </p>
+</div>
+
+<!-- ═══════════════════ LEGEND ═══════════════════ -->
+<div class="cv-legend">
+  <div class="cv-legend__item"><span class="cv-legend__dot" style="color:var(--cv-add);"></span> + 추가</div>
+  <div class="cv-legend__item"><span class="cv-legend__dot" style="color:var(--cv-del);"></span> - 삭제</div>
+  <div class="cv-legend__item"><span class="cv-legend__dot" style="color:var(--cv-mod);"></span> ~ 수정</div>
+  <div class="cv-legend__item"><span class="cv-legend__dot" style="color:var(--cv-mov);"></span> &rarr; 이동</div>
+</div>
+
+<!-- ═══════════════════ SECTION 1: MODULE STRUCTURE ═══════════════════ -->
+<section class="cv-section">
+  <h2 class="section-title section-title--mov">모듈 구조 변경 &mdash; :app &rarr; :features/* 분산</h2>
+  <p class="cv-body" style="margin-bottom:20px;">
+    30여 개의 IntentGenerator가 <code>:app</code>의 단일 패키지에 밀집되어 있어, <code>:features</code>가 <code>:app</code>에 역방향 의존하는 구조적 문제가 있었습니다. 각 IntentGenerator를 해당 기능을 소유한 feature 모듈로 이동하여 의존성을 정상화합니다.
+  </p>
+
+  <div class="cv-columns" style="gap:28px;">
+    <!-- BEFORE -->
+    <div class="cv-column" style="flex:2;">
+      <div class="cv-column__label" style="font-weight:700;color:var(--cv-del);">- BEFORE &mdash; :app 모놀리식</div>
+      <div class="cv-module" style="border:2px solid var(--cv-del);padding:18px;margin-top:8px;">
+        <div class="cv-module__name" style="font-size:14px;color:var(--cv-del);margin-bottom:12px;">
+          :app <span class="cv-muted">/ link/generator/internal/</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;line-height:1.8;">
+          <div style="text-decoration:line-through;opacity:0.6;">HomeIntentGenerator</div>
+          <div style="text-decoration:line-through;opacity:0.6;">CartIntentGenerator</div>
+          <div style="text-decoration:line-through;opacity:0.6;">CategoryIntentGenerator</div>
+          <div style="text-decoration:line-through;opacity:0.6;">BrandIntentGenerator</div>
+          <div style="text-decoration:line-through;opacity:0.6;">SearchIntentGenerator</div>
+          <div style="text-decoration:line-through;opacity:0.6;">LoungeIntentGenerator</div>
+          <div style="text-decoration:line-through;opacity:0.6;">ProductIntentGenerator</div>
+          <div style="text-decoration:line-through;opacity:0.6;">PrivateIntentGenerator</div>
+          <div style="text-decoration:line-through;opacity:0.6;">RecipeIntentGenerator</div>
+          <div style="text-decoration:line-through;opacity:0.6;">PersonalProductIntentGen...</div>
+          <div class="cv-muted" style="grid-column:span 2;text-decoration:line-through;opacity:0.6;">... +20 more IntentGenerators</div>
+        </div>
+        <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--cv-border);font-size:12px;display:flex;gap:6px;flex-wrap:wrap;">
+          <span class="cv-badge cv-badge--del" style="font-size:10px;">- PrivateIntentGenerator 삭제</span>
+          <span class="cv-badge cv-badge--del" style="font-size:10px;">- WebViewIntentGenerator DI 제거</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Arrow -->
+    <div class="cv-arrow" style="font-size:28px;color:var(--cv-mov);">&#10140;</div>
+
+    <!-- AFTER -->
+    <div class="cv-column" style="flex:3;">
+      <div class="cv-column__label" style="font-weight:700;color:var(--cv-add);">+ AFTER &mdash; Feature 모듈 분산</div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px;">
+
+        <div class="cv-module cv-module--new" style="padding:12px 16px;">
+          <div class="cv-module__name" style="margin-bottom:4px;">:features <span class="cv-muted">/ link/generator/internal/</span></div>
+          <div class="cv-module__items" style="font-size:12px;gap:6px;">
+            <span class="cv-badge cv-badge--add" style="font-size:10px;">&rarr; Home</span>
+            <span class="cv-badge cv-badge--add" style="font-size:10px;">&rarr; Cart</span>
+            <span class="cv-badge cv-badge--add" style="font-size:10px;">&rarr; Search</span>
+            <span class="cv-badge cv-badge--add" style="font-size:10px;">&rarr; Lounge</span>
+            <span class="cv-badge cv-badge--add" style="font-size:10px;">&rarr; Login</span>
+            <span class="cv-badge" style="font-size:10px;">... +15 more</span>
+          </div>
+        </div>
+
+        <div class="cv-module cv-module--new" style="padding:12px 16px;">
+          <div class="cv-module__name" style="margin-bottom:4px;">:features:brand</div>
+          <div class="cv-module__items" style="font-size:12px;gap:6px;">
+            <span class="cv-badge cv-badge--add" style="font-size:10px;">&rarr; BrandIntentGenerator</span>
+            <span class="cv-badge" style="font-size:10px;">+ KSP processor</span>
+          </div>
+        </div>
+
+        <div class="cv-module cv-module--new" style="padding:12px 16px;">
+          <div class="cv-module__name" style="margin-bottom:4px;">:features:category</div>
+          <div class="cv-module__items" style="font-size:12px;gap:6px;">
+            <span class="cv-badge cv-badge--add" style="font-size:10px;">&rarr; CategoryIntentGenerator</span>
+            <span class="cv-badge" style="font-size:10px;">+ KSP processor</span>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;">
+          <div class="cv-module cv-module--new" style="padding:12px 16px;flex:1;">
+            <div class="cv-module__name" style="margin-bottom:4px;font-size:12px;">:features:dynamiclist</div>
+            <div style="font-size:11px;" class="cv-muted">&rarr; PersonalProductIntentGen...</div>
+          </div>
+          <div class="cv-module cv-module--new" style="padding:12px 16px;flex:1;">
+            <div class="cv-module__name" style="margin-bottom:4px;font-size:12px;">:features:recipe</div>
+            <div style="font-size:11px;" class="cv-muted">&rarr; RecipeIntentGenerator</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- New Interfaces -->
+  <h3 class="cv-h3" style="margin-top:8px;margin-bottom:12px;">+ 신규 인터페이스 &mdash; 의존성 역전 계층</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;" class="grid-2col">
+    <div class="cv-card cv-card--add" style="text-align:center;">
+      <div class="cv-card__header" style="font-size:13px;">
+        <span class="cv-badge cv-badge--new" style="margin-right:6px;">NEW</span> MainActivityNavigator
+      </div>
+      <div class="cv-muted" style="font-size:12px;">:features에 인터페이스 정의<br>:app에서 구현</div>
+    </div>
+    <div class="cv-card cv-card--add" style="text-align:center;">
+      <div class="cv-card__header" style="font-size:13px;">
+        <span class="cv-badge cv-badge--new" style="margin-right:6px;">NEW</span> LoginRedirectProvider
+      </div>
+      <div class="cv-muted" style="font-size:12px;">:link에 인터페이스 정의<br>:features:login에서 구현</div>
+    </div>
+    <div class="cv-card cv-card--add" style="text-align:center;">
+      <div class="cv-card__header" style="font-size:13px;">
+        <span class="cv-badge cv-badge--new" style="margin-right:6px;">NEW</span> MainActivityNavigatorImpl
+      </div>
+      <div class="cv-muted" style="font-size:12px;">:app에서 MainActivity 정적 메서드 위임</div>
+    </div>
+  </div>
+
+  <!-- DI Changes -->
+  <div class="cv-card cv-card--why" style="margin-top:16px;">
+    <div class="cv-card__header">DI 바인딩 변경 &mdash; LinkHandlerModule.kt</div>
+    <div class="cv-card__body" style="font-size:13px;">
+      <span class="cv-badge cv-badge--del" style="margin-right:4px;">-</span> <code style="text-decoration:line-through;">bindsTotalDeepLinkConverter</code>, <code style="text-decoration:line-through;">bindsInternalDeepLinkIntentGenerator</code>, <code style="text-decoration:line-through;">bindsExternalSchemeIntentGenerator</code><br>
+      <span class="cv-badge cv-badge--add" style="margin-right:4px;margin-top:6px;">+</span> <code>bindsMainActivityNavigator(MainActivityNavigatorImpl)</code>, <code>bindsKurlyMembersUrlProvider(KurlyMembersUrlHandler)</code>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ SECTION 2: FLOW PIPELINE ═══════════════════ -->
+<section class="cv-section">
+  <h2 class="section-title">DeepLink 처리 파이프라인 &mdash; 플로우 비교</h2>
+  <p class="cv-body" style="margin-bottom:20px;">
+    딥링크 URI가 수신되어 화면 전환이 일어나기까지의 처리 흐름입니다.
+    <strong style="color:var(--cv-add);">Step 4</strong>에서 IntentGenerator의 모듈 소속과 호출 패턴이 변경됩니다.
+    <span class="cv-muted">각 카드가 순차적으로 점등되는 애니메이션으로 데이터 흐름을 추적할 수 있습니다.</span>
+  </p>
+
+  <div class="cv-columns" style="gap:24px;align-items:stretch;">
+
+    <!-- ===== BEFORE Pipeline ===== -->
+    <div class="cv-column" style="flex:1;">
+      <div class="cv-column__label" style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+        <span class="cv-badge cv-badge--del">- BEFORE</span>
+        <span class="cv-muted">직접 참조</span>
+      </div>
+
+      <!-- Step 1 -->
+      <div class="cv-card" style="animation:flow-step-glow 12s ease infinite;animation-delay:0s;margin-bottom:0;">
+        <div class="cv-card__header" style="display:flex;align-items:center;gap:8px;">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,0.08);font-size:12px;font-weight:700;">1</span>
+          <span class="cv-strong">딥링크 URI 수신</span>
+          <span class="cv-badge cv-badge--module" style="font-size:10px;animation:flow-badge-pulse 12s ease infinite;animation-delay:0s;">:app</span>
+        </div>
+        <div class="cv-muted">kurly://home?site=market</div>
+      </div>
+      <div style="text-align:center;padding:4px 0;animation:flow-connector-pulse 12s ease infinite;animation-delay:0.8s;">
+        <span style="color:var(--cv-del);">&#9660;</span>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="cv-card" style="animation:flow-step-glow 12s ease infinite;animation-delay:2s;margin-bottom:0;">
+        <div class="cv-card__header" style="display:flex;align-items:center;gap:8px;">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,0.08);font-size:12px;font-weight:700;">2</span>
+          <span class="cv-strong">URI 형식 변환</span>
+          <span class="cv-badge cv-badge--module" style="font-size:10px;">:app</span>
+        </div>
+        <code class="cv-muted" style="font-size:11px;">DeepLinkConverter</code>
+      </div>
+      <div style="text-align:center;padding:4px 0;animation:flow-connector-pulse 12s ease infinite;animation-delay:2.8s;">
+        <span style="color:var(--cv-del);">&#9660;</span>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="cv-card" style="animation:flow-step-glow 12s ease infinite;animation-delay:4s;margin-bottom:0;">
+        <div class="cv-card__header" style="display:flex;align-items:center;gap:8px;">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,0.08);font-size:12px;font-weight:700;">3</span>
+          <span class="cv-strong">생성기 탐색</span>
+          <span class="cv-badge cv-badge--module" style="font-size:10px;">:app</span>
+        </div>
+        <code class="cv-muted" style="font-size:11px;">InternalDeepLinkIntentGeneratorImpl</code>
+        <div class="cv-muted" style="margin-top:2px;">canGenerate(uri) 매칭</div>
+      </div>
+      <div style="text-align:center;padding:4px 0;animation:flow-connector-pulse 12s ease infinite;animation-delay:4.8s;">
+        <span style="color:var(--cv-del);">&#9660;</span>
+      </div>
+
+      <!-- Step 4 (핵심 변경) -->
+      <div class="cv-card" style="animation:flow-step-glow 12s ease infinite;animation-delay:6s;margin-bottom:0;border-left:3px solid var(--cv-del);">
+        <div class="cv-card__header" style="display:flex;align-items:center;gap:8px;">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:rgba(251,146,60,0.15);font-size:12px;font-weight:700;color:var(--cv-del);">4</span>
+          <span class="cv-strong">Intent 생성</span>
+          <span class="cv-badge cv-badge--del" style="font-size:10px;">:app</span>
+        </div>
+        <div style="font-size:12px;">
+          <code style="text-decoration:line-through;color:var(--cv-del);">MainActivity.home(ctx, site)</code>
+          <div class="cv-muted" style="margin-top:4px;">&#9888; :features &rarr; :app 직접 의존</div>
+        </div>
+      </div>
+      <div style="text-align:center;padding:4px 0;animation:flow-connector-pulse 12s ease infinite;animation-delay:7s;">
+        <span style="color:var(--cv-del);">&#9660;</span>
+      </div>
+
+      <!-- Step 5 -->
+      <div class="cv-card" style="animation:flow-step-glow 12s ease infinite;animation-delay:8s;margin-bottom:0;">
+        <div class="cv-card__header" style="display:flex;align-items:center;gap:8px;">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,0.08);font-size:12px;font-weight:700;">5</span>
+          <span class="cv-strong">화면 이동</span>
+        </div>
+        <code class="cv-muted" style="font-size:11px;">startActivity(intent)</code>
+      </div>
+
+      <!-- Dependency label -->
+      <div class="cv-card cv-card--del" style="margin-top:12px;text-align:center;padding:10px;">
+        <span style="color:var(--cv-del);font-weight:600;font-size:13px;">:features &rarr; :app</span><br>
+        <span class="cv-muted" style="font-size:11px;">역방향 의존 (모듈 경계 위반)</span>
+      </div>
+    </div>
+
+    <!-- ===== AFTER Pipeline ===== -->
+    <div class="cv-column" style="flex:1;">
+      <div class="cv-column__label" style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+        <span class="cv-badge cv-badge--add">+ AFTER</span>
+        <span class="cv-muted">인터페이스 위임</span>
+      </div>
+
+      <!-- Step 1 -->
+      <div class="cv-card" style="animation:flow-step-glow 12s ease infinite;animation-delay:0s;margin-bottom:0;">
+        <div class="cv-card__header" style="display:flex;align-items:center;gap:8px;">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,0.08);font-size:12px;font-weight:700;">1</span>
+          <span class="cv-strong">딥링크 URI 수신</span>
+          <span class="cv-badge cv-badge--module" style="font-size:10px;animation:flow-badge-pulse 12s ease infinite;animation-delay:0s;">:app</span>
+        </div>
+        <div class="cv-muted">동일</div>
+      </div>
+      <div style="text-align:center;padding:4px 0;animation:flow-connector-pulse 12s ease infinite;animation-delay:0.8s;">
+        <span style="color:var(--cv-add);">&#9660;</span>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="cv-card" style="animation:flow-step-glow 12s ease infinite;animation-delay:2s;margin-bottom:0;">
+        <div class="cv-card__header" style="display:flex;align-items:center;gap:8px;">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,0.08);font-size:12px;font-weight:700;">2</span>
+          <span class="cv-strong">URI 형식 변환</span>
+          <span class="cv-badge cv-badge--module" style="font-size:10px;">:app</span>
+        </div>
+        <div class="cv-muted">동일</div>
+      </div>
+      <div style="text-align:center;padding:4px 0;animation:flow-connector-pulse 12s ease infinite;animation-delay:2.8s;">
+        <span style="color:var(--cv-add);">&#9660;</span>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="cv-card" style="animation:flow-step-glow 12s ease infinite;animation-delay:4s;margin-bottom:0;">
+        <div class="cv-card__header" style="display:flex;align-items:center;gap:8px;">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,0.08);font-size:12px;font-weight:700;">3</span>
+          <span class="cv-strong">생성기 탐색</span>
+          <span class="cv-badge cv-badge--module" style="font-size:10px;">:app</span>
+        </div>
+        <code class="cv-muted" style="font-size:11px;">Set&lt;IntentGenerator&gt; 순회</code>
+        <div class="cv-muted" style="margin-top:2px;">동일</div>
+      </div>
+      <div style="text-align:center;padding:4px 0;animation:flow-connector-pulse 12s ease infinite;animation-delay:4.8s;">
+        <span style="color:var(--cv-add);">&#9660;</span>
+      </div>
+
+      <!-- Step 4 (핵심 변경) -->
+      <div class="cv-card cv-card--mod" style="animation:flow-step-glow 12s ease infinite;animation-delay:6s;margin-bottom:0;">
+        <div class="cv-card__header" style="display:flex;align-items:center;gap:8px;">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:rgba(96,165,250,0.2);font-size:12px;font-weight:700;color:var(--cv-add);">4</span>
+          <span class="cv-strong">Intent 생성</span>
+          <span class="cv-badge cv-badge--mod" style="font-size:10px;">:features/*</span>
+          <span class="cv-badge cv-badge--new" style="font-size:10px;">MOVED</span>
+        </div>
+        <div style="font-size:12px;">
+          <code style="color:var(--cv-add);">mainActivityNavigator.home(ctx, site)</code>
+        </div>
+        <!-- Sub-steps -->
+        <div style="border-left:3px solid var(--cv-add);margin:10px 0 0 8px;padding-left:12px;">
+          <span class="cv-badge cv-badge--new" style="font-size:10px;margin-bottom:4px;">NEW</span>
+          <code style="font-size:11px;">MainActivityNavigator</code>
+          <span class="cv-muted" style="font-size:10px;margin-left:4px;">:features 인터페이스</span>
+        </div>
+        <div style="border-left:3px solid var(--cv-add);margin:6px 0 0 8px;padding-left:12px;">
+          <span class="cv-badge cv-badge--new" style="font-size:10px;margin-bottom:4px;">NEW</span>
+          <code style="font-size:11px;">LoginRedirectProvider</code>
+          <span class="cv-muted" style="font-size:10px;margin-left:4px;">:link 인터페이스</span>
+        </div>
+      </div>
+      <div style="text-align:center;padding:4px 0;animation:flow-connector-pulse 12s ease infinite;animation-delay:6.8s;">
+        <span style="color:var(--cv-add);">&#9660;</span>
+        <span class="cv-muted" style="font-size:10px;"> interface delegation</span>
+      </div>
+
+      <!-- Step 4.5 (Navigator Impl) -->
+      <div class="cv-card cv-card--add" style="animation:flow-step-glow 12s ease infinite;animation-delay:7s;margin-bottom:0;">
+        <div class="cv-card__header" style="display:flex;align-items:center;gap:8px;">
+          <span class="cv-badge cv-badge--new" style="font-size:10px;">NEW</span>
+          <span class="cv-strong">Navigator 위임자</span>
+          <span class="cv-badge cv-badge--module" style="font-size:10px;">:app</span>
+        </div>
+        <code class="cv-muted" style="font-size:11px;">MainActivityNavigatorImpl</code>
+        <div style="border-left:3px solid var(--cv-add);margin:8px 0 0 8px;padding-left:10px;font-size:11px;" class="cv-muted">
+          home() &rarr; MainActivity.home()<br>
+          category() &rarr; MainActivity.category()<br>
+          search() &rarr; MainActivity.search()
+        </div>
+      </div>
+      <div style="text-align:center;padding:4px 0;animation:flow-connector-pulse 12s ease infinite;animation-delay:8s;">
+        <span style="color:var(--cv-add);">&#9660;</span>
+      </div>
+
+      <!-- Step 5 -->
+      <div class="cv-card" style="animation:flow-step-glow 12s ease infinite;animation-delay:8.5s;margin-bottom:0;">
+        <div class="cv-card__header" style="display:flex;align-items:center;gap:8px;">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,0.08);font-size:12px;font-weight:700;">5</span>
+          <span class="cv-strong">화면 이동</span>
+        </div>
+        <code class="cv-muted" style="font-size:11px;">startActivity(intent)</code>
+      </div>
+
+      <!-- Dependency label -->
+      <div class="cv-card cv-card--add" style="margin-top:12px;text-align:center;padding:10px;">
+        <span style="color:var(--cv-add);font-weight:600;font-size:13px;">:features &rarr; Interface &larr; :app</span><br>
+        <span class="cv-muted" style="font-size:11px;">의존성 역전 원칙(DIP) 달성</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ SECTION 3: CODE TRANSFORM ═══════════════════ -->
+<section class="cv-section">
+  <h2 class="section-title section-title--mod">호출 패턴 변환 &mdash; 코드 비교</h2>
+
+  <!-- Hero Metrics -->
+  <div class="cv-card" style="text-align:center;margin-bottom:24px;padding:28px 24px;">
+    <div style="display:flex;justify-content:center;gap:48px;flex-wrap:wrap;">
+      <div>
+        <div style="font-size:44px;font-weight:800;color:var(--cv-del);font-family:'JetBrains Mono','SF Mono',monospace;">10</div>
+        <div class="cv-muted" style="font-size:13px;">직접 Activity 참조</div>
+        <div class="cv-muted" style="font-size:11px;">MainActivity x8 + LoginActivity x2</div>
+      </div>
+      <div style="font-size:32px;color:var(--cv-muted);align-self:center;">&#8594;</div>
+      <div>
+        <div style="font-size:44px;font-weight:800;color:var(--cv-add);font-family:'JetBrains Mono','SF Mono',monospace;">2</div>
+        <div class="cv-muted" style="font-size:13px;">인터페이스 추상화</div>
+        <div class="cv-muted" style="font-size:11px;">MainActivityNavigator + LoginRedirectProvider</div>
+      </div>
+    </div>
+    <div style="margin-top:14px;">
+      <span class="cv-badge cv-badge--mod" style="font-size:12px;">Dependency Inversion</span>
+      <span class="cv-badge" style="font-size:12px;margin-left:8px;">43 IntentGenerators 영향</span>
+    </div>
+  </div>
+
+  <!-- Code Side-by-Side -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;" class="grid-2col code-compare">
+    <!-- BEFORE Code -->
+    <div>
+      <div class="cv-column__label" style="color:var(--cv-del);font-weight:700;">- BEFORE &mdash; Direct Activity Reference</div>
+      <div class="cv-card cv-card--del" style="margin-top:8px;padding:16px;">
+        <div style="font-size:11px;font-weight:600;color:var(--cv-del);margin-bottom:6px;">CategoryTabIntentGenerator.kt</div>
+        <div class="cv-code cv-code--before">
+          <pre style="background:#0d1117;font-size:12px;line-height:1.7;padding:14px;border:1px solid rgba(251,146,60,0.15);"><span style="color:#6b7280;user-select:none;">1 </span><span style="color:#c084fc;">import</span> <span style="color:#67e8f9;">com.dbs.kurly.m2</span>.<span style="color:var(--cv-del);font-weight:bold;text-decoration:underline;">MainActivity</span>
+
+<span style="color:#6b7280;user-select:none;">3 </span><span style="color:#c084fc;">class</span> <span style="color:#67e8f9;">CategoryTabIntentGenerator</span> <span style="color:#c084fc;">@Inject constructor</span>(
+<span style="color:#6b7280;user-select:none;">4 </span>    <span style="color:#c1c7d0;">session</span>: <span style="color:#67e8f9;">Session</span>
+<span style="color:#6b7280;user-select:none;">5 </span>) : <span style="color:#67e8f9;">InternalDeepLinkIntentGenerator</span>(<span style="color:#c1c7d0;">session</span>) {
+<span style="color:#6b7280;user-select:none;">6 </span>
+<span style="color:#6b7280;user-select:none;">7 </span>    <span style="color:#c084fc;">override fun</span> <span style="color:#fde68a;">generateIntent</span>(...) {
+<span style="color:#6b7280;user-select:none;">8 </span>        <span style="color:#c084fc;">return</span> <span style="color:var(--cv-del);font-weight:bold;text-decoration:underline;">MainActivity</span>.<span style="color:#fde68a;">category</span>(ctx, site, code)
+<span style="color:#6b7280;user-select:none;">9 </span>    }
+<span style="color:#6b7280;user-select:none;">10</span>}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- AFTER Code -->
+    <div>
+      <div class="cv-column__label" style="color:var(--cv-add);font-weight:700;">+ AFTER &mdash; Interface Delegation</div>
+      <div class="cv-card cv-card--add" style="margin-top:8px;padding:16px;">
+        <div style="font-size:11px;font-weight:600;color:var(--cv-add);margin-bottom:6px;">CategoryTabIntentGenerator.kt</div>
+        <div class="cv-code cv-code--after">
+          <pre style="background:#0d1117;font-size:12px;line-height:1.7;padding:14px;border:1px solid rgba(96,165,250,0.15);"><span style="color:#6b7280;user-select:none;"> 1 </span><span style="color:#c084fc;">import</span> <span style="color:#67e8f9;">com.kurly.features.navigator</span>.<span style="color:var(--cv-add);font-weight:bold;text-decoration:underline;">MainActivityNavigator</span>
+
+<span style="color:#6b7280;user-select:none;"> 3 </span><span style="color:#c084fc;">class</span> <span style="color:#67e8f9;">CategoryTabIntentGenerator</span> <span style="color:#c084fc;">@Inject constructor</span>(
+<span style="color:#6b7280;user-select:none;"> 4 </span>    <span style="color:#c084fc;">private val</span> <span style="color:var(--cv-add);text-decoration:underline;">mainActivityNavigator</span>: <span style="color:#67e8f9;">MainActivityNavigator</span>,
+<span style="color:#6b7280;user-select:none;"> 5 </span>    <span style="color:#c1c7d0;">session</span>: <span style="color:#67e8f9;">Session</span>,
+<span style="color:#6b7280;user-select:none;"> 6 </span>    <span style="color:var(--cv-add);text-decoration:underline;">loginRedirectProvider</span>: <span style="color:#67e8f9;">LoginRedirectProvider</span>,
+<span style="color:#6b7280;user-select:none;"> 7 </span>) : <span style="color:#67e8f9;">InternalDeepLinkIntentGenerator</span>(<span style="color:#c1c7d0;">session</span>, <span style="color:var(--cv-add);">loginRedirectProvider</span>) {
+<span style="color:#6b7280;user-select:none;"> 8 </span>
+<span style="color:#6b7280;user-select:none;"> 9 </span>    <span style="color:#c084fc;">override fun</span> <span style="color:#fde68a;">generateIntent</span>(...) {
+<span style="color:#6b7280;user-select:none;">10 </span>        <span style="color:#c084fc;">return</span> <span style="color:var(--cv-add);font-weight:bold;text-decoration:underline;">mainActivityNavigator</span>.<span style="color:#fde68a;">category</span>(ctx, site, code)
+<span style="color:#6b7280;user-select:none;">11 </span>    }
+<span style="color:#6b7280;user-select:none;">12 </span>}</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dependency Direction Diagram -->
+  <h3 class="cv-h3" style="margin-top:8px;margin-bottom:16px;">모듈 의존성 방향</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;" class="grid-2col">
+    <!-- BEFORE: Tight Coupling -->
+    <div class="cv-card cv-card--del" style="text-align:center;padding:28px 16px;">
+      <div style="border:2px solid var(--cv-del);border-radius:8px;padding:14px;margin-bottom:4px;background:rgba(251,146,60,0.04);">
+        <div style="font-weight:700;font-size:15px;color:var(--cv-del);">:app</div>
+        <div class="cv-muted" style="font-size:11px;">IntentGenerators + MainActivity</div>
+        <div class="cv-muted" style="font-size:11px;font-style:italic;">43개 전부 여기에 밀집</div>
+      </div>
+      <div style="font-size:22px;color:var(--cv-del);line-height:1.2;">&#9650;</div>
+      <div style="font-size:11px;color:var(--cv-del);font-weight:700;text-transform:uppercase;letter-spacing:1px;">DIRECT IMPORT</div>
+      <div style="font-size:22px;color:var(--cv-del);line-height:1.2;">&#9474;</div>
+      <div style="border:2px dashed var(--cv-muted);border-radius:8px;padding:12px;opacity:0.7;">
+        <div style="font-weight:600;font-size:14px;">:features</div>
+        <div class="cv-muted" style="font-size:11px;">순환 의존으로 Generator 이동 불가</div>
+      </div>
+    </div>
+
+    <!-- AFTER: DIP -->
+    <div class="cv-card cv-card--add" style="text-align:center;padding:28px 16px;">
+      <div style="border:2px solid var(--cv-muted);border-radius:8px;padding:12px;margin-bottom:4px;">
+        <div style="font-weight:600;font-size:14px;">:app</div>
+        <div class="cv-muted" style="font-size:11px;">Hilt 바인딩만 제공</div>
+      </div>
+      <div style="font-size:22px;color:var(--cv-add);line-height:1.2;">&#9474;</div>
+      <div style="font-size:11px;color:var(--cv-add);font-weight:700;text-transform:uppercase;letter-spacing:1px;">IMPLEMENTS</div>
+      <div style="font-size:22px;color:var(--cv-add);line-height:1.2;">&#9660;</div>
+      <div style="border:2px solid var(--cv-add);border-radius:8px;padding:12px;margin-bottom:4px;background:rgba(96,165,250,0.04);">
+        <div style="font-weight:700;font-size:14px;color:var(--cv-add);">Interfaces</div>
+        <div style="display:flex;justify-content:center;gap:6px;margin-top:4px;flex-wrap:wrap;">
+          <span class="cv-badge cv-badge--new" style="font-size:9px;">MainActivityNavigator</span>
+          <span class="cv-badge cv-badge--new" style="font-size:9px;">LoginRedirectProvider</span>
+        </div>
+      </div>
+      <div style="font-size:22px;color:var(--cv-add);line-height:1.2;">&#9650;</div>
+      <div style="font-size:11px;color:var(--cv-add);font-weight:700;text-transform:uppercase;letter-spacing:1px;">DEPENDS ON</div>
+      <div style="font-size:22px;color:var(--cv-add);line-height:1.2;">&#9474;</div>
+      <div style="border:2px solid var(--cv-add);border-radius:8px;padding:12px;background:rgba(96,165,250,0.04);">
+        <div style="font-weight:700;font-size:14px;color:var(--cv-add);">:features</div>
+        <div class="cv-muted" style="font-size:11px;">IntentGenerators 소속</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WHY -->
+  <div class="cv-card cv-card--why">
+    <div class="cv-card__header">WHY &mdash; 왜 이 변경이 필요한가?</div>
+    <div class="cv-card__body" style="font-size:13px;">
+      <strong>문제:</strong> IntentGenerator들이 <code>:app</code> 모듈의 <code>MainActivity</code>를 직접 import하여, <code>:features</code> 모듈로 이동할 수 없는 순환 의존이 발생합니다.<br><br>
+      <strong>해결:</strong> <code>MainActivityNavigator</code>와 <code>LoginRedirectProvider</code> 인터페이스를 도입하여 의존성 방향을 역전시킵니다. IntentGenerator는 인터페이스만 참조하고, <code>:app</code>이 Hilt를 통해 구현체를 주입합니다. 이로써 Generator들이 각 feature 모듈로 자유롭게 이동할 수 있게 됩니다.
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ CITATIONS ═══════════════════ -->
+<div class="cv-citations">
+  <button class="cv-citations__toggle" onclick="this.nextElementSibling.classList.toggle('open');this.querySelector('span').textContent=this.nextElementSibling.classList.contains('open')?'&#9660;':'&#9654;'">
+    <span>&#9654;</span> 적용된 설계 근거
+  </button>
+  <div class="cv-citations__content">
+    <table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:12px;">
+      <tr style="border-bottom:1px solid var(--cv-border);">
+        <td style="padding:6px 8px;color:var(--cv-muted);white-space:nowrap;">COM-01</td>
+        <td style="padding:6px 8px;">Cowan 4&plusmn;1 &mdash; 다이어그램 내 독립 요소 최대 4개</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--cv-border);">
+        <td style="padding:6px 8px;color:var(--cv-muted);white-space:nowrap;">COM-06/07</td>
+        <td style="padding:6px 8px;">Okabe-Ito 색맹 안전 팔레트 + 보조 시각 단서 (&plus;, &minus;, &rarr;, 취소선)</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--cv-border);">
+        <td style="padding:6px 8px;color:var(--cv-muted);white-space:nowrap;">COM-09</td>
+        <td style="padding:6px 8px;">Riche "So what?" &mdash; 변경의 "왜"를 WHY 카드로 명시</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--cv-border);">
+        <td style="padding:6px 8px;color:var(--cv-muted);white-space:nowrap;">COM-17</td>
+        <td style="padding:6px 8px;">Temporal Contiguity d=1.31 &mdash; 파이프라인 스텝-애니메이션 동기화</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--cv-border);">
+        <td style="padding:6px 8px;color:var(--cv-muted);white-space:nowrap;">COM-25</td>
+        <td style="padding:6px 8px;">cv-card 기반 파이프라인 + border-left 들여쓰기 sub-step</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--cv-border);">
+        <td style="padding:6px 8px;color:var(--cv-muted);white-space:nowrap;">COM-33</td>
+        <td style="padding:6px 8px;">IDE 수준 syntax highlighting &mdash; 7종 토큰 컬러</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--cv-border);">
+        <td style="padding:6px 8px;color:var(--cv-muted);white-space:nowrap;">COM-37</td>
+        <td style="padding:6px 8px;">TRANSFORM Side-by-Side 2열 필수 &mdash; Tufte Small Multiples</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--cv-border);">
+        <td style="padding:6px 8px;color:var(--cv-muted);white-space:nowrap;">COM-41/42</td>
+        <td style="padding:6px 8px;">히어로 숫자(40px+) + Before 밀집 vs After 깔끔 비대칭</td>
+      </tr>
+      <tr>
+        <td style="padding:6px 8px;color:var(--cv-muted);white-space:nowrap;">COM-43</td>
+        <td style="padding:6px 8px;">동일 유형 5+ 항목 → 대표 3개 + "... +N more" 축약</td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<!-- ═══════════════════ FOOTER ═══════════════════ -->
+<div class="cv-footer">
+  PR #7529 &middot; KMA-7705 &middot; Generated 2026-04-30 &middot; diff-viz glass theme
+</div>
+
+</body>
+</html>
