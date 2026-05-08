@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>어느 JVM이 죽었는가 — R8 OutOfMemoryError의 메커니즘</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    --grey-50: #f9fafb;
+    --grey-100: #f2f4f6;
+    --grey-200: #e5e8eb;
+    --grey-300: #d1d6db;
+    --grey-400: #b0b8c1;
+    --grey-500: #8b95a1;
+    --grey-600: #6b7684;
+    --grey-700: #4e5968;
+    --grey-800: #333d4b;
+    --grey-900: #191f28;
+    --toss-blue: #0064FF;
+    --toss-blue-light: rgba(0, 100, 255, 0.08);
+    --toss-blue-border: rgba(0, 100, 255, 0.2);
+    --bg: #ffffff;
+    --bg-elevated: var(--grey-50);
+    --bg-highlight: #ffc34236;
+    --bg-code: var(--grey-100);
+    --text-primary: var(--grey-900);
+    --text-secondary: var(--grey-700);
+    --text-tertiary: var(--grey-500);
+    --border-light: var(--grey-200);
+    --border-blockquote: var(--grey-800);
+    --content-width: 680px;
+    --wide-width: 780px;
+    --radius: 16px;
+    --radius-sm: 10px;
+    --font-body: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --font-code: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { font-family: var(--font-body); background: var(--bg); color: var(--text-primary); line-height: 1.8; font-size: 16.5px; -webkit-font-smoothing: antialiased; word-break: keep-all; overflow-wrap: break-word; }
+::selection { background: rgba(0, 100, 255, 0.15); color: var(--grey-900); }
+a { color: var(--toss-blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.article { max-width: var(--content-width); margin: 0 auto; padding: 0 24px; }
+.hero { padding: 80px 24px 48px; max-width: var(--content-width); margin: 0 auto; }
+.hero-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 24px; font-size: 0.875rem; color: var(--text-tertiary); flex-wrap: wrap; }
+.hero-meta .author { color: var(--text-secondary); font-weight: 600; }
+.hero-meta .dot { color: var(--grey-300); }
+.hero-title { font-size: 2.2rem; font-weight: 800; line-height: 1.3; color: var(--text-primary); margin-bottom: 16px; letter-spacing: -0.02em; }
+.hero-subtitle { font-size: 1.1rem; line-height: 1.7; color: var(--text-secondary); max-width: 580px; }
+.hero-tags { display: flex; gap: 8px; margin-top: 20px; flex-wrap: wrap; }
+.hero-tag { padding: 4px 12px; border-radius: var(--radius-sm); background: var(--toss-blue-light); border: 1px solid var(--toss-blue-border); font-size: 0.8rem; font-weight: 600; color: var(--toss-blue); }
+.article h2 { font-size: 1.55rem; font-weight: 800; line-height: 1.35; color: var(--text-primary); margin: 56px 0 20px 0; letter-spacing: -0.01em; }
+.article h2:first-child { margin-top: 0; }
+.article h3 { font-size: 1.2rem; font-weight: 700; line-height: 1.4; color: var(--text-primary); margin: 40px 0 14px 0; }
+.article p { margin: 0 0 20px 0; color: var(--text-primary); }
+.article strong { font-weight: 700; color: var(--grey-900); }
+.article blockquote { margin: 28px 0; padding: 0 0 0 20px; border-left: 2.5px solid var(--border-blockquote); font-size: 1.0rem; line-height: 1.7; color: var(--text-secondary); font-style: italic; }
+.article blockquote p { margin: 0 0 8px 0; }
+.article blockquote cite { font-size: 0.85rem; color: var(--text-tertiary); font-style: normal; }
+.highlight-box { margin: 28px 0; padding: 20px 24px; background: var(--bg-highlight); border-radius: var(--radius); font-weight: 600; line-height: 1.7; color: var(--text-primary); }
+.content-box { margin: 28px 0; padding: 24px 28px; background: var(--bg-elevated); border-radius: var(--radius); border: 1px solid var(--border-light); }
+.content-box-title { font-size: 0.95rem; font-weight: 700; color: var(--text-primary); margin-bottom: 12px; }
+.article code { font-family: var(--font-code); font-size: 0.88em; padding: 2px 6px; background: var(--bg-code); border-radius: 5px; color: var(--grey-800); }
+.article pre { margin: 24px 0; padding: 24px; background: var(--grey-900); border-radius: var(--radius); overflow-x: auto; line-height: 1.6; }
+.article pre code { font-family: var(--font-code); font-size: 0.85rem; background: none; padding: 0; color: #abb2bf; border-radius: 0; }
+.kw { color: #c678dd; }
+.str { color: #98c379; }
+.cmt { color: #5c6370; font-style: italic; }
+.typ { color: #e5c07b; }
+.fn { color: #61afef; }
+.ann { color: #d19a66; }
+.op { color: #56b6c2; }
+.article ul, .article ol { margin: 0 0 20px 0; padding-left: 24px; }
+.article li { margin-bottom: 10px; line-height: 1.7; }
+.article li::marker { color: var(--text-tertiary); }
+.metrics-table { width: 100%; border-collapse: collapse; margin: 24px 0; font-size: 0.92rem; }
+.metrics-table th { text-align: left; padding: 12px 16px; background: var(--bg-elevated); border-bottom: 2px solid var(--border-light); font-weight: 700; font-size: 0.78rem; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.04em; }
+.metrics-table td { padding: 12px 16px; border-bottom: 1px solid var(--border-light); color: var(--text-secondary); vertical-align: top; }
+.metrics-table .metric-label { color: var(--text-primary); font-weight: 600; }
+.summary-box { margin: 36px 0; padding: 24px 28px; background: var(--toss-blue-light); border: 1px solid var(--toss-blue-border); border-radius: var(--radius); }
+.summary-box-title { font-size: 0.82rem; font-weight: 700; color: var(--toss-blue); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.06em; }
+.summary-box p { color: var(--text-primary); font-size: 0.96rem; margin-bottom: 8px; }
+.summary-box p:last-child { margin-bottom: 0; }
+.article hr { border: none; height: 1px; background: var(--border-light); margin: 48px 0; }
+.footnotes { margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--border-light); font-size: 0.82rem; color: var(--text-tertiary); line-height: 1.8; }
+.footnotes a { color: var(--text-tertiary); text-decoration: underline; }
+.footnotes ol { padding-left: 20px; }
+.footnotes li { margin-bottom: 6px; scroll-margin-top: 24px; }
+.footnote-ref { font-size: 0.75em; vertical-align: super; font-weight: 600; }
+.footnote-ref a { color: var(--toss-blue); text-decoration: none; }
+.footnote-ref a:hover { text-decoration: underline; }
+.fn-back { color: var(--text-tertiary); text-decoration: none; margin-left: 6px; font-size: 0.9em; }
+.fn-back:hover { color: var(--toss-blue); }
+.article-footer { margin-top: 56px; padding: 32px 0; text-align: center; color: var(--text-tertiary); font-size: 0.82rem; }
+/* R8 4단계 heap 점유 차트 (CSS Grid) */
+.r8-chart { padding: 4px 0 0 0; }
+.r8-axis-label { font-size: 0.78rem; color: var(--text-tertiary); margin-bottom: 14px; font-weight: 500; }
+.r8-bars { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; align-items: end; height: 200px; border-bottom: 1.5px solid var(--grey-300); padding: 0 4px; position: relative; }
+.r8-bar-col { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; }
+.r8-bar { width: 100%; max-width: 90px; background: linear-gradient(180deg, var(--toss-blue) 0%, rgba(0, 100, 255, 0.55) 100%); border-radius: 8px 8px 0 0; box-shadow: 0 2px 6px rgba(0, 100, 255, 0.15); }
+.r8-bar.peak { background: linear-gradient(180deg, #003db8 0%, var(--toss-blue) 100%); box-shadow: 0 2px 8px rgba(0, 100, 255, 0.25); }
+.r8-bar-pct { font-size: 0.7rem; color: var(--toss-blue); font-weight: 700; margin-bottom: 4px; }
+.r8-labels { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 14px; padding: 0 4px; }
+.r8-label-col { text-align: center; }
+.r8-step { font-family: var(--font-code); font-size: 0.82rem; color: var(--text-primary); font-weight: 700; }
+.r8-substep { font-size: 0.78rem; color: var(--text-tertiary); margin-top: 2px; line-height: 1.4; }
+@media (max-width: 768px) {
+    .hero { padding: 48px 20px 32px; }
+    .hero-title { font-size: 1.7rem; }
+    .article { padding: 0 20px; }
+    .article h2 { font-size: 1.35rem; margin-top: 40px; }
+    .article h3 { font-size: 1.1rem; }
+    .article pre { padding: 16px; margin-left: -8px; margin-right: -8px; border-radius: 12px; }
+    .r8-bars { height: 160px; gap: 8px; }
+    .r8-labels { gap: 8px; }
+    .r8-step { font-size: 0.72rem; }
+    .r8-substep { font-size: 0.7rem; }
+    .metrics-table { font-size: 0.82rem; }
+    .metrics-table th, .metrics-table td { padding: 10px 10px; }
+}
+</style>
+</head>
+<body>
+
+<header class="hero">
+    <div class="hero-meta">
+        <span class="author">keechan-kurly</span>
+        <span class="dot">&middot;</span>
+        <span>Android Developer</span>
+        <span class="dot">&middot;</span>
+        <time>2026년 5월</time>
+    </div>
+    <h1 class="hero-title">어느 JVM이 죽었는가 &mdash; R8 OutOfMemoryError의 메커니즘</h1>
+    <p class="hero-subtitle">Gradle Daemon, Worker API, 그리고 whole-program optimizer의 메모리</p>
+    <div class="hero-tags">
+        <span class="hero-tag">R8</span>
+        <span class="hero-tag">Gradle</span>
+        <span class="hero-tag">JVM</span>
+        <span class="hero-tag">AGP</span>
+        <span class="hero-tag">Build</span>
+    </div>
+</header>
+
+<article class="article">
+
+    <!-- ─── 핵심 단서 (첫 시각 요소) ─── -->
+    <div class="content-box">
+        <div class="content-box-title">관찰된 두 메시지</div>
+        <p style="margin-bottom: 8px;"><strong>CI (Linux):</strong> <code>R8: java.lang.OutOfMemoryError: Java heap space</code></p>
+        <p style="margin: 0;"><strong>Local (macOS):</strong> <code>Gradle build daemon stopped: garbage collector is thrashing</code></p>
+    </div>
+
+    <h2 id="section-1">두 줄의 단서</h2>
+
+    <p>매주 일요일 새벽, develop 브랜치에서 도는 <code>Weekly Baseline Profile PR</code> 워크플로가 13분간 빌드를 돌린 끝에 같은 자리에서 죽었다. 실패 지점은 <code>:app:minifyStoreBenchmarkReleaseWithR8</code> 단계. CI 로그의 마지막 줄은 다음과 같았다.</p>
+
+    <pre><code><span class="ann">ERROR</span>: R8: java.lang.OutOfMemoryError: Java heap space
+&gt; Task :app:minifyStoreBenchmarkReleaseWithR8 <span class="ann">FAILED</span></code></pre>
+
+    <p>같은 명령을 로컬 macOS에서 동일한 JVM 인자(<code>-Xmx4g -XX:MaxMetaspaceSize=1g</code>)로 재현했더니 이번에는 다른 메시지가 나왔다.</p>
+
+    <pre><code>The Daemon will expire immediately since the JVM garbage collector is thrashing.
+The currently configured max heap space is <span class="str">'4 GiB'</span> and the configured max metaspace is <span class="str">'1 GiB'</span>.
+
+FAILURE: Build failed with an exception.
+* What went wrong:
+Gradle build daemon has been stopped: since the JVM garbage collector is thrashing</code></pre>
+
+    <p>같은 task, 같은 옵션, 같은 R8 단계인데 한쪽은 <em>Java heap space</em>로, 다른 한쪽은 <em>garbage collector is thrashing</em>으로 죽었다. 두 메시지는 다른 단계에서 나온 다른 에러처럼 보인다. 그러나 결론부터 말하면 이는 <strong>같은 사건의 두 측면</strong>이다.</p>
+
+    <p>이 글은 그 두 측면을 추적한다. 먼저 JVM 메모리 구조에서 두 메시지가 어떻게 갈라지는지 살펴보고, "어느 JVM의 heap이 죽었는가"라는 본질 질문으로 들어간다. 그 답을 찾고 나면 마지막 질문이 남는다 &mdash; <em>왜 R8은 그 정도의 heap을 요구하는가</em>. 처방은 글의 끝에 한 단락으로 정리한다.</p>
+
+    <hr>
+
+    <h2 id="section-2">두 메시지가 다른 이유</h2>
+    <h3>JVM Heap과 Gradle의 자기보호</h3>
+
+    <p>R8 OOM을 진단하려면 JVM 메모리 모델의 두 영역부터 짚어야 한다. <strong>Heap과 Metaspace는 별개의 영역이다.</strong> 객체(클래스 인스턴스)는 heap에 할당되고, 클래스 자체의 메타데이터(메서드 테이블, 상수 풀, 어노테이션)는 metaspace에 적재된다. JDK 8 이전엔 두 영역이 PermGen으로 묶여 있었지만, 이후 분리되어 각자 독립된 한도를 가진다<sup class="footnote-ref" id="ref-1"><a href="#fn1">[1]</a></sup>.</p>
+
+    <p>우리 워크플로 명령에 등장한 두 옵션이 정확히 이 분리에 대응한다.</p>
+
+    <pre><code><span class="cmt"># Heap 의 최대 크기 (4 GiB)</span>
+-Xmx4g
+
+<span class="cmt"># Metaspace 의 최대 크기 (1 GiB)</span>
+-XX:MaxMetaspaceSize=1g</code></pre>
+
+    <p>R8의 OOM은 거의 항상 <strong>Heap 부족</strong>이다. R8이 만들어내는 것은 클래스 메타데이터가 아니라 그 클래스들 사이의 reference graph 같은 <em>분석 객체</em>이기 때문이다. 이 점을 짚고 나면 두 메시지의 차이를 풀 준비가 된다.</p>
+
+    <p><code>java.lang.OutOfMemoryError: Java heap space</code>는 <strong>JVM 표준 예외</strong>다. JVM이 새 객체를 heap에 할당하려는데 free 영역이 없고 GC로도 회수가 불가능할 때, 해당 스레드에 throw한다. CI 로그의 <code>R8:</code> prefix는 R8이 자신의 작업 스레드에서 catch해 자기 로그 형식으로 다시 출력한 흔적이다. 결국 R8 worker 스레드가 객체 할당 중 직접 OOM을 받았다는 뜻이다.</p>
+
+    <p>로컬에서 본 "garbage collector is thrashing"은 <strong>JVM 예외가 아니라 Gradle의 자기보호 메시지</strong>다. Gradle Daemon은 자체적으로 GC 시간을 모니터링한다. JVM이 실제 OOM을 throw하기 전 단계, 즉 GC가 거의 시간을 다 차지하면서 회수량이 적은 상태(이를 <em>GC thrashing</em>이라 부른다)가 임계 시간 이상 지속되면, Gradle은 그 daemon을 자발적으로 만료시킨다. 다음 빌드를 위해 깨끗한 daemon을 새로 띄우려는 의도다. 사용자에게는 빌드 실패로 보이지만, JVM 입장에선 <em>아직 OOM이 throw되기 전 시점에 종료된</em> 상태다.</p>
+
+    <p>두 메시지는 결국 이렇게 정리된다.</p>
+
+    <table class="metrics-table">
+        <thead>
+            <tr><th>신호</th><th>누가 띄웠나</th><th>임계 시점</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="metric-label"><code>OutOfMemoryError: Java heap space</code></td>
+                <td>JVM</td>
+                <td>객체 할당 실패 시점</td>
+            </tr>
+            <tr>
+                <td class="metric-label"><code>daemon stopped: GC thrashing</code></td>
+                <td>Gradle</td>
+                <td>객체 할당 실패 <em>직전</em>, GC 시간 비율 임계 초과</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <p>같은 압박이 누적되다가 JVM이 먼저 폭발하느냐, Gradle이 한발 먼저 daemon을 정리하느냐의 차이일 뿐이다. 본질은 같은 heap 부족이다.</p>
+
+    <hr>
+
+    <h2 id="section-3">-Xmx4g가 누구의 heap이었는가</h2>
+
+    <p>이제 본질 질문으로 들어간다. 우리가 명령줄에 적은 <code>-Dorg.gradle.jvmargs="-Xmx4g..."</code>는 정확히 <em>어느 JVM의 heap</em> 한도였는가.</p>
+
+    <p>Gradle 공식 문서는 이 속성을 한 줄로 정의한다.</p>
+
+    <blockquote>
+        <p>Specifies the JVM arguments used for the <strong>Gradle Daemon</strong>. ... This does not affect the JVM settings for the Gradle client VM.</p>
+        <cite>&mdash; docs.gradle.org, <em>The Build Environment</em><sup class="footnote-ref" id="ref-2"><a href="#fn2">[2]</a></sup></cite>
+    </blockquote>
+
+    <p>즉 <code>-Xmx4g</code>는 <strong>Gradle Daemon JVM</strong>의 heap이다. CLI를 띄운 client VM은 아니다. 그렇다면 다음 질문은, R8은 그 daemon JVM 위에서 도는가 아니면 별도 프로세스에서 도는가 &mdash; 이다.</p>
+
+    <p>R8은 Gradle Worker API를 통해 호출되는 worker action이다. Worker API는 세 가지 격리 수준을 제공한다<sup class="footnote-ref" id="ref-3"><a href="#fn3">[3]</a></sup>.</p>
+
+    <table class="metrics-table">
+        <thead>
+            <tr><th>Isolation</th><th>메모리 공유</th></tr>
+        </thead>
+        <tbody>
+            <tr><td class="metric-label">No isolation</td><td>부모 JVM의 classloader/heap 직접 공유</td></tr>
+            <tr><td class="metric-label">ClassLoader isolation</td><td>같은 JVM, classloader만 격리</td></tr>
+            <tr><td class="metric-label">Process isolation</td><td>별도 JVM 프로세스, heap 완전 분리</td></tr>
+        </tbody>
+    </table>
+
+    <p>AGP 8.x는 R8을 <em>별도 프로세스로 띄우는</em> 방법을 명시적인 <em>opt-in</em>으로 제공한다. <code>settings.gradle</code>에서 R8 Execution Profile을 정의하고 <code>runInSeparateProcess = true</code>를 주는 방식이다<sup class="footnote-ref" id="ref-4"><a href="#fn4">[4]</a></sup>.</p>
+
+    <pre><code><span class="kw">android</span> {
+    execution {
+        profiles {
+            create(<span class="str">"server"</span>) {
+                r8 {
+                    runInSeparateProcess = <span class="kw">true</span>
+                    jvmOptions += listOf(
+                        <span class="str">"-Xms2048m"</span>,
+                        <span class="str">"-Xmx8192m"</span>,
+                        <span class="str">"-XX:+HeapDumpOnOutOfMemoryError"</span>,
+                    )
+                }
+            }
+            defaultProfile = <span class="str">"server"</span>
+        }
+    }
+}</code></pre>
+
+    <p>이 옵션이 <em>opt-in</em>이라는 점이 핵심이다. <code>settings.gradle</code>에 위 블록이 없으면 R8 worker는 별도 프로세스에서 돌지 않는다. 즉 <strong>Gradle Daemon JVM 안에서 worker로 동작하며, daemon의 heap을 그대로 공유한다.</strong> 우리 프로젝트의 <code>settings.gradle</code>에는 이 블록이 없다. 따라서 우리 <code>-Xmx4g</code>는 <em>Gradle Daemon JVM의 heap = R8 worker가 작업한 heap</em>이었다.</p>
+
+    <p>여기에 <code>--no-daemon</code>이라는 추가 변수가 있다. 이 옵션은 daemon을 띄우지 않는 것이 아니라, <strong>single-use daemon을 fork해 빌드 1회만 사용하고 종료한다.</strong> 결과적으로 매 빌드가 cold JVM 위에서 시작된다. JIT 캐시 없이 인터프리터 모드로 출발해 바이트코드 실행 중 점진적으로 컴파일하므로, 같은 R8 작업이라도 GC 빈도와 메모리 working set이 daemon 재사용 케이스보다 두꺼워진다. 우리 워크플로의 두 단계 모두 <code>--no-daemon</code>이 붙어 있다.</p>
+
+    <p>정리하면 우리 <code>-Xmx4g</code>는 다음 모든 부담을 떠안고 있는 JVM의 heap이었다.</p>
+
+    <ul>
+        <li>Gradle Daemon 자체 (Configuration phase, task graph, build cache 인메모리 인덱스)</li>
+        <li>AGP의 R8Task 코드</li>
+        <li><strong>R8 worker가 만들어내는 분석 객체 &mdash; reference graph, IR, 매핑 테이블</strong></li>
+        <li>JIT 컴파일러가 점진적으로 따뜻해지면서 늘어나는 워킹 셋</li>
+    </ul>
+
+    <p>이제 마지막 변수 하나만 남았다. 저 R8 worker가 정확히 <em>얼마나</em> 메모리를 요구하는가, 그리고 왜 그런가.</p>
+
+    <hr>
+
+    <h2 id="section-4">R8이 메모리를 먹는 진짜 이유</h2>
+    <h3>whole-program reference graph</h3>
+
+    <p>R8 자체의 정의는 단순하다.</p>
+
+    <blockquote>
+        <p>R8 is a java program shrinking and minification tool that converts java byte code to optimized dex code.</p>
+        <cite>&mdash; r8.googlesource.com, R8 README<sup class="footnote-ref" id="ref-5"><a href="#fn5">[5]</a></sup></cite>
+    </blockquote>
+
+    <p>여기서 메모리 부하를 결정하는 단어가 <em>whole-program</em>이다. R8은 모듈 단위 컴파일러가 아니라 앱 전체를 하나의 단위로 분석하는 <strong>whole-program optimizer</strong>다. 이는 구체적으로 다음을 의미한다 &mdash; R8이 동작하는 동안, 앱과 모든 의존성의 클래스 그래프가 동시에 메모리에 적재되어 있어야 한다. 메모리 곡선이 코드량(MB)에 선형이 아니라 <em>참조 밀도(reference density)</em>에 비례해 비선형으로 늘어나는 근본 이유가 여기에 있다.</p>
+
+    <p>R8의 동작은 공식 문서 기준 네 단계로 나뉜다<sup class="footnote-ref" id="ref-6"><a href="#fn6">[6]</a></sup>.</p>
+
+    <h3>1단계 &mdash; Code Shrinking (tree shaking)</h3>
+
+    <p>R8의 첫 작업이자 메모리 부담이 가장 큰 단계다.</p>
+
+    <blockquote>
+        <p>R8 identifies and removes unreachable code from your application and its library dependencies. By analyzing the entry points of your app (such as Activities or Services defined in the manifest), R8 builds a graph of referenced code and removes anything that remains unreferenced.</p>
+        <cite>&mdash; developer.android.com, <em>Shrink, obfuscate, and optimize your app</em></cite>
+    </blockquote>
+
+    <p>핵심 동사는 <em>builds a graph</em>다. R8은 manifest의 component, ProGuard keep rules 등을 entry point로 삼아, 그 지점에서 reachable한 모든 클래스/메서드/필드를 그래프로 구축한다. 이 그래프는 앱 코드뿐 아니라 모든 의존성 jar의 클래스를 노드로 갖는다. 노드 수십만 개, 엣지 수백만 개의 데이터 구조가 한꺼번에 heap에 펼쳐진다는 뜻이다.</p>
+
+    <h3>2단계 &mdash; Logical Optimizations</h3>
+
+    <p>그래프를 갖고 다음 두 종류의 변환을 수행한다.</p>
+
+    <blockquote>
+        <p>Method Inlining: R8 replaces a method call site with the actual body of the called method... Class Merging: R8 combines sets of classes and interfaces into a single class.</p>
+        <cite>&mdash; 위 문서</cite>
+    </blockquote>
+
+    <p>각 변환 후보를 평가하려면 호출 그래프의 양 끝(call site, callee body)을 동시에 메모리에 두고 IR(중간 표현)로 변환해 비교해야 한다. Inlining 후보, class merge 후보 정보가 누적되며 IR이 메모리에 쌓인다.</p>
+
+    <h3>3단계 &mdash; Obfuscation</h3>
+
+    <p>모든 식별자에 새 이름을 부여하고 그 매핑을 <code>mapping.txt</code>로 기록한다.</p>
+
+    <blockquote>
+        <p>R8 shortens the names of classes, fields, and methods (for example, com.example.MyActivity could become a.b.a).</p>
+    </blockquote>
+
+    <p>매핑 테이블 자체는 비교적 작지만, 1~2단계 산출물 위에 추가되는 자료구조다.</p>
+
+    <h3>4단계 &mdash; DEX 작성</h3>
+
+    <p>최종 dex 바이트코드를 메모리 버퍼에 작성한 뒤 디스크로 flush한다.</p>
+
+    <p>여기에 한 가지 변수가 더 있다. <strong>AGP 8.0 이상에서 기본 활성화된 R8 Full Mode</strong>다.</p>
+
+    <blockquote>
+        <p>R8 full mode provides significantly more powerful optimization. It is enabled by default.</p>
+        <cite>&mdash; developer.android.com, <em>Shrink, obfuscate, and optimize your app</em></cite>
+    </blockquote>
+
+    <p>Full Mode는 더 공격적인 가정을 채택한다. 예컨대 keep rule로 명시되지 않은 missing class는 <em>의도된 것</em>으로 간주하고 더 깊은 inlining/merging을 시도한다. 결과적으로 분석 그래프와 IR이 더 두껍게 쌓이며, 같은 입력 대비 메모리 점유가 늘어난다. AGP 8.0 이상을 사용한다면 이 모드가 기본값이라는 점을 인지하고 있어야 한다.</p>
+
+    <p>네 단계를 합쳐 메모리 곡선을 그리면 대략 이런 형태다.</p>
+
+    <div class="content-box">
+        <div class="content-box-title">R8 4단계와 heap 점유 곡선 (개념도)</div>
+        <div class="r8-chart">
+            <div class="r8-axis-label">heap 사용량 →</div>
+            <div class="r8-bars" role="img" aria-label="R8 4단계 heap 점유 막대 차트. 1단계 30%, 2단계 100% (정점), 3단계 60%, 4단계 25%.">
+                <div class="r8-bar-col">
+                    <div class="r8-bar-pct">30%</div>
+                    <div class="r8-bar" style="height: 30%"></div>
+                </div>
+                <div class="r8-bar-col">
+                    <div class="r8-bar-pct">100%</div>
+                    <div class="r8-bar peak" style="height: 100%"></div>
+                </div>
+                <div class="r8-bar-col">
+                    <div class="r8-bar-pct">60%</div>
+                    <div class="r8-bar" style="height: 60%"></div>
+                </div>
+                <div class="r8-bar-col">
+                    <div class="r8-bar-pct">25%</div>
+                    <div class="r8-bar" style="height: 25%"></div>
+                </div>
+            </div>
+            <div class="r8-labels">
+                <div class="r8-label-col">
+                    <div class="r8-step">[1] Tree shaking</div>
+                    <div class="r8-substep">graph 구축</div>
+                </div>
+                <div class="r8-label-col">
+                    <div class="r8-step">[2] Logical opt</div>
+                    <div class="r8-substep">IR 누적</div>
+                </div>
+                <div class="r8-label-col">
+                    <div class="r8-step">[3] Obfuscate</div>
+                    <div class="r8-substep">매핑 추가</div>
+                </div>
+                <div class="r8-label-col">
+                    <div class="r8-step">[4] DEX</div>
+                    <div class="r8-substep">flush</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <p>1~2단계 사이가 가장 두껍다. tree shaking의 reference graph가 아직 메모리에 남아 있는데 logical optimization의 IR이 그 위에 쌓이기 때문이다. CI 로그의 OOM 시점도 이 구간일 가능성이 높다.</p>
+
+    <p>이 구조에서 4 GiB가 부족했던 이유는 명료하다 &mdash; 우리 앱은 40개 이상의 자체 모듈 + 수백 개의 의존성 jar를 갖는다. 그 모두의 클래스가 노드가 되는 reference graph + IR + R8 외 Gradle/AGP 자체의 워킹 셋이 한 heap 안에서 경쟁한다. 4 GiB는 그 경쟁에서 R8이 자기 분석 객체를 다 펼치기 직전 한도와 위태롭게 맞물려 있던 수치다.</p>
+
+    <hr>
+
+    <h2 id="section-5">왜 평소엔 통과하던 빌드가 이번엔 죽었는가</h2>
+
+    <p>같은 워크플로가 한동안 통과해 왔다는 사실은 이 분석에 반론처럼 작동한다. 4 GiB가 본질적으로 부족하다면 매번 죽어야 하지 않는가. 답은 두 가지 외부 변수가 이번 실행에서 동시에 깨졌기 때문이다.</p>
+
+    <p>첫째, <strong>GitHub Actions cache의 광범위한 미스</strong>. 이번 실행의 워크플로 annotation에는 다수의 캐시 키가 <code>Cache service responded with 400</code>으로 실패한 기록이 있다.</p>
+
+    <pre><code>Failed to restore gradle-home-v1|Linux|generate-baseline-profile[...]:
+  Error: Cache service responded with 400
+Failed to save cache entry with path
+  '/opt/.../.gradle/caches/transforms-4/*/...'</code></pre>
+
+    <p>영향을 받은 키는 dependency cache, transforms cache, kotlin-dsl accessor cache, gradle wrapper cache 등 빌드 핵심 경로 거의 전체였다. 결과적으로 이번 빌드는 의존성 해상도, AGP transform, kotlin-dsl 컴파일을 cold 상태에서 처음부터 수행했다. 이는 R8 단계와 직접 인과는 없지만 같은 daemon JVM의 working set을 평소보다 두껍게 만든다. R8 worker가 자기 분석 객체를 펼칠 즈음, 그 옆 자리는 평소보다 좁아져 있었다.</p>
+
+    <p>둘째, <strong><code>--no-daemon</code> 누적 효과</strong>. 앞서 본 대로 우리 명령은 daemon 재사용을 포기한다. JIT가 따뜻해지지 않은 상태에서 인터프리터 실행이 길어지면 같은 객체 생성률에서도 minor GC가 더 자주 발생하고, tenured 영역으로 promotion되기 전 객체가 일시적으로 누적되며 heap pressure가 올라간다. cold start와 cache miss가 겹치면 이 효과가 가산된다.</p>
+
+    <p>평소엔 이 두 조건 중 하나가 살아 있어 4 GiB 안에 R8이 들어왔던 것이다. 이번엔 둘 다 깨지면서 reference graph 구축 단계에서 정확히 한도에 부딪혔다. 즉 <strong>4 GiB는 외부 조건이 우호적일 때만 통과 가능한 수치</strong>였고, 빌드는 점점 그 가장자리를 향해 자라고 있었다.</p>
+
+    <hr>
+
+    <h2 id="section-6">처방</h2>
+
+    <p>원리를 알면 처방은 비교적 단순해진다. 두 갈래가 있다.</p>
+
+    <table class="metrics-table">
+        <thead>
+            <tr><th>처방</th><th>변경 위치</th><th>효과</th><th>단점</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="metric-label">Daemon <code>-Xmx</code> 상향 (<code>4g</code> → <code>8g</code>)</td>
+                <td><code>*.yml</code></td>
+                <td>즉효, 1줄 변경</td>
+                <td>Daemon 전체에 큰 heap을 항상 잡음. CI runner RAM 압박</td>
+            </tr>
+            <tr>
+                <td class="metric-label">R8 Execution Profile 분리 (<code>runInSeparateProcess</code>)</td>
+                <td><code>settings.gradle</code></td>
+                <td>R8만 격리된 JVM에서 동작, daemon 영향 없음</td>
+                <td>AGP 8.x 이상 필요, 설정 추가</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <p>전자는 같은 heap 안에 모든 부담을 그대로 두고 한도만 늘리는 방식이고, 후자는 heap을 둘로 나눠 R8만 자기 공간에서 일하게 하는 방식이다. 단기 처방으로는 전자가, 빌드 인프라 정합성으로는 후자가 옳다. 우리 팀의 1차 처방은 워크플로의 <code>-Xmx4g</code>를 이미 통과 중인 빌드 단계와 동일한 <code>-Xmx8g</code>로 맞추는 변경이다. R8 Execution Profile 분리는 후속 과제로 남는다.</p>
+
+    <hr>
+
+    <h2 id="section-7">정리</h2>
+
+    <p>두 줄의 단서로 시작했다. CI의 <em>Java heap space</em>와 로컬의 <em>garbage collector is thrashing</em>은 다른 사건이 아니라 같은 heap의 두 측면이었다. 먼저 JVM 메모리 구조에서 두 진단이 어떻게 갈라지는지 보았고, <code>-Xmx4g</code>가 Gradle Daemon JVM의 heap이며 R8 worker가 별도 프로세스가 아닌 그 daemon 안에서 동작한다는 사실을 확인했다. 그 다음 R8이 <em>whole-program optimizer</em>라는 본질에서 reference graph가 메모리를 비선형으로 차지하는 이유를 짚었다. 마지막으로 cache miss와 <code>--no-daemon</code>이 평소엔 살아 있던 안전 마진을 깎아내며 4 GiB 한도를 건드렸음을 보았다.</p>
+
+    <div class="summary-box">
+        <div class="summary-box-title">Takeaway</div>
+        <p>R8 OOM은 R8의 결함이 아니다. <em>whole-program optimizer라는 본질</em>과 <em>Gradle Daemon JVM과 heap을 공유하는 구조</em>가 만나는 자리에서 자연스레 발생하는 압박이다.</p>
+        <p>다음에 같은 메시지를 만나면 두 질문을 먼저 던지자. <strong>어느 JVM의 heap이 죽었는가, 그리고 어느 단계에서 죽었는가.</strong> 이 두 답이 처방의 절반을 이미 결정한다.</p>
+    </div>
+
+    <!-- ─── Footnotes ─── -->
+    <div class="footnotes">
+        <ol>
+            <li id="fn1">JEP 122: Remove the Permanent Generation. <a href="https://openjdk.org/jeps/122">openjdk.org/jeps/122</a> <a href="#ref-1" class="fn-back" title="본문으로 돌아가기">&#x21A9;</a></li>
+            <li id="fn2">Gradle, <em>The Build Environment &mdash; Configuring JVM memory</em>. <a href="https://docs.gradle.org/current/userguide/build_environment.html#sec:configuring_jvm_memory">docs.gradle.org</a> <a href="#ref-2" class="fn-back" title="본문으로 돌아가기">&#x21A9;</a></li>
+            <li id="fn3">Gradle, <em>The Worker API</em>. <a href="https://docs.gradle.org/current/userguide/worker_api.html">docs.gradle.org</a> <a href="#ref-3" class="fn-back" title="본문으로 돌아가기">&#x21A9;</a></li>
+            <li id="fn4">Android Developers, <em>Configure how R8 runs</em>. <a href="https://developer.android.com/build/r8-execution-profiles">developer.android.com</a> <a href="#ref-4" class="fn-back" title="본문으로 돌아가기">&#x21A9;</a></li>
+            <li id="fn5">R8 Source Repository, README. <a href="https://r8.googlesource.com/r8/+/refs/heads/main/README.md">r8.googlesource.com</a> <a href="#ref-5" class="fn-back" title="본문으로 돌아가기">&#x21A9;</a></li>
+            <li id="fn6">Android Developers, <em>Shrink, obfuscate, and optimize your app</em>. <a href="https://developer.android.com/build/shrink-code">developer.android.com</a> <a href="#ref-6" class="fn-back" title="본문으로 돌아가기">&#x21A9;</a></li>
+        </ol>
+    </div>
+
+    <div class="article-footer">
+        <p>&copy; 2026 keechan-kurly &middot; Android Developer at Kurly</p>
+    </div>
+
+</article>
+
+</body>
+</html>
