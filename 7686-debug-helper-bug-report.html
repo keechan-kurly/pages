@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PR #7686 — KMA-7974 개발자 모드 Jira 티켓 생성 기능 — 신규 클래스 관계 & 플로우</title>
+<style>
+/* ──────── diff-viz: glass theme (embedded) ──────── */
+:root {
+  --cv-add: #60a5fa;
+  --cv-del: #fb923c;
+  --cv-mod: #fbbf24;
+  --cv-mov: #38bdf8;
+  --cv-bg: #0c0a1a;
+  --cv-text: #f1f5f9;
+  --cv-text-secondary: #c1c7d0;
+  --cv-muted: #8892a4;
+  --cv-border: rgba(255,255,255,0.10);
+  --cv-surface: rgba(255,255,255,0.04);
+  --cv-card-bg: rgba(255,255,255,0.06);
+  --cv-code-bg: rgba(0,0,0,0.35);
+  --cv-add-surface: rgba(96,165,250,0.08);
+  --cv-del-surface: rgba(251,146,60,0.08);
+  --cv-mod-surface: rgba(251,191,36,0.06);
+  --cv-mov-surface: rgba(56,189,248,0.08);
+  --glass-blur: 16px;
+  --glass-saturation: 180%;
+  --glass-border: rgba(255,255,255,0.12);
+  --glass-border-hover: rgba(255,255,255,0.20);
+  --glass-radius: 16px;
+  --glass-radius-lg: 24px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  color: var(--cv-text);
+  background: var(--cv-bg);
+  line-height: 1.7;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 48px 32px 64px;
+  -webkit-font-smoothing: antialiased;
+  position: relative;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background:
+    radial-gradient(ellipse 50% 40% at 20% 20%, rgba(99,102,241,0.15) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 50% at 80% 30%, rgba(236,72,153,0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 50% 80%, rgba(56,189,248,0.08) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+body > * { position: relative; z-index: 1; }
+
+/* HERO */
+.cv-hero {
+  position: relative;
+  padding: 56px 40px 48px;
+  margin-bottom: 32px;
+  border-radius: var(--glass-radius-lg);
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(24px) saturate(var(--glass-saturation));
+  -webkit-backdrop-filter: blur(24px) saturate(var(--glass-saturation));
+  border: 1px solid var(--glass-border);
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06);
+}
+.cv-hero::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%);
+}
+.cv-hero__eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 600; letter-spacing: 0.5px;
+  color: var(--cv-muted);
+  margin-bottom: 14px;
+  text-transform: uppercase;
+}
+.cv-hero__eyebrow .pill {
+  background: linear-gradient(135deg, rgba(139,92,246,0.20), rgba(236,72,153,0.20));
+  border: 1px solid rgba(236,72,153,0.30);
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 11px;
+  color: #f5d0fe;
+  letter-spacing: 0.3px;
+  text-transform: none;
+}
+.cv-hero__title {
+  font-size: 32px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 16px;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  position: relative;
+}
+.cv-hero__title .accent {
+  background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 50%, #f59e0b 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.cv-hero__subtitle {
+  font-size: 15px;
+  color: var(--cv-text-secondary);
+  margin: 0 0 18px;
+  line-height: 1.65;
+  position: relative;
+  max-width: 760px;
+}
+.cv-hero__stats {
+  display: flex; gap: 12px; flex-wrap: wrap;
+  margin-top: 12px;
+  position: relative;
+}
+.cv-hero__stat {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--cv-border);
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 12px;
+  color: var(--cv-text-secondary);
+  display: flex; align-items: center; gap: 6px;
+}
+.cv-hero__stat strong { color: var(--cv-add); font-weight: 700; }
+.cv-hero__stat--del strong { color: var(--cv-del); }
+.cv-hero__stat--mod strong { color: var(--cv-mod); }
+.cv-hero__glow {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.cv-hero__glow--tr {
+  top: -100px; right: -80px;
+  width: 320px; height: 320px;
+  background: radial-gradient(circle, rgba(139,92,246,0.25) 0%, transparent 65%);
+}
+.cv-hero__glow--bl {
+  bottom: -60px; left: -40px;
+  width: 220px; height: 220px;
+  background: radial-gradient(circle, rgba(236,72,153,0.15) 0%, transparent 65%);
+}
+
+/* Legend */
+.cv-legend {
+  display: flex; gap: 20px; flex-wrap: wrap;
+  padding: 14px 20px;
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  border: 1px solid var(--cv-border);
+  border-radius: var(--glass-radius);
+  margin-bottom: 36px;
+  font-size: 13px;
+  color: var(--cv-muted);
+}
+.cv-legend__item { display: flex; align-items: center; gap: 8px; }
+.cv-legend__dot {
+  width: 10px; height: 10px; border-radius: 50%; display: inline-block;
+  box-shadow: 0 0 10px currentColor, 0 0 20px currentColor;
+}
+
+/* Section */
+.cv-section { margin-bottom: 44px; animation: cv-fade-in 500ms ease-out both; }
+.cv-section:nth-child(2) { animation-delay: 60ms; }
+.cv-section:nth-child(3) { animation-delay: 120ms; }
+.cv-section:nth-child(4) { animation-delay: 180ms; }
+
+.cv-section-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 6px;
+  padding-left: 12px;
+  border-left: 3px solid var(--cv-add);
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+}
+.cv-section-eyebrow {
+  font-size: 11px; font-weight: 600;
+  color: var(--cv-muted);
+  text-transform: uppercase; letter-spacing: 1.5px;
+  margin: 0 0 6px;
+  padding-left: 12px;
+}
+.cv-section-lead {
+  font-size: 13px;
+  color: var(--cv-muted);
+  margin: 0 0 20px;
+  padding-left: 12px;
+  line-height: 1.6;
+}
+
+/* Card (Glass) */
+.cv-card {
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius);
+  padding: 18px 22px;
+  margin-bottom: 16px;
+  transition: border-color 250ms ease, box-shadow 250ms ease, transform 250ms ease;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.04);
+}
+.cv-card:hover {
+  border-color: var(--glass-border-hover);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06);
+  transform: translateY(-1px);
+}
+.cv-card--add {
+  border-color: rgba(96,165,250,0.20);
+  background: rgba(96,165,250,0.06);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15), 0 0 24px rgba(96,165,250,0.06), inset 0 1px 0 rgba(96,165,250,0.08);
+}
+.cv-card--del {
+  border-color: rgba(251,146,60,0.20);
+  background: rgba(251,146,60,0.06);
+}
+.cv-card--mod {
+  border-color: rgba(251,191,36,0.15);
+  background: rgba(251,191,36,0.04);
+}
+.cv-card--why {
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  border: 1px solid var(--cv-border);
+  border-left: 3px solid var(--cv-mod);
+  border-radius: 0 var(--glass-radius) var(--glass-radius) 0;
+}
+
+/* Typography */
+.cv-h2 { font-size: 17px; font-weight: 700; color: #ffffff; letter-spacing: -0.01em; margin-bottom: 12px; }
+.cv-h3 { font-size: 14px; font-weight: 700; color: #ffffff; margin-bottom: 8px; line-height: 1.45; }
+.cv-body { font-size: 13px; color: var(--cv-text-secondary); line-height: 1.65; }
+.cv-muted { font-size: 12px; color: var(--cv-muted); line-height: 1.6; }
+
+.cv-text-add { color: var(--cv-add); }
+.cv-text-del { color: var(--cv-del); }
+.cv-text-mod { color: var(--cv-mod); }
+.cv-text-mov { color: var(--cv-mov); }
+
+/* Badge */
+.cv-badge {
+  display: inline-flex; align-items: center;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--cv-muted);
+  border: 1px solid var(--cv-border);
+  white-space: nowrap;
+}
+.cv-badge--add { background: rgba(96,165,250,0.10); color: var(--cv-add); border-color: rgba(96,165,250,0.25); }
+.cv-badge--del { background: rgba(251,146,60,0.10); color: var(--cv-del); border-color: rgba(251,146,60,0.25); }
+.cv-badge--mod { background: rgba(251,191,36,0.10); color: var(--cv-mod); border-color: rgba(251,191,36,0.25); }
+.cv-badge--mov { background: rgba(56,189,248,0.10); color: var(--cv-mov); border-color: rgba(56,189,248,0.25); }
+.cv-badge--new { background: var(--cv-add); color: #0c0a1a; font-weight: 700; border-color: transparent; }
+.cv-badge--module {
+  background: rgba(96,165,250,0.08);
+  color: var(--cv-add);
+  border-color: rgba(96,165,250,0.20);
+  font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+  font-size: 10.5px;
+}
+
+code {
+  font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+  background: rgba(0,0,0,0.30);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.9em;
+  color: #e0e7ef;
+  white-space: nowrap;
+  word-break: keep-all;
+}
+
+/* Citations */
+.cv-citations {
+  margin-top: 40px;
+  padding: 16px 20px;
+  border: 1px solid var(--cv-border);
+  border-radius: var(--glass-radius);
+  background: rgba(255,255,255,0.02);
+}
+.cv-citations summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--cv-muted);
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  user-select: none;
+  transition: color 200ms ease;
+}
+.cv-citations summary::-webkit-details-marker { display: none; }
+.cv-citations summary::before {
+  content: '▸';
+  display: inline-block;
+  transition: transform 200ms ease;
+  color: var(--cv-add);
+  font-size: 10px;
+}
+.cv-citations[open] summary::before { transform: rotate(90deg); }
+.cv-citations summary:hover { color: var(--cv-text-secondary); }
+.cv-citations__body {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--cv-border);
+}
+.cv-citations__table {
+  width: 100%; border-collapse: collapse; font-size: 12px;
+}
+.cv-citations__table th {
+  text-align: left; padding: 6px 8px;
+  color: var(--cv-muted); font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.5px;
+  font-size: 10px;
+  border-bottom: 1px solid var(--cv-border);
+}
+.cv-citations__table td {
+  padding: 6px 8px;
+  color: var(--cv-text-secondary);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.cv-citations__table td:first-child {
+  color: var(--cv-add);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* Footer */
+.cv-footer {
+  margin-top: 48px;
+  padding-top: 18px;
+  border-top: 1px solid var(--cv-border);
+  font-size: 11px;
+  color: var(--cv-muted);
+  text-align: center;
+  letter-spacing: 0.3px;
+}
+
+/* Animation */
+@keyframes cv-fade-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+</style>
+</head>
+<body>
+
+<header class="cv-hero">
+  <span class="cv-hero__glow cv-hero__glow--tr"></span>
+  <span class="cv-hero__glow cv-hero__glow--bl"></span>
+  <div class="cv-hero__eyebrow">
+    <span>PR #7686</span> · <span>2026-05-28</span>
+    <span class="pill">KMA-7974 · debug-helper</span>
+  </div>
+  <h1 class="cv-hero__title">
+    <span class="accent">디버그 빌드</span>에서 한 번의 탭으로<br>
+    Jira 티켓을 생성하는 <span class="accent">버그 리포트 파이프라인</span>
+  </h1>
+  <p class="cv-hero__subtitle">
+    플로팅 Jira 아이콘을 한 번의 탭으로 눌러 현재 화면의 <strong>스크린샷 · 메타데이터 · 최근 로그</strong>를 자동 수집하여
+    Jira REST API에 직접 티켓을 생성한다. QA·개발 사이클의 버그 신고 비용을 낮추는 것이 목적.
+    `BuildConfig.DEBUG` + `useBugReport` 토글 이중 가드로 Release 빌드 영향 차단.
+  </p>
+  <div class="cv-hero__stats">
+    <span class="cv-hero__stat"><strong>67</strong> files changed</span>
+    <span class="cv-hero__stat"><strong>+3,184</strong> additions</span>
+    <span class="cv-hero__stat cv-hero__stat--del"><strong>−18</strong> deletions</span>
+    <span class="cv-hero__stat cv-hero__stat--mod"><strong>5</strong> role groups · <strong>30</strong> new classes</span>
+  </div>
+</header>
+
+<div class="cv-legend">
+  <span class="cv-legend__item"><span class="cv-legend__dot" style="background:var(--cv-add);color:var(--cv-add);"></span>추가 <code style="background:transparent;padding:0;">+</code></span>
+  <span class="cv-legend__item"><span class="cv-legend__dot" style="background:var(--cv-mod);color:var(--cv-mod);"></span>수정 <code style="background:transparent;padding:0;">~</code></span>
+  <span class="cv-legend__item"><span class="cv-legend__dot" style="background:var(--cv-del);color:var(--cv-del);"></span>삭제·분기 <code style="background:transparent;padding:0;">−</code></span>
+  <span class="cv-legend__item"><span class="cv-legend__dot" style="background:var(--cv-mov);color:var(--cv-mov);"></span>외부 의존 <code style="background:transparent;padding:0;">→</code></span>
+</div>
+
+<!-- ───────────────────────── Section 1: 클래스 관계 ───────────────────────── -->
+<p class="cv-section-eyebrow">PART 1 · 어떤 관계인가</p>
+<h2 class="cv-section-title">신규 클래스 30개의 5개 역할 그룹</h2>
+<p class="cv-section-lead">
+  새 패키지 <code>debug-helper/bugreport/</code> 아래 30개 클래스를 역할별로 묶으면 5개 그룹으로 정리된다. 각 그룹은 단일 책임을 가지며, 그룹 간 의존은 단방향(<strong>A→B→C→D</strong>) + 양방향 1쌍(<strong>D⇄E</strong>)으로 단순하다.
+</p>
+
+<!-- strategy: module-map -->
+<section class="cv-section">
+  <div class="cv-card cv-card--add" style="margin-bottom: 16px; border-left: 4px solid var(--cv-add);">
+    <div class="cv-h3" style="margin: 0 0 4px 0;">WHY · QA·개발 사이클의 버그 신고 비용 감축</div>
+    <div class="cv-muted">디버그 빌드에서 <strong>한 번의 탭</strong>으로 화면 컨텍스트(스크린샷 + 환경 + 로그)를 자동 수집해 Jira 티켓 생성</div>
+    <div style="margin-top: 10px;">
+      <span class="cv-badge cv-badge--mod" style="font-weight: 700;">🔒 GUARD</span>
+      <span class="cv-muted" style="margin-left: 6px;"><code>BuildConfig.DEBUG</code> &amp;&amp; <code>DebuggingModuleConfig.useBugReport</code> — Release 빌드 완전 차단</span>
+    </div>
+  </div>
+
+  <div class="cv-h2" style="margin-bottom: 4px;">신규 패키지 <code>debug-helper/bugreport/</code> — 5개 역할 그룹</div>
+  <div class="cv-muted" style="margin-bottom: 16px;">사용자 동선 순서: <span class="cv-text-add">A(진입)</span> → <span class="cv-text-add">B(수집)</span> → <span class="cv-text-add">C(편집)</span> → <span class="cv-text-add">D(전송)</span> ⇄ <span class="cv-text-add">E(인증)</span></div>
+
+  <div style="display: grid; grid-template-columns: 1.3fr 1.1fr 1.3fr; grid-template-rows: auto auto; gap: 14px;">
+
+    <div class="cv-card cv-card--add" style="grid-column: 1; grid-row: 1; margin-bottom: 0;">
+      <div class="cv-h3"><span class="cv-badge cv-badge--add" style="font-weight: 700; font-size: 12px;">A</span> Entry — 플로팅 진입점</div>
+      <div class="cv-muted" style="font-size: 11px;"><code>overlay/</code> · 2 classes</div>
+      <div style="margin-top: 8px;">
+        <div class="cv-body">📍 Activity decorView에 56dp 보라→핑크 그라데이션 원형 버튼 부착, 드래그+탭 분기</div>
+        <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 5px;">
+          <span class="cv-badge cv-badge--module">BugReportOverlayController</span>
+          <span class="cv-badge cv-badge--module" style="background: rgba(96,165,250,0.18);">+Impl<span style="opacity:0.55; margin-left:5px;">· Singleton</span></span>
+        </div>
+      </div>
+      <div class="cv-muted" style="margin-top: 10px; font-size: 11px;">→ B의 <code>Capturer</code> · <code>Collector</code> · <code>Session</code> 직접 호출</div>
+    </div>
+
+    <div class="cv-card cv-card--add" style="grid-column: 2; grid-row: 1; margin-bottom: 0;">
+      <div class="cv-h3"><span class="cv-badge cv-badge--add" style="font-weight: 700; font-size: 12px;">B</span> Capture — 컨텍스트 수집</div>
+      <div class="cv-muted" style="font-size: 11px;"><code>capture/</code> + <code>collector/</code> · 6 classes</div>
+      <div style="margin-top: 8px;">
+        <div class="cv-body">📸 스크린샷 PNG + 환경/리포터/서버/로그(#KL_UseCase 최근 100건)</div>
+        <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 5px;">
+          <span class="cv-badge cv-badge--module">ScreenshotCapturer</span>
+          <span class="cv-badge cv-badge--module">MetadataCollector</span>
+          <span class="cv-badge cv-badge--module">ContextProvider</span>
+          <span class="cv-badge cv-badge--module" style="background: rgba(96,165,250,0.18);">+Session<span style="opacity:0.55; margin-left:5px;">· UUID 핸드오프</span></span>
+        </div>
+      </div>
+      <div class="cv-muted" style="margin-top: 10px; font-size: 11px;">⚠️ <code>TransactionTooLargeException</code> 회피 — ConcurrentHashMap</div>
+    </div>
+
+    <div class="cv-card cv-card--add" style="grid-column: 3; grid-row: 1; margin-bottom: 0;">
+      <div class="cv-h3"><span class="cv-badge cv-badge--add" style="font-weight: 700; font-size: 12px;">C</span> Authoring — 편집/제출 UI</div>
+      <div class="cv-muted" style="font-size: 11px;"><code>preview/</code> · 6 classes</div>
+      <div style="margin-top: 8px;">
+        <div class="cv-body">✏️ Compose + AI풍 다크 테마 — 제목/스페이스/이슈타입 선택 후 Submit</div>
+        <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 5px;">
+          <span class="cv-badge cv-badge--module">PreviewActivity</span>
+          <span class="cv-badge cv-badge--module">PreviewViewModel</span>
+          <span class="cv-badge cv-badge--module">Contract</span>
+          <span class="cv-badge" style="font-size: 10px;">+3 more</span>
+        </div>
+      </div>
+      <div class="cv-muted" style="margin-top: 10px; font-size: 11px;">→ Submit 시 D(Builder→Service) 호출, 인증 실패 시 E로 분기</div>
+    </div>
+
+    <div class="cv-card cv-card--add" style="grid-column: 1 / span 2; grid-row: 2; margin-bottom: 0;">
+      <div class="cv-h3"><span class="cv-badge cv-badge--add" style="font-weight: 700; font-size: 12px;">D</span> Jira REST — 외부 전송</div>
+      <div class="cv-muted" style="font-size: 11px;"><code>jira/</code> · 11 classes</div>
+      <div style="margin-top: 8px;">
+        <div class="cv-body">🌐 Jira Cloud REST v3 · Basic Auth · ADF JSON · multipart 첨부(screenshot + logs.txt)</div>
+        <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 5px;">
+          <span class="cv-badge cv-badge--module">JiraIssueService</span>
+          <span class="cv-badge cv-badge--module" style="background: rgba(96,165,250,0.18);">+ServiceImpl<span style="opacity:0.55; margin-left:5px;">· Singleton</span></span>
+          <span class="cv-badge cv-badge--module">JiraIssueBuilder</span>
+          <span class="cv-badge" style="font-size: 10px;">+8 more<span style="opacity:0.55; margin-left:5px;">· Payload · Space=KMA/KQA · IssueType · Exception · RedactingInterceptor…</span></span>
+        </div>
+      </div>
+      <div class="cv-muted" style="margin-top: 10px; font-size: 11px;">🔐 <code>RedactingHttpLoggingInterceptor</code> — Authorization 헤더 마스킹</div>
+    </div>
+
+    <div class="cv-card cv-card--add" style="grid-column: 3; grid-row: 2; margin-bottom: 0;">
+      <div class="cv-h3"><span class="cv-badge cv-badge--add" style="font-weight: 700; font-size: 12px;">E</span> Auth &amp; Settings — 토큰 관리</div>
+      <div class="cv-muted" style="font-size: 11px;"><code>auth/</code> + <code>settings/</code> · 5 classes</div>
+      <div style="margin-top: 8px;">
+        <div class="cv-body">🔑 SharedPreferences 평문(debug 한정) · email+API token 입력 → verifyCredentials → save</div>
+        <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 5px;">
+          <span class="cv-badge cv-badge--module">TokenStore</span>
+          <span class="cv-badge cv-badge--module">JiraCredentials</span>
+          <span class="cv-badge cv-badge--module">SettingsActivity</span>
+          <span class="cv-badge cv-badge--module">+ViewModel</span>
+        </div>
+      </div>
+      <div class="cv-muted" style="margin-top: 10px; font-size: 11px;">⇄ D와 양방향 — verify 호출 / Auth 예외 시 진입</div>
+    </div>
+
+  </div>
+
+  <div class="cv-card" style="margin-top: 20px;">
+    <div class="cv-h3" style="margin-bottom: 14px;">그룹 간 의존 흐름 — 한눈에 보기</div>
+    <svg viewBox="0 0 900 240" xmlns="http://www.w3.org/2000/svg" style="width: 100%; height: auto; max-height: 280px;" aria-label="그룹 간 의존 그래프">
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--cv-add)"/>
+        </marker>
+        <marker id="arrExt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--cv-mov)"/>
+        </marker>
+        <marker id="arrDel" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--cv-del)"/>
+        </marker>
+        <style>
+          .gl { paint-order: stroke fill; stroke: #0c0a1a; stroke-width: 4; stroke-linejoin: round; }
+        </style>
+      </defs>
+
+      <rect x="20" y="80" width="130" height="60" rx="10" fill="var(--cv-add)" fill-opacity="0.15" stroke="var(--cv-add)" stroke-width="2"/>
+      <text x="85" y="105" text-anchor="middle" font-size="13" font-weight="700" fill="#f1f5f9">A · Entry</text>
+      <text x="85" y="125" text-anchor="middle" font-size="10" fill="#c1c7d0">플로팅 버튼 탭</text>
+
+      <rect x="200" y="20" width="130" height="60" rx="10" fill="var(--cv-add)" fill-opacity="0.15" stroke="var(--cv-add)" stroke-width="2"/>
+      <text x="265" y="45" text-anchor="middle" font-size="13" font-weight="700" fill="#f1f5f9">B · Capture</text>
+      <text x="265" y="65" text-anchor="middle" font-size="10" fill="#c1c7d0">화면+메타+로그</text>
+
+      <rect x="380" y="80" width="130" height="60" rx="10" fill="var(--cv-add)" fill-opacity="0.15" stroke="var(--cv-add)" stroke-width="2"/>
+      <text x="445" y="105" text-anchor="middle" font-size="13" font-weight="700" fill="#f1f5f9">C · Authoring</text>
+      <text x="445" y="125" text-anchor="middle" font-size="10" fill="#c1c7d0">편집/제출 UI</text>
+
+      <rect x="560" y="80" width="130" height="60" rx="10" fill="var(--cv-add)" fill-opacity="0.15" stroke="var(--cv-add)" stroke-width="2"/>
+      <text x="625" y="105" text-anchor="middle" font-size="13" font-weight="700" fill="#f1f5f9">D · Jira REST</text>
+      <text x="625" y="125" text-anchor="middle" font-size="10" fill="#c1c7d0">티켓+첨부</text>
+
+      <rect x="560" y="180" width="130" height="50" rx="10" fill="var(--cv-add)" fill-opacity="0.15" stroke="var(--cv-add)" stroke-width="2"/>
+      <text x="625" y="200" text-anchor="middle" font-size="13" font-weight="700" fill="#f1f5f9">E · Auth</text>
+      <text x="625" y="218" text-anchor="middle" font-size="10" fill="#c1c7d0">TokenStore+Settings</text>
+
+      <rect x="740" y="80" width="140" height="60" rx="10" fill="var(--cv-mov)" fill-opacity="0.12" stroke="var(--cv-mov)" stroke-width="2" stroke-dasharray="4 3"/>
+      <text x="810" y="105" text-anchor="middle" font-size="12" font-weight="700" fill="#f1f5f9">Jira Cloud API</text>
+      <text x="810" y="125" text-anchor="middle" font-size="10" fill="#c1c7d0">외부 (REST v3)</text>
+
+      <rect x="200" y="155" width="130" height="50" rx="10" fill="var(--cv-mov)" fill-opacity="0.12" stroke="var(--cv-mov)" stroke-width="2" stroke-dasharray="4 3"/>
+      <text x="265" y="175" text-anchor="middle" font-size="11" font-weight="700" fill="#f1f5f9">앱 도메인</text>
+      <text x="265" y="192" text-anchor="middle" font-size="9" fill="#c1c7d0">Session · BaseUrlProvider</text>
+
+      <path d="M 150 105 Q 175 90 200 65" stroke="var(--cv-add)" stroke-width="2" fill="none" marker-end="url(#arr)"/>
+      <path d="M 150 115 L 378 115" stroke="var(--cv-add)" stroke-width="2" fill="none" marker-end="url(#arr)" stroke-dasharray="3 3"/>
+      <text class="gl" x="265" y="132" text-anchor="middle" font-size="10" font-weight="600" fill="#c1c7d0">startActivity</text>
+
+      <path d="M 380 105 Q 350 80 330 55" stroke="var(--cv-add)" stroke-width="2" fill="none" marker-end="url(#arr)"/>
+      <text class="gl" x="345" y="82" text-anchor="middle" font-size="10" font-weight="600" fill="#c1c7d0">session.peek</text>
+
+      <path d="M 510 110 L 558 110" stroke="var(--cv-add)" stroke-width="2.5" fill="none" marker-end="url(#arr)"/>
+      <text class="gl" x="535" y="103" text-anchor="middle" font-size="10" font-weight="600" fill="#c1c7d0">Submit</text>
+
+      <path d="M 510 125 Q 535 175 558 200" stroke="var(--cv-del)" stroke-width="2" fill="none" marker-end="url(#arrDel)" stroke-dasharray="4 2"/>
+      <text class="gl" x="540" y="172" text-anchor="middle" font-size="10" font-weight="600" fill="#fb923c">Auth 예외</text>
+
+      <path d="M 620 178 L 620 142" stroke="var(--cv-add)" stroke-width="2" fill="none" marker-end="url(#arr)"/>
+      <path d="M 632 142 L 632 178" stroke="var(--cv-add)" stroke-width="2" fill="none" marker-end="url(#arr)"/>
+      <text class="gl" x="645" y="156" text-anchor="start" font-size="10" font-weight="600" fill="#60a5fa">↑ verify</text>
+      <text class="gl" x="645" y="170" text-anchor="start" font-size="10" font-weight="600" fill="#60a5fa">↓ load</text>
+
+      <path d="M 690 110 L 738 110" stroke="var(--cv-mov)" stroke-width="2" fill="none" marker-end="url(#arrExt)"/>
+      <text class="gl" x="714" y="105" text-anchor="middle" font-size="10" font-weight="600" fill="#38bdf8">REST v3</text>
+
+      <path d="M 265 80 L 265 153" stroke="var(--cv-mov)" stroke-width="1.5" fill="none" marker-end="url(#arrExt)" stroke-dasharray="3 3"/>
+      <text class="gl" x="275" y="120" text-anchor="start" font-size="10" font-weight="600" fill="#38bdf8">domain deps</text>
+    </svg>
+    <div class="cv-muted" style="margin-top: 10px; font-size: 11px; display: flex; gap: 18px; flex-wrap: wrap;">
+      <span><span class="cv-text-add">━━</span> 내부 그룹 간 호출</span>
+      <span><span class="cv-text-del">┄┄</span> 예외 분기 (Auth 실패 시)</span>
+      <span><span class="cv-text-mov">┅┅</span> 외부 의존 (앱 도메인 / Jira Cloud)</span>
+      <span><strong>⇄</strong> D↔E 양방향 (verify ⇄ load)</span>
+    </div>
+  </div>
+</section>
+<!-- applied-rules: COM-01, COM-06, COM-13, COM-29, COM-43, STR-01 -->
+
+<!-- ───────────────────────── Section 2: 플로우 ───────────────────────── -->
+<p class="cv-section-eyebrow">PART 2 · 어떤 플로우로 진행되는가</p>
+<h2 class="cv-section-title">한 번의 탭에서 티켓까지의 7단계 파이프라인</h2>
+<p class="cv-section-lead">
+  플로팅 버튼 탭에서 Jira 티켓 생성·첨부 업로드까지 직렬로 흐른다. 토큰 분기는 최초 1회만 발생하며,
+  한 번 등록되면 메인 파이프라인은 끊김 없이 동작한다.
+</p>
+
+<section class="cv-section">
+<!-- strategy: data-pipeline -->
+
+  <div class="cv-card cv-card--add" style="margin-bottom:18px;border-left:4px solid var(--cv-add);">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+      <span class="cv-badge cv-badge--new" style="font-size:10px;">WHY</span>
+      <span class="cv-h3" style="margin:0;">한 번의 탭으로 화면 컨텍스트가 Jira 티켓이 되기까지</span>
+    </div>
+    <div class="cv-body">
+      플로팅 버튼 탭 → 스크린샷·메타데이터·로그 수집 → Preview → Jira REST 제출까지 7단계로 직렬 연결되며, 첨부 업로드는 이슈 생성의 후속으로 묶인다. 토큰 분기는 최초 1회만 발생하며, 한 번 등록되면 메인 파이프라인은 끊김 없이 흐른다.
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:0;">
+
+    <!-- STEP 1: 사용자 액션 -->
+    <div class="cv-card cv-card--mod" style="display:flex;gap:18px;align-items:flex-start;padding:18px;margin-bottom:0;">
+      <div style="font-size:32px;font-weight:800;color:var(--cv-mod);min-width:42px;line-height:1;">1</div>
+      <div style="flex:1;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+          <span class="cv-badge cv-badge--mod" style="font-size:10px;">USER</span>
+          <span style="font-size:14px;font-weight:700;color:#fff;">플로팅 Jira 버튼 탭</span>
+          <span class="cv-badge" style="font-size:9px;background:rgba(255,255,255,0.05);">guard: BuildConfig.DEBUG &amp;&amp; useBugReport</span>
+        </div>
+        <div class="cv-muted" style="margin-bottom:8px;">
+          Activity decorView에 부착된 56dp 보라→핑크 원형 버튼. 드래그가 아닐 때 ACTION_UP에서 performClick() 호출.
+        </div>
+        <code>BugReportOverlayControllerImpl.onClick(activity)</code>
+      </div>
+    </div>
+
+    <div style="height:28px;display:flex;justify-content:center;align-items:center;margin-left:18px;">
+      <div style="width:2px;height:100%;background:linear-gradient(to bottom, var(--cv-mod), var(--cv-add));"></div>
+    </div>
+
+    <!-- STEP 2: 스크린샷 캡처 -->
+    <div class="cv-card cv-card--add" style="display:flex;gap:18px;align-items:flex-start;padding:18px;margin-bottom:0;">
+      <div style="font-size:32px;font-weight:800;color:var(--cv-add);min-width:42px;line-height:1;">2</div>
+      <div style="flex:1;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+          <span class="cv-badge cv-badge--add" style="font-size:10px;">SYSTEM</span>
+          <span style="font-size:14px;font-weight:700;color:#fff;">현재 화면 스크린샷 캡처</span>
+          <span class="cv-badge cv-badge--mod" style="font-size:10px;">Activity → PNG File</span>
+        </div>
+        <div class="cv-muted" style="margin-bottom:8px;">
+          decorView를 ARGB_8888 비트맵으로 그려 PNG로 저장. 캡처 직전 자기 자신(플로팅 버튼)을 INVISIBLE 처리 후 finally에서 복원.
+        </div>
+        <code>ScreenshotCapturer.capture(activity, outDir) → File</code>
+        <div class="cv-muted" style="margin-top:6px;font-size:11px;">out: <code>cacheDir/bug_report/{timestamp}/</code></div>
+      </div>
+    </div>
+
+    <div style="height:28px;display:flex;justify-content:center;align-items:center;margin-left:18px;">
+      <div style="width:2px;height:100%;background:var(--cv-add);"></div>
+    </div>
+
+    <!-- STEP 3: 메타데이터 수집 -->
+    <div class="cv-card cv-card--add" style="display:flex;gap:18px;align-items:flex-start;padding:18px;margin-bottom:0;">
+      <div style="font-size:32px;font-weight:800;color:var(--cv-add);min-width:42px;line-height:1;">3</div>
+      <div style="flex:1;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+          <span class="cv-badge cv-badge--add" style="font-size:10px;">SYSTEM</span>
+          <span style="font-size:14px;font-weight:700;color:#fff;">메타데이터 + 최근 로그 수집</span>
+          <span class="cv-badge cv-badge--mod" style="font-size:10px;">Session·BaseUrl → BugReportMetadata</span>
+        </div>
+        <div class="cv-muted" style="margin-bottom:8px;">
+          앱 환경(version/flavor/buildType) + 디바이스(model/OS/SDK/locale) + 리포터(memberNo/email) + 서버(api·webBaseUrl) + 현재 스크린명 + #KL_UseCase prefix 로그 최근 100건(내림차순).
+        </div>
+        <code>BugReportMetadataCollector.collect() → BugReportMetadata</code>
+        <div class="cv-muted" style="margin-top:6px;font-size:11px;">deps: <code>BugReportContextProvider ← Session, BaseUrlProvider</code></div>
+      </div>
+    </div>
+
+    <div style="height:28px;display:flex;justify-content:center;align-items:center;margin-left:18px;">
+      <div style="width:2px;height:100%;background:var(--cv-add);"></div>
+    </div>
+
+    <!-- STEP 4: 세션 보관 + Preview 진입 -->
+    <div class="cv-card cv-card--add" style="display:flex;gap:18px;align-items:flex-start;padding:18px;margin-bottom:0;">
+      <div style="font-size:32px;font-weight:800;color:var(--cv-add);min-width:42px;line-height:1;">4</div>
+      <div style="flex:1;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+          <span class="cv-badge cv-badge--add" style="font-size:10px;">SYSTEM</span>
+          <span style="font-size:14px;font-weight:700;color:#fff;">인메모리 세션 보관 + Preview 진입</span>
+          <span class="cv-badge cv-badge--mod" style="font-size:10px;">Screenshot+Metadata → sessionId(UUID)</span>
+        </div>
+        <div class="cv-muted" style="margin-bottom:8px;">
+          Intent extra로 큰 객체 전달 시 <code>TransactionTooLargeException</code> 위험 → Singleton <code>ConcurrentHashMap</code>에 UUID 키로 저장, sessionId만 Intent로 전달.
+        </div>
+        <code>BugReportSession.put(screenshot, metadata) → String(UUID)</code>
+        <div style="border-left:2px solid var(--cv-border);padding-left:12px;margin-top:10px;">
+          <code>activity.startActivity(BugReportPreviewActivity.newIntent(activity, sessionId))</code>
+        </div>
+      </div>
+    </div>
+
+    <div style="height:28px;display:flex;justify-content:center;align-items:center;margin-left:18px;">
+      <div style="width:2px;height:100%;background:linear-gradient(to bottom, var(--cv-add), var(--cv-mod));"></div>
+    </div>
+
+    <!-- STEP 5: 사용자 입력 -->
+    <div class="cv-card cv-card--mod" style="display:flex;gap:18px;align-items:flex-start;padding:18px;margin-bottom:0;">
+      <div style="font-size:32px;font-weight:800;color:var(--cv-mod);min-width:42px;line-height:1;">5</div>
+      <div style="flex:1;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+          <span class="cv-badge cv-badge--mod" style="font-size:10px;">USER</span>
+          <span style="font-size:14px;font-weight:700;color:#fff;">제목 / 스페이스 / 이슈타입 입력</span>
+          <span class="cv-badge cv-badge--mod" style="font-size:10px;">입력 → BugReportDraft</span>
+        </div>
+        <div class="cv-muted" style="margin-bottom:8px;">
+          Compose 다크 테마, 보라→핑크 그라데이션 액션. Space는 enum(KMA, KQA), 변경 시 IssueType은 새 스페이스의 default로 reset. SavedStateHandle로 회전 복원.
+        </div>
+        <code>BugReportPreviewViewModel.onAction(UpdateTitle | UpdateSpace | UpdateIssueType)</code>
+        <div class="cv-muted" style="margin-top:6px;font-size:11px;">state: <code>BugReportDraft(title, space, issueType, includeReporterIdentity)</code></div>
+      </div>
+    </div>
+
+    <div style="height:28px;display:flex;justify-content:center;align-items:center;margin-left:18px;">
+      <div style="width:2px;height:100%;background:linear-gradient(to bottom, var(--cv-mod), var(--cv-add));"></div>
+    </div>
+
+    <!-- STEP 6: Submit + 분기 -->
+    <div class="cv-card cv-card--add" style="display:flex;gap:18px;align-items:flex-start;padding:18px;margin-bottom:0;">
+      <div style="font-size:32px;font-weight:800;color:var(--cv-add);min-width:42px;line-height:1;">6</div>
+      <div style="flex:1;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+          <span class="cv-badge cv-badge--add" style="font-size:10px;">SYSTEM</span>
+          <span style="font-size:14px;font-weight:700;color:#fff;">Submit → Jira REST 이슈 생성</span>
+          <span class="cv-badge cv-badge--mod" style="font-size:10px;">Draft+Metadata → ADF JSON → JiraIssueRef</span>
+        </div>
+        <div class="cv-muted" style="margin-bottom:8px;">
+          title 비어 있으면 validationErrors. metadata가 있으면 JiraIssueBuilder로 ADF JSON(발생환경/사전조건 헤딩) 생성 → <code>POST /rest/api/3/issue</code>. Basic Auth(email:apiToken Base64), reporter/assignee는 자신의 accountId.
+        </div>
+        <code>JiraIssueBuilder.build(draft, metadata) → ADF</code><br>
+        <code style="margin-top:4px;display:inline-block;">JiraIssueService.createIssue(payload) → JiraIssueRef(key, url)</code>
+
+        <!-- 6의 후속 처리: 첨부 업로드 (createIssue 성공 콜백 안에서 실행) -->
+        <div style="margin-top:16px;padding:14px 16px;border-radius:10px;background:rgba(96,165,250,0.04);border-left:3px solid var(--cv-add);">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+            <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;background:rgba(96,165,250,0.15);color:var(--cv-add);font-size:13px;font-weight:700;line-height:1;">↳</span>
+            <span class="cv-badge" style="font-size:9.5px;background:rgba(96,165,250,0.10);color:var(--cv-add);border-color:rgba(96,165,250,0.25);font-weight:700;letter-spacing:0.3px;">.onSuccess { ref → }</span>
+            <span style="font-size:13px;font-weight:700;color:#fff;">첨부 업로드 (스크린샷 + logs.txt)</span>
+            <span class="cv-badge cv-badge--mod" style="font-size:10px;">files → multipart upload</span>
+          </div>
+          <div class="cv-muted" style="margin-bottom:6px;">
+            <code>createIssue</code> 성공 콜백 안에서만 실행 — 받은 <code>JiraIssueRef.key</code>를 인자로 <code>service.addAttachment</code> 2회 호출. <code>multipart/form-data</code>, <code>X-Atlassian-Token: no-check</code>. logs.txt는 viewModelScope 안에서 cacheDir에 즉시 write. 실패한 첨부는 PartialBanner로 retry.
+          </div>
+          <code>service.addAttachment(issueKey, file, mimeType)</code>
+        </div>
+
+        <!-- 조건 분기 pill -->
+        <div style="margin-top:16px;padding:12px 14px;border-radius:10px;background:var(--cv-del-surface);border:1.5px dashed rgba(251,146,60,0.40);">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+            <span class="cv-badge cv-badge--del" style="font-size:10px;font-weight:700;">⤳ 분기</span>
+            <span style="font-size:13px;font-weight:700;color:var(--cv-del);">토큰 미등록이거나 401/403인 경우</span>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <code style="color:var(--cv-del);background:rgba(251,146,60,0.10);">JiraException.NoCredentials</code>
+            <code style="color:var(--cv-del);background:rgba(251,146,60,0.10);">JiraException.Auth</code>
+          </div>
+          <div class="cv-muted" style="margin-top:8px;">
+            ViewModel이 <code>BugReportPreviewEvent.RedirectToSettings</code> 송신 → 아래 Settings 플로우로 이동
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 정상 경로 분기 -->
+    <div style="display:grid;grid-template-columns:1fr 1.35fr;gap:16px;margin-top:14px;">
+      <!-- 정상 -->
+      <div style="display:flex;flex-direction:column;">
+        <div style="text-align:center;padding:6px;">
+          <span class="cv-badge cv-badge--add" style="font-size:11px;font-weight:700;">✓ 성공 경로 (메인)</span>
+        </div>
+        <div style="height:18px;display:flex;justify-content:center;">
+          <div style="width:2px;height:100%;background:var(--cv-add);"></div>
+        </div>
+        <div class="cv-card cv-card--add" style="display:flex;gap:14px;align-items:flex-start;padding:16px;flex:1;margin-bottom:0;">
+          <div style="font-size:28px;font-weight:800;color:var(--cv-add);min-width:36px;line-height:1;">7</div>
+          <div style="flex:1;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+              <span style="font-size:13px;font-weight:700;color:#fff;">완료 → 종료 + 토스트</span>
+              <span class="cv-badge cv-badge--add" style="font-size:10px;">JiraIssueRef → UX</span>
+            </div>
+            <div class="cv-muted" style="margin-bottom:10px;">
+              <code>SubmitSucceeded(key, url)</code> Channel 송신 → Activity finish → <code>session.clear(sessionId)</code>로 in-memory 페이로드 정리. 사용자에게는 토스트 메시지로 생성된 이슈 키 표시.
+            </div>
+            <code>BugReportPreviewEvent.SubmitSucceeded</code>
+            <div style="margin-top:12px;padding:10px;border-radius:8px;background:rgba(96,165,250,0.06);border:1px dashed rgba(96,165,250,0.20);">
+              <div style="font-size:11px;color:var(--cv-muted);margin-bottom:4px;">최종 결과</div>
+              <div style="font-size:13px;font-weight:700;color:var(--cv-add);">KMA-XXXX</div>
+              <div style="font-size:10px;color:var(--cv-muted);margin-top:2px;">jira.../browse/KMA-XXXX</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 분기 (Settings) -->
+      <div style="display:flex;flex-direction:column;">
+        <div style="text-align:center;padding:6px;">
+          <span class="cv-badge cv-badge--del" style="font-size:11px;font-weight:700;">⤳ 토큰 분기 (최초 1회만)</span>
+        </div>
+        <div style="height:18px;display:flex;justify-content:center;">
+          <div style="width:2px;height:100%;background:var(--cv-del);"></div>
+        </div>
+        <div class="cv-card cv-card--del" style="padding:16px;border-left:3px solid var(--cv-del);flex:1;margin-bottom:0;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+            <span style="font-size:13px;font-weight:700;color:#fff;">Settings 플로우</span>
+            <span class="cv-badge cv-badge--del" style="font-size:10px;">사용자 → JiraCredentials</span>
+          </div>
+          <div style="border-left:2px solid var(--cv-border);padding-left:12px;margin-bottom:8px;">
+            <div style="font-size:12px;font-weight:700;color:#fff;">① 토큰 입력</div>
+            <div class="cv-muted" style="font-size:11px;"><code>BugReportSettingsActivity</code> → email + Atlassian API token</div>
+          </div>
+          <div style="border-left:2px solid var(--cv-border);padding-left:12px;margin-bottom:8px;">
+            <div style="font-size:12px;font-weight:700;color:#fff;">② 자격 검증</div>
+            <code style="font-size:11px;">service.verifyCredentials(email, token)</code>
+            <div class="cv-muted" style="font-size:11px;margin-top:2px;">GET /rest/api/3/myself → JiraAccount</div>
+          </div>
+          <div style="border-left:2px solid var(--cv-border);padding-left:12px;">
+            <div style="font-size:12px;font-weight:700;color:#fff;">③ 저장 후 재제출</div>
+            <code style="font-size:11px;">tokenStore.save(credentials)</code>
+            <div class="cv-muted" style="font-size:11px;margin-top:2px;">→ Step 6으로 복귀</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+<!-- applied-rules: COM-01, COM-09, COM-14, COM-18, COM-21, COM-25, COM-29, COM-36, STR-02 -->
+</section>
+
+<!-- ───────────────────────── Citations ───────────────────────── -->
+<details class="cv-citations">
+  <summary>적용된 설계 근거 (Citations)</summary>
+  <div class="cv-citations__body">
+    <table class="cv-citations__table">
+      <thead>
+        <tr><th>Rule ID</th><th>적용 위치</th><th>근거</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>COM-01</td><td>역할 그룹 5개 / 파이프라인 8단계(7=6의 sub-step)</td><td>Cowan 4±1 작업 기억 — 그룹 안 항목 4개 초과 시 "+N more"</td></tr>
+        <tr><td>COM-06 / COM-07</td><td>Okabe-Ito 4색 + 보조 기호(+/~/−/→)</td><td>WCAG 1.4.1 색맹 안전, 단일 시각 채널 인코딩</td></tr>
+        <tr><td>COM-09</td><td>WHY 카드 — "QA·개발 사이클 버그 신고 비용 감축"</td><td>Riche "So what?" 프레임 — 변경의 목적 명시</td></tr>
+        <tr><td>COM-13</td><td>5개 그룹 각각 cv-card로 시각 영역 구분</td><td>Palmer 공통 영역 법칙 — 그룹화의 가장 강력한 단서</td></tr>
+        <tr><td>COM-14</td><td>인라인 색상 하드코딩 0건, 모두 <code>var(--cv-*)</code></td><td>스타일 시스템 단일 책임 — glass.css가 색 전담</td></tr>
+        <tr><td>COM-18</td><td>스텝마다 한글 제목 → 보충 설명 → <code>코드</code></td><td>Dual Coding — 자연어 + 코드 병행</td></tr>
+        <tr><td>COM-21</td><td>Step 6 조건 분기 pill (dashed border + del 색상)</td><td>화살표 + muted 텍스트 회피, 명시적 인디케이터</td></tr>
+        <tr><td>COM-25</td><td>cv-card 기반 파이프라인, sub-step은 border-left 들여쓰기</td><td>cv-module 대신 cv-card — 가독성·hover·radius 일관</td></tr>
+        <tr><td>COM-29</td><td>SVG 모든 path 양끝 연결, marker-end 명시</td><td>고아 선 방지</td></tr>
+        <tr><td>COM-36</td><td>파이프라인 세로 레이아웃, 마지막 분기만 grid 2열</td><td>가로 flex 오버플로우 위험 회피</td></tr>
+        <tr><td>COM-43</td><td>그룹 D "+8 more" 축약 (Payload·Space·IssueType·Exception…)</td><td>Cowan 4±1 — 11개 클래스를 4개 + 축약</td></tr>
+        <tr><td>STR-01 / STR-02</td><td>STRUCTURE + FLOW 복합 → cv-structure + cv-flow 병렬</td><td>사용자 요청 "관계 + 플로우" 양면 충족</td></tr>
+      </tbody>
+    </table>
+  </div>
+</details>
+
+<footer class="cv-footer">
+  PR #7686 · KMA-7974 · feature/2026-Q2/3.76.0/develop-bug-report · generated 2026-05-28
+</footer>
+
+</body>
+</html>
