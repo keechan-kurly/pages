@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>한 번의 탭으로 버그를 티켓으로 — 디버그 빌드 전용 Jira 리포트 파이프라인 설계</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    --grey-50: #f9fafb;
+    --grey-100: #f2f4f6;
+    --grey-200: #e5e8eb;
+    --grey-300: #d1d6db;
+    --grey-400: #b0b8c1;
+    --grey-500: #8b95a1;
+    --grey-600: #6b7684;
+    --grey-700: #4e5968;
+    --grey-800: #333d4b;
+    --grey-900: #191f28;
+    --toss-blue: #0064FF;
+    --toss-blue-light: rgba(0, 100, 255, 0.08);
+    --toss-blue-border: rgba(0, 100, 255, 0.2);
+    --bg: #ffffff;
+    --bg-elevated: var(--grey-50);
+    --bg-highlight: #ffc34236;
+    --bg-code: var(--grey-100);
+    --bg-blockquote: transparent;
+    --text-primary: var(--grey-900);
+    --text-secondary: var(--grey-700);
+    --text-tertiary: var(--grey-500);
+    --border-light: var(--grey-200);
+    --border-blockquote: var(--grey-800);
+    --content-width: 680px;
+    --wide-width: 780px;
+    --radius: 16px;
+    --radius-sm: 10px;
+    --font-body: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --font-code: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text-primary);
+    line-height: 1.8;
+    font-size: 16.5px;
+    -webkit-font-smoothing: antialiased;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+}
+::selection { background: rgba(0, 100, 255, 0.15); color: var(--grey-900); }
+a { color: var(--toss-blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.article { max-width: var(--content-width); margin: 0 auto; padding: 0 24px; }
+.article-wide { max-width: var(--wide-width); margin: 0 auto; padding: 0 24px; }
+.hero { padding: 80px 24px 48px; max-width: var(--content-width); margin: 0 auto; }
+.hero-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 24px; font-size: 0.875rem; color: var(--text-tertiary); }
+.hero-meta .author { color: var(--text-secondary); font-weight: 600; }
+.hero-meta .dot { color: var(--grey-300); }
+.hero-title { font-size: 2.2rem; font-weight: 800; line-height: 1.3; color: var(--text-primary); margin-bottom: 16px; letter-spacing: -0.02em; }
+.hero-subtitle { font-size: 1.1rem; line-height: 1.7; color: var(--text-secondary); max-width: 580px; }
+.hero-tags { display: flex; gap: 8px; margin-top: 20px; flex-wrap: wrap; }
+.hero-tag { padding: 4px 12px; border-radius: var(--radius-sm); background: var(--toss-blue-light); border: 1px solid var(--toss-blue-border); font-size: 0.8rem; font-weight: 600; color: var(--toss-blue); }
+.toc { margin: 0 0 48px 0; padding: 24px 28px; background: var(--bg-elevated); border-radius: var(--radius); border: 1px solid var(--border-light); }
+.toc-label { font-size: 0.75rem; font-weight: 700; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px; }
+.toc-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.toc-list a { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 0.92rem; color: var(--text-secondary); transition: color 0.2s; }
+.toc-list a:hover { color: var(--toss-blue); text-decoration: none; }
+.toc-num { width: 24px; height: 24px; border-radius: 7px; background: var(--grey-200); display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; color: var(--text-secondary); flex-shrink: 0; }
+.article h2 { font-size: 1.55rem; font-weight: 800; line-height: 1.35; color: var(--text-primary); margin: 56px 0 20px 0; letter-spacing: -0.01em; }
+.article h2:first-child { margin-top: 0; }
+.article h3 { font-size: 1.2rem; font-weight: 700; line-height: 1.4; color: var(--text-primary); margin: 40px 0 14px 0; }
+.article p { margin: 0 0 20px 0; color: var(--text-primary); }
+.article strong { font-weight: 700; color: var(--grey-900); }
+.article blockquote { margin: 28px 0; padding: 0 0 0 20px; border-left: 2.5px solid var(--border-blockquote); font-size: 1.05rem; font-weight: 600; line-height: 1.7; color: var(--text-primary); }
+.article blockquote p { margin: 0; }
+.highlight-box { margin: 28px 0; padding: 20px 24px; background: var(--bg-highlight); border-radius: var(--radius); font-weight: 600; line-height: 1.7; color: var(--text-primary); }
+.content-box { margin: 28px 0; padding: 24px 28px; background: var(--bg-elevated); border-radius: var(--radius); border: 1px solid var(--border-light); }
+.content-box-title { font-size: 0.95rem; font-weight: 700; color: var(--text-primary); margin-bottom: 12px; }
+.article code { font-family: var(--font-code); font-size: 0.88em; padding: 2px 6px; background: var(--bg-code); border-radius: 5px; color: var(--grey-800); }
+.article pre { margin: 24px 0; padding: 24px; background: var(--grey-900); border-radius: var(--radius); overflow-x: auto; line-height: 1.6; }
+.article pre code { font-family: var(--font-code); font-size: 0.85rem; background: none; padding: 0; color: #abb2bf; border-radius: 0; }
+.kw { color: #c678dd; }
+.str { color: #98c379; }
+.cmt { color: #5c6370; font-style: italic; }
+.typ { color: #e5c07b; }
+.fn { color: #61afef; }
+.ann { color: #d19a66; }
+.op { color: #56b6c2; }
+.article ul, .article ol { margin: 0 0 20px 0; padding-left: 24px; }
+.article li { margin-bottom: 10px; line-height: 1.7; }
+.article li::marker { color: var(--text-tertiary); }
+.checklist { list-style: none; padding: 0; counter-reset: check; }
+.checklist li { counter-increment: check; display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border-light); }
+.checklist li:last-child { border-bottom: none; }
+.checklist-num { width: 28px; height: 28px; border-radius: 8px; background: var(--toss-blue); display: flex; align-items: center; justify-content: center; font-size: 0.78rem; font-weight: 700; color: white; flex-shrink: 0; margin-top: 2px; }
+.article img, .article-wide img { max-width: 100%; border-radius: var(--radius); margin: 28px 0; display: block; }
+.img-caption { text-align: center; font-size: 0.82rem; color: var(--text-tertiary); margin-top: -16px; margin-bottom: 28px; }
+.metrics-table { width: 100%; border-collapse: collapse; margin: 24px 0; font-size: 0.9rem; }
+.metrics-table th { text-align: left; padding: 12px 16px; background: var(--bg-elevated); border-bottom: 2px solid var(--border-light); font-weight: 700; font-size: 0.8rem; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.04em; }
+.metrics-table td { padding: 12px 16px; border-bottom: 1px solid var(--border-light); color: var(--text-secondary); }
+.metrics-table .metric-label { color: var(--text-primary); font-weight: 600; }
+.summary-box { margin: 36px 0; padding: 24px 28px; background: var(--toss-blue-light); border: 1px solid var(--toss-blue-border); border-radius: var(--radius); }
+.summary-box-title { font-size: 0.82rem; font-weight: 700; color: var(--toss-blue); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.06em; }
+.summary-box p, .summary-box li { color: var(--text-primary); font-size: 0.95rem; }
+/* Pipeline flow — CSS, ASCII 금지 (UNI-024a/024b). 부모 .article pre override 불필요 (div 기반) */
+.flow { margin: 28px 0; display: flex; flex-direction: column; gap: 0; }
+.flow-step { display: flex; gap: 16px; align-items: flex-start; padding: 16px 20px; background: var(--bg-elevated); border: 1px solid var(--border-light); border-radius: var(--radius); }
+.flow-step.user { border-left: 3px solid #f59e0b; }
+.flow-step.system { border-left: 3px solid var(--toss-blue); }
+.flow-num { font-size: 1.4rem; font-weight: 800; min-width: 28px; line-height: 1.3; color: var(--text-tertiary); }
+.flow-step.user .flow-num { color: #f59e0b; }
+.flow-step.system .flow-num { color: var(--toss-blue); }
+.flow-body { flex: 1; }
+.flow-title { font-size: 0.98rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+.flow-desc { font-size: 0.88rem; color: var(--text-secondary); line-height: 1.65; margin: 0; }
+.flow-desc code { font-size: 0.82em; }
+.flow-tag { display: inline-block; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 2px 8px; border-radius: 6px; margin-left: 8px; vertical-align: middle; }
+.flow-tag.user { background: rgba(245,158,11,0.12); color: #b45309; }
+.flow-tag.system { background: var(--toss-blue-light); color: var(--toss-blue); }
+.flow-arrow { align-self: center; color: var(--grey-400); font-size: 1.1rem; padding: 4px 0; margin-left: 20px; }
+/* Phone screenshots — 세로 긴 모바일 캡처. 높이 제한 + 가로 정렬 */
+.phone-shots { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin: 28px 0; }
+.phone-figure { display: flex; flex-direction: column; align-items: center; gap: 8px; max-width: 240px; }
+.phone-shots img { margin: 0; max-height: 460px; width: auto; border: 1px solid var(--border-light); border-radius: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+.phone-cap { font-size: 0.8rem; color: var(--text-tertiary); text-align: center; line-height: 1.5; }
+.phone-cap strong { color: var(--text-secondary); font-weight: 700; }
+.phone-single { justify-content: center; }
+.phone-single img { max-height: 520px; }
+/* 가로 한 줄 강제 — 너비를 3등분, 줄바꿈 없음 */
+.phone-shots-row { flex-wrap: nowrap; align-items: flex-start; }
+.phone-shots-row .phone-figure { flex: 1 1 0; min-width: 0; max-width: none; }
+.phone-shots-row .phone-figure img { width: 100%; max-height: none; }
+@media (max-width: 768px) { .phone-shots img { max-height: 360px; } .phone-shots-row { gap: 8px; } .phone-shots-row .phone-cap { font-size: 0.7rem; } }
+.article hr { border: none; height: 1px; background: var(--border-light); margin: 48px 0; }
+.footnotes { margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--border-light); font-size: 0.82rem; color: var(--text-tertiary); line-height: 1.8; }
+.footnotes a { color: var(--text-tertiary); text-decoration: underline; }
+.footnotes ol { padding-left: 20px; }
+.footnotes li { margin-bottom: 6px; scroll-margin-top: 24px; }
+.footnote-ref { font-size: 0.75em; vertical-align: super; font-weight: 600; }
+.footnote-ref a { color: var(--toss-blue); text-decoration: none; }
+.footnote-ref a:hover { text-decoration: underline; }
+.fn-back { color: var(--text-tertiary); text-decoration: none; margin-left: 6px; font-size: 0.9em; }
+.fn-back:hover { color: var(--toss-blue); }
+.article-footer { margin-top: 56px; padding: 32px 0; text-align: center; color: var(--text-tertiary); font-size: 0.82rem; }
+.share-buttons { display: flex; justify-content: center; gap: 12px; margin-top: 16px; }
+.share-btn { padding: 8px 20px; border-radius: var(--radius-sm); background: var(--bg-elevated); border: 1px solid var(--border-light); font-size: 0.82rem; font-weight: 600; color: var(--text-secondary); cursor: pointer; transition: all 0.2s; }
+.share-btn:hover { background: var(--grey-200); color: var(--text-primary); }
+@media (max-width: 768px) {
+    .hero { padding: 48px 20px 32px; }
+    .hero-title { font-size: 1.7rem; }
+    .article, .article-wide { padding: 0 20px; }
+    .article h2 { font-size: 1.35rem; margin-top: 40px; }
+    .article h3 { font-size: 1.1rem; }
+    .article pre { padding: 16px; margin-left: -8px; margin-right: -8px; border-radius: 12px; }
+    .flow-arrow { margin-left: 0; align-self: flex-start; }
+}
+@media print {
+    body { font-size: 11pt; }
+    .hero { padding: 24px 0; }
+    .article pre { white-space: pre-wrap; }
+    .toc, .share-buttons, .article-footer { display: none; }
+}
+</style>
+</head>
+<body>
+
+<header class="hero">
+    <div class="hero-meta">
+        <span class="author">keechan</span>
+        <span class="dot">&middot;</span>
+        <span>Android Developer</span>
+        <span class="dot">&middot;</span>
+        <time>2026.06.02</time>
+    </div>
+    <h1 class="hero-title">한 번의 탭으로 버그를 티켓으로</h1>
+    <p class="hero-subtitle">스크린샷·메타데이터·로그를 자동 수집해 Jira REST API에 직접 꽂기까지, 그리고 Release 빌드를 건드리지 않는 이중 가드 — 디버그 빌드 전용 버그 리포트 파이프라인을 설계한 이야기.</p>
+    <div class="hero-tags">
+        <span class="hero-tag">Android</span>
+        <span class="hero-tag">debug-helper</span>
+        <span class="hero-tag">Jira REST API</span>
+        <span class="hero-tag">Hilt</span>
+        <span class="hero-tag">Coroutines</span>
+    </div>
+</header>
+
+<nav class="article">
+    <div class="toc">
+        <div class="toc-label">목차</div>
+        <ol class="toc-list">
+            <li><a href="#section-1"><span class="toc-num">1</span> 버그 신고는 왜 미뤄지는가</a></li>
+            <li><a href="#section-2"><span class="toc-num">2</span> 한 번의 탭에서 티켓까지 — 7단계 파이프라인</a></li>
+            <li><a href="#section-3"><span class="toc-num">3</span> 이중 가드로 Release 빌드 격리</a></li>
+            <li><a href="#section-4"><span class="toc-num">4</span> TransactionTooLarge를 피한 인메모리 핸드오프</a></li>
+            <li><a href="#section-5"><span class="toc-num">5</span> 스크린샷에서 자기 자신 지우기</a></li>
+            <li><a href="#section-6"><span class="toc-num">6</span> Jira에 직접 꽂기 — ADF·Basic Auth·토큰 보안</a></li>
+            <li><a href="#section-7"><span class="toc-num">7</span> 부분 성공을 다루는 첨부 재시도</a></li>
+            <li><a href="#section-8"><span class="toc-num">8</span> 한계와 트레이드오프</a></li>
+            <li><a href="#section-9"><span class="toc-num">9</span> 직접 켜보기</a></li>
+        </ol>
+    </div>
+</nav>
+
+<article class="article">
+
+    <h2 id="section-1">버그 신고는 왜 미뤄지는가</h2>
+    <p>QA를 돌리다 이상한 화면을 만났다고 하자. 제대로 신고하려면 손이 꽤 많이 간다. 스크린샷을 찍고, 어느 기기에서 어떤 빌드로 재현됐는지 적고, 로그를 뽑아 붙이고, Jira를 열어 프로젝트와 이슈 타입을 고르고, 제목과 본문을 채운다. 버그 하나를 기록하는 데 드는 이 다섯 단계가, 역설적이게도 신고 자체를 미루게 만든다. "나중에 정리해서 올려야지" 하고 넘긴 버그는 보통 영영 올라가지 않는다.</p>
+    <p>비용이 큰 건 버그를 발견하는 일이 아니라 버그를 기록하는 일이다. 그렇다면 기록 과정을 버튼 하나로 접을 수 있을까? 화면에 떠 있는 작은 플로팅 버튼을 한 번 탭하면, 지금 보고 있는 화면의 스크린샷과 환경 정보, 최근 로그가 자동으로 모여 Jira 티켓이 되는 것이다.</p>
+    <p>이 글은 그 도구 — 디버그 빌드 전용 버그 리포트 파이프라인 — 를 어떻게 설계했는지에 대한 기록이다. 단순해 보이는 "탭 한 번"의 뒤에는, Release 빌드에 새지 않게 막는 가드, 큰 객체를 액티비티 사이로 안전하게 넘기는 방법, 스크린샷에서 자기 자신을 지우는 트릭, 토큰을 로그에 노출하지 않는 보안, 그리고 "티켓은 만들어졌는데 첨부만 실패한" 어중간한 상태를 다루는 처리가 들어 있다. 하나씩 살펴본다.</p>
+
+    <div class="highlight-box">
+        결과물은 <strong>디버그 빌드에서만 동작하는 사내 도구</strong>다. 플로팅 Jira 버튼을 탭하면 현재 화면 컨텍스트를 자동 수집해 <code>KMA</code>(프로덕트앱개발) 또는 <code>KQA</code>(커머스SQE) 프로젝트에 티켓을 생성한다. Release/Store 빌드에는 코드가 포함되지만 진입점이 이중으로 막혀 사용자에게는 어떤 영향도 없다.
+    </div>
+
+    <h2 id="section-2">한 번의 탭에서 티켓까지 — 7단계 파이프라인</h2>
+    <p>전체 흐름을 먼저 조망하자. 플로팅 버튼 탭에서 티켓 생성·첨부 업로드까지는 직렬로 흐른다. 토큰 등록 분기는 최초 1회만 발생하고, 한 번 등록되면 메인 파이프라인은 끊김 없이 이어진다.</p>
+
+    <div class="phone-shots phone-single">
+        <figure class="phone-figure">
+            <img src="assets/7686/floating_button.jpg" alt="실제 화면 우측에 떠 있는 보라색 Jira 플로팅 버튼">
+            <figcaption class="phone-cap">실제 화면 우측 중단에 떠 있는 플로팅 버튼. 이 버튼 하나가 파이프라인의 시작점이다.</figcaption>
+        </figure>
+    </div>
+
+    <div class="flow">
+        <div class="flow-step user">
+            <div class="flow-num">1</div>
+            <div class="flow-body">
+                <div class="flow-title">플로팅 Jira 버튼 탭<span class="flow-tag user">User</span></div>
+                <p class="flow-desc">Activity <code>decorView</code>에 부착된 56dp 원형 버튼. 드래그가 아니라 탭일 때만 <code>performClick()</code>이 호출된다.</p>
+            </div>
+        </div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step system">
+            <div class="flow-num">2</div>
+            <div class="flow-body">
+                <div class="flow-title">현재 화면 스크린샷 캡처<span class="flow-tag system">System</span></div>
+                <p class="flow-desc"><code>decorView</code>를 ARGB_8888 비트맵으로 그려 PNG로 저장. 캡처 직전 자기 자신(플로팅 버튼)을 숨긴다.</p>
+            </div>
+        </div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step system">
+            <div class="flow-num">3</div>
+            <div class="flow-body">
+                <div class="flow-title">메타데이터 + 최근 로그 수집<span class="flow-tag system">System</span></div>
+                <p class="flow-desc">앱 환경 · 디바이스 · 리포터 · 서버 baseUrl · 현재 화면명 + <code>#KL_UseCase</code> prefix 로그 최근 100건.</p>
+            </div>
+        </div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step system">
+            <div class="flow-num">4</div>
+            <div class="flow-body">
+                <div class="flow-title">인메모리 세션에 보관 후 Preview 진입<span class="flow-tag system">System</span></div>
+                <p class="flow-desc">큰 객체를 Intent로 넘기지 않고 Singleton 저장소에 UUID 키로 담은 뒤, <code>sessionId</code>만 Intent로 전달한다.</p>
+            </div>
+        </div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step user">
+            <div class="flow-num">5</div>
+            <div class="flow-body">
+                <div class="flow-title">제목 / 스페이스 / 이슈 타입 입력<span class="flow-tag user">User</span></div>
+                <p class="flow-desc">Compose 미리보기 화면. 스페이스(KMA/KQA)를 바꾸면 이슈 타입은 새 스페이스의 기본값으로 리셋된다.</p>
+            </div>
+        </div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step system">
+            <div class="flow-num">6</div>
+            <div class="flow-body">
+                <div class="flow-title">Submit → Jira REST 이슈 생성<span class="flow-tag system">System</span></div>
+                <p class="flow-desc">Draft + Metadata를 ADF JSON으로 빌드 → <code>POST /rest/api/3/issue</code>. 토큰이 없거나 401/403이면 설정 화면으로 분기.</p>
+            </div>
+        </div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step system">
+            <div class="flow-num">7</div>
+            <div class="flow-body">
+                <div class="flow-title">첨부 업로드 → 완료<span class="flow-tag system">System</span></div>
+                <p class="flow-desc">이슈 생성 성공 콜백 안에서 스크린샷 + <code>logs.txt</code>를 multipart로 업로드. 성공 시 토스트 후 화면 종료.</p>
+            </div>
+        </div>
+    </div>
+
+    <p>여기서 주목할 점은 7단계가 두 종류로 나뉜다는 것이다. <strong>2·3·4·6·7은 시스템이 자동으로</strong> 처리하고, <strong>1·5만 사용자의 손</strong>을 빌린다. "탭 한 번"이라는 표현이 과장이 아닌 이유다. 사용자가 실제로 하는 일은 버튼을 누르고 제목을 적는 것뿐이다.</p>
+    <p>이제 이 흐름을 떠받치는 다섯 가지 설계 결정을 하나씩 들여다본다. 각 결정은 "어떤 문제가 있었고, 무엇을 선택했으며, 코드로 어떻게 풀었는지"의 순서로 정리했다.</p>
+
+    <h2 id="section-3">이중 가드로 Release 빌드 격리</h2>
+    <p>가장 먼저 못 박아야 할 것은 안전이다. 이 기능은 라이브러리 모듈(<code>:debug-helper</code>)에 들어가므로 코드 자체는 Release/Store AAR에도 포함된다. 따라서 "코드가 들어가더라도 절대 동작하지 않는다"는 보장을 진입점에서 만들어야 한다. 한 겹으로는 부족하다고 봤다. 빌드 타입으로 한 번, 런타임 토글로 한 번, 두 겹으로 막았다.</p>
+
+    <pre><code><span class="kw">override fun</span> <span class="fn">onActivityCreated</span>(activity: <span class="typ">Activity</span>) {
+    <span class="cmt">// ① 빌드 가드 — debuggable 플래그가 없으면 즉시 반환</span>
+    <span class="kw">if</span> (!<span class="fn">isDebugBuild</span>(activity)) <span class="kw">return</span>
+    <span class="cmt">// ② 런타임 토글 — "개발자 모드 &gt; QA &gt; 버그 리포트" (기존 디버깅 뷰 토글과 독립)</span>
+    <span class="kw">if</span> (!<span class="typ">DebuggingModuleConfig</span>.useBugReport) <span class="kw">return</span>
+    <span class="cmt">// ③ 버그 리포트 자체 화면(미리보기·설정)에는 버튼이 필요 없다</span>
+    <span class="kw">if</span> (activity.javaClass.name.<span class="fn">startsWith</span>(<span class="str">"com.kurly.android.debugging.bugreport"</span>)) <span class="kw">return</span>
+    <span class="fn">show</span>(activity)
+}
+
+<span class="kw">private fun</span> <span class="fn">isDebugBuild</span>(activity: <span class="typ">Activity</span>): <span class="typ">Boolean</span> =
+    (activity.applicationInfo.flags <span class="kw">and</span> <span class="typ">ApplicationInfo</span>.FLAG_DEBUGGABLE) != <span class="ann">0</span></code></pre>
+
+    <p>첫 번째 가드 <code>FLAG_DEBUGGABLE</code>는 빌드 시스템이 매니페스트에 박는 플래그를 직접 읽는다. <code>BuildConfig.DEBUG</code> 상수가 아니라 런타임 <code>ApplicationInfo</code>를 본다는 점이 의도적이다. 라이브러리 모듈의 <code>BuildConfig</code>는 그 모듈 자신의 빌드 타입을 따르므로, 앱이 실제로 어떤 빌드로 패키징됐는지를 신뢰성 있게 알려면 앱의 플래그를 읽어야 한다.</p>
+    <p>두 번째 가드 <code>useBugReport</code> 토글은 기존 "디버깅 뷰 사용" 토글과 <strong>독립적으로</strong> 동작한다. 디버깅 오버레이는 끄고 버그 리포트만 켜는 조합이 가능해야 했기 때문이다. 세 번째 가드는 안전이라기보다 UX다 — 미리보기·설정 화면 위에까지 플로팅 버튼이 떠 있을 이유가 없으니, 자기 패키지의 액티비티는 건너뛴다.</p>
+    <div class="content-box">
+        <div class="content-box-title">이 섹션 한 줄 요약</div>
+        <p>빌드 플래그(컴파일 타임 사실)와 런타임 토글(사용자 의도)을 <strong>AND로 묶어</strong>, Release 빌드에서는 코드가 존재해도 진입점이 열리지 않도록 했다.</p>
+    </div>
+
+    <h2 id="section-4">TransactionTooLarge를 피한 인메모리 핸드오프</h2>
+    <p>스크린샷과 메타데이터를 수집한 다음, 이걸 미리보기 액티비티로 넘겨야 한다. 안드로이드에서 액티비티 간 데이터 전달의 정석은 <code>Intent</code> extra다. 하지만 여기엔 함정이 있다. <code>Intent</code>로 전달되는 데이터는 Binder 트랜잭션 버퍼를 거치는데, 이 버퍼는 프로세스당 약 1MB로 공유된다. 풀 해상도 스크린샷 비트맵을 직렬화해 넣으면 <code>TransactionTooLargeException</code>으로 앱이 죽기 십상이다.</p>
+    <p>그래서 객체 자체는 메모리에 두고, <strong>가벼운 키만 Intent로 넘기는</strong> 핸드오프 패턴을 택했다. <code>ConcurrentHashMap</code>을 가진 Singleton 세션 저장소가 그 역할을 한다.</p>
+
+    <pre><code><span class="ann">@Singleton</span>
+<span class="kw">internal class</span> <span class="typ">BugReportSession</span> <span class="ann">@Inject</span> <span class="kw">constructor</span>() {
+
+    <span class="kw">private val</span> store = <span class="typ">ConcurrentHashMap</span>&lt;<span class="typ">String</span>, <span class="typ">BugReportPayload</span>&gt;()
+
+    <span class="kw">fun</span> <span class="fn">put</span>(screenshot: <span class="typ">Screenshot</span>?, metadata: <span class="typ">BugReportMetadata</span>): <span class="typ">String</span> {
+        <span class="kw">val</span> id = <span class="typ">UUID</span>.<span class="fn">randomUUID</span>().<span class="fn">toString</span>()
+        store[id] = <span class="typ">BugReportPayload</span>(screenshot = screenshot, metadata = metadata)
+        <span class="kw">return</span> id  <span class="cmt">// Intent 로는 이 String 만 넘어간다</span>
+    }
+
+    <span class="kw">fun</span> <span class="fn">peek</span>(id: <span class="typ">String</span>): <span class="typ">BugReportPayload</span>? = store[id]
+    <span class="kw">fun</span> <span class="fn">consume</span>(id: <span class="typ">String</span>): <span class="typ">BugReportPayload</span>? = store.<span class="fn">remove</span>(id)
+}</code></pre>
+
+    <p>오버레이 컨트롤러는 캡처가 끝나면 <code>session.put(...)</code>으로 페이로드를 저장하고, 돌려받은 <code>sessionId</code> 문자열만 Intent에 실어 미리보기를 띄운다.</p>
+
+    <pre><code><span class="kw">private fun</span> <span class="fn">onClick</span>(activity: <span class="typ">Activity</span>) {
+    <span class="kw">val</span> screenshot = <span class="kw">try</span> {
+        <span class="typ">CaptureArtifact</span>.<span class="typ">Screenshot</span>(capturer.<span class="fn">capture</span>(activity, outDir))
+    } <span class="kw">catch</span> (e: <span class="typ">Exception</span>) { <span class="kw">null</span> }  <span class="cmt">// 캡처 실패해도 메타데이터만으로 진행</span>
+    <span class="kw">val</span> metadata = collector.<span class="fn">collect</span>()
+    <span class="kw">val</span> sessionId = session.<span class="fn">put</span>(screenshot, metadata)
+    activity.<span class="fn">startActivity</span>(<span class="typ">BugReportPreviewActivity</span>.<span class="fn">newIntent</span>(activity, sessionId))
+}</code></pre>
+
+    <p>이 패턴엔 한 가지 책임이 따라온다 — 메모리에 남긴 페이로드를 <strong>언젠가 반드시 비워야 한다.</strong> 스크린샷 비트맵을 들고 있는 객체가 누수되면 그대로 메모리 압박이 된다. 미리보기 화면이 정상 제출 없이 닫히는 경우(뒤로 가기 등)까지 포함해서 정리되도록, ViewModel의 <code>onCleared()</code>에서 세션을 소비한다.</p>
+
+    <pre><code><span class="kw">override fun</span> <span class="fn">onCleared</span>() {
+    <span class="cmt">// 미제출 종료(뒤로가기 등)를 포함한 화면 종료 시 인메모리 세션 정리</span>
+    session.<span class="fn">consume</span>(sessionId)
+}</code></pre>
+
+    <p><code>peek</code>(읽기만)과 <code>consume</code>(읽고 제거)를 분리한 것도 같은 맥락이다. 화면이 살아 있는 동안은 <code>peek</code>으로 여러 번 읽고, 화면이 끝나거나 제출이 완료되면 <code>consume</code>/<code>clear</code>로 확실히 제거한다.</p>
+
+    <h2 id="section-5">스크린샷에서 자기 자신 지우기</h2>
+    <p>스크린샷 캡처에는 재미있는 딜레마가 있다. 화면을 찍으려면 화면 위에 떠 있어야 하는 플로팅 버튼이, 정작 찍히는 순간에는 화면에 없어야 한다. 버그 리포트에 우리 도구의 버튼이 함께 찍히면 모양도 빠지고, 무엇보다 실제 화면을 가린다.</p>
+    <p>해법은 단순하다. 캡처 직전에 버튼을 <code>INVISIBLE</code>로 바꾸고, 캡처가 끝나면 원래 상태로 되돌린다. 중요한 건 이 복원이 <strong>예외가 나도 반드시 실행</strong>돼야 한다는 점이다. 그래서 <code>try/finally</code>로 감쌌다.</p>
+
+    <pre><code><span class="kw">try</span> {
+    <span class="cmt">// INVISIBLE 이면 layout 은 유지되고 그리기에서만 빠진다. GONE 은 layout 흔들림 유발.</span>
+    bugReportButton?.visibility = <span class="typ">View</span>.INVISIBLE
+    <span class="kw">val</span> bitmap = <span class="kw">try</span> {
+        view.<span class="fn">drawToBitmap</span>(<span class="typ">Bitmap</span>.<span class="typ">Config</span>.ARGB_8888)
+    } <span class="kw">catch</span> (e: <span class="typ">IllegalArgumentException</span>) {
+        <span class="cmt">// 0×0 등으로 drawToBitmap 이 실패하면 Canvas 수동 그리기로 fallback</span>
+        <span class="typ">Bitmap</span>.<span class="fn">createBitmap</span>(
+            view.width.<span class="fn">coerceAtLeast</span>(<span class="ann">1</span>),
+            view.height.<span class="fn">coerceAtLeast</span>(<span class="ann">1</span>),
+            <span class="typ">Bitmap</span>.<span class="typ">Config</span>.ARGB_8888,
+        ).<span class="fn">also</span> { bmp -> <span class="typ">Canvas</span>(bmp).<span class="fn">also</span> { c -> view.<span class="fn">draw</span>(c) } }
+    }
+    <span class="typ">FileOutputStream</span>(outFile).<span class="fn">use</span> { it -> bitmap.<span class="fn">compress</span>(<span class="typ">PNG</span>, <span class="ann">100</span>, it) }
+} <span class="kw">finally</span> {
+    originalVisibility?.<span class="fn">let</span> { bugReportButton.visibility = it }  <span class="cmt">// 항상 복원</span>
+}</code></pre>
+
+    <p>두 가지 디테일을 짚어둔다. 첫째, <code>GONE</code>이 아니라 <code>INVISIBLE</code>을 쓴 이유다. <code>GONE</code>은 뷰를 레이아웃에서 제외해 주변 뷰가 재배치되는데, 그 흔들림이 캡처에 잡힐 수 있다. <code>INVISIBLE</code>은 자리를 유지한 채 그리기에서만 빠지므로 화면이 흔들리지 않는다. 둘째, <code>drawToBitmap</code>이 실패할 때를 대비한 <code>Canvas</code> 수동 그리기 fallback이다. 뷰 크기가 0이거나 하는 가장자리 상황에서도 캡처가 끊기지 않도록 했다.</p>
+
+    <h3>탭과 드래그를 구분하는 임계값</h3>
+    <p>플로팅 버튼은 화면 어디든 옮길 수 있어야 편하다. 그러면 "버튼을 옮기려는 드래그"와 "신고하려는 탭"을 구분해야 한다. 손가락은 가만히 누른다고 생각해도 미세하게 움직이므로, 일정 거리 안의 움직임은 탭으로 봐줘야 한다. 그 기준값을 직접 정하지 않고 시스템이 제공하는 <code>scaledTouchSlop</code>을 썼다.</p>
+
+    <pre><code><span class="cmt">// 고정 px 는 고밀도 화면에서 물리적 거리가 작아져 미세한 흔들림도 드래그로 오인한다.</span>
+<span class="cmt">// 밀도 보정된 시스템 touchSlop 을 사용한다.</span>
+<span class="kw">val</span> touchSlop = <span class="typ">ViewConfiguration</span>.<span class="fn">get</span>(view.context).scaledTouchSlop
+<span class="cmt">// ... ACTION_UP 에서</span>
+<span class="kw">val</span> isTap = <span class="fn">abs</span>(event.rawX - downX) &lt; touchSlop &amp;&amp; <span class="fn">abs</span>(event.rawY - downY) &lt; touchSlop
+<span class="kw">if</span> (isTap) v.<span class="fn">performClick</span>()</code></pre>
+
+    <p><code>scaledTouchSlop</code>은 화면 밀도에 맞춰 보정된 "이 정도 움직임은 같은 지점으로 본다"는 시스템 표준값이다. 직접 숫자를 박았다면 고밀도 화면에서는 너무 민감해 탭이 자꾸 드래그로 오인됐을 것이다.</p>
+
+    <h2 id="section-6">Jira에 직접 꽂기 — ADF·Basic Auth·토큰 보안</h2>
+    <p>이제 모은 정보를 실제 Jira 티켓으로 만든다. 별도 백엔드 서버를 두지 않고 클라이언트가 Jira Cloud REST API v3를 직접 호출한다. 사용자 본인의 Atlassian API 토큰으로 인증하므로, 생성된 티켓의 작성자도 본인이 된다.</p>
+
+    <h3>본문은 ADF로 — 평문이 아니다</h3>
+    <p>처음 마주친 벽은 본문 포맷이었다. Jira REST API v3는 위키 마크업 문자열을 description으로 받지 않는다. 대신 <strong>ADF(Atlassian Document Format)</strong> — 리치 텍스트를 표현하는 JSON 구조 — 를 요구한다.<sup class="footnote-ref" id="ref-1"><a href="#fn1">[1]</a></sup> ADF 문서는 최상위에 <code>version</code>, <code>type: "doc"</code>, 그리고 노드 배열인 <code>content</code> 세 가지를 가진다.<sup class="footnote-ref" id="ref-2"><a href="#fn2">[2]</a></sup> 그래서 수집한 메타데이터를 헤딩과 문단 노드로 조립한다.</p>
+
+    <pre><code><span class="kw">fun</span> <span class="fn">build</span>(draft: <span class="typ">BugReportDraft</span>, metadata: <span class="typ">BugReportMetadata</span>): <span class="typ">JiraIssuePayload</span> {
+    <span class="kw">val</span> adf = <span class="typ">JSONObject</span>().<span class="fn">apply</span> {
+        <span class="fn">put</span>(<span class="str">"type"</span>, <span class="str">"doc"</span>)
+        <span class="fn">put</span>(<span class="str">"version"</span>, <span class="ann">1</span>)
+        <span class="fn">put</span>(<span class="str">"content"</span>, <span class="fn">contentArray</span>(draft, metadata))  <span class="cmt">// "발생환경" / "사전조건" 헤딩 + 문단</span>
+    }
+    <span class="kw">return</span> <span class="typ">JiraIssuePayload</span>(
+        summary = draft.title,
+        descriptionAdf = adf,
+        projectKey = draft.space.projectKey,   <span class="cmt">// KMA | KQA</span>
+        issueTypeId = draft.issueType.id,
+    )
+}</code></pre>
+
+    <p>로그는 본문에 넣지 않고 별도 첨부 파일(<code>logs.txt</code>)로 분리했다. 로그 100줄을 ADF 문단으로 변환하면 본문이 비대해지고 가독성도 떨어진다. 본문에는 환경·사전조건 같은 핵심 맥락만 담고, 양이 많은 로그는 파일로 붙이는 편이 읽는 사람에게도 낫다.</p>
+
+    <h3>인증은 Basic Auth, 생성은 POST 한 방</h3>
+    <p>인증은 <code>email:apiToken</code>을 Base64로 인코딩한 Basic Auth 헤더를 쓴다. 이슈 생성은 조립한 <code>fields</code> 객체를 <code>POST /rest/api/3/issue</code>로 보내는 것으로 끝난다. 응답 코드에 따라 명확한 예외로 분기해, 호출하는 쪽이 상황을 구분할 수 있게 했다.</p>
+
+    <pre><code><span class="kw">val</span> body = <span class="typ">JSONObject</span>().<span class="fn">apply</span> {
+    <span class="fn">put</span>(<span class="str">"fields"</span>, <span class="typ">JSONObject</span>().<span class="fn">apply</span> {
+        <span class="fn">put</span>(<span class="str">"project"</span>, <span class="typ">JSONObject</span>().<span class="fn">put</span>(<span class="str">"key"</span>, payload.projectKey))
+        <span class="fn">put</span>(<span class="str">"issuetype"</span>, <span class="typ">JSONObject</span>().<span class="fn">put</span>(<span class="str">"id"</span>, payload.issueTypeId))
+        <span class="fn">put</span>(<span class="str">"summary"</span>, payload.summary)
+        <span class="fn">put</span>(<span class="str">"description"</span>, payload.descriptionAdf)
+        <span class="cmt">// reporter/assignee 를 본인 accountId 로 — 누락 시(구버전 토큰) 생략</span>
+    })
+}.<span class="fn">toString</span>()
+
+client.<span class="fn">newCall</span>(request).<span class="fn">execute</span>().<span class="fn">use</span> { response -&gt;
+    <span class="kw">when</span> (response.code) {
+        <span class="kw">in</span> <span class="ann">200</span>..<span class="ann">299</span> -&gt; <span class="typ">JiraIssueRef</span>(key = key, url = <span class="str">"$baseUrl/browse/$key"</span>)
+        <span class="ann">401</span>, <span class="ann">403</span> -&gt; <span class="kw">throw</span> <span class="typ">JiraException</span>.<span class="typ">Auth</span>(responseBody)
+        <span class="ann">400</span>      -&gt; <span class="kw">throw</span> <span class="typ">JiraException</span>.<span class="typ">Validation</span>(responseBody)
+        <span class="kw">in</span> <span class="ann">500</span>..<span class="ann">599</span> -&gt; <span class="kw">throw</span> <span class="typ">JiraException</span>.<span class="typ">Server</span>(response.code)
+        <span class="kw">else</span>     -&gt; <span class="kw">throw</span> <span class="typ">JiraException</span>.<span class="typ">Unknown</span>(response.code, responseBody)
+    }
+}</code></pre>
+
+    <p>401/403을 <code>Auth</code>로, 400을 <code>Validation</code>으로 따로 던지는 게 핵심이다. 뒤에서 보겠지만 ViewModel은 <code>Auth</code> 예외를 받으면 "토큰을 다시 등록하라"는 신호로 해석해 설정 화면으로 보낸다. 예외 타입이 곧 다음 행동을 결정한다.</p>
+
+    <h3>토큰을 로그에 흘리지 않기</h3>
+    <p>API를 직접 호출하면 디버깅을 위해 요청·응답을 로깅하고 싶어진다. 그런데 그 로그에 <code>Authorization</code> 헤더가 그대로 찍히면 API 토큰이 logcat에 노출된다. 그래서 로깅 인터셉터가 <code>Authorization</code> 값만 가리도록 했다.</p>
+
+    <pre><code>request.headers.<span class="fn">forEach</span> { (name, value) -&gt;
+    <span class="kw">val</span> rendered = <span class="kw">if</span> (name.<span class="fn">equals</span>(<span class="str">"Authorization"</span>, ignoreCase = <span class="kw">true</span>)) <span class="str">"███"</span> <span class="kw">else</span> value
+    <span class="fn">sink</span>(<span class="str">"  $name: $rendered"</span>)
+}</code></pre>
+
+    <p>보안은 한 곳 더 있다. 첨부할 로그는 <code>AppLogger</code>가 남긴 전체 로그가 아니라 <code>#KL_UseCase</code> prefix로 시작하는 라인만 필터링한다. 도메인 유스케이스 흐름만 남기고 그 외 로그에 섞여들 수 있는 PII 노출 위험을 줄이려는 의도다.</p>
+
+    <pre><code>recentLogs = <span class="fn">logSource</span>()
+    .<span class="fn">filter</span> { it.<span class="fn">startsWith</span>(<span class="str">"#KL_UseCase"</span>) }  <span class="cmt">// 유스케이스 로그만</span>
+    .<span class="fn">takeLast</span>(<span class="ann">100</span>)                            <span class="cmt">// 최근 100건으로 cap</span>
+    .<span class="fn">asReversed</span>()                            <span class="cmt">// 최신 → 오래된 순</span></code></pre>
+
+    <div class="summary-box">
+        <div class="summary-box-title">시각화 자료</div>
+        <p>신규 클래스 30개의 역할 그룹과 7단계 파이프라인을 한 페이지 다이어그램으로 정리한 시각화 문서를 함께 제공합니다.<br>
+        <a href="7686-debug-helper-bug-report.html">→ 클래스 관계 &amp; 플로우 시각화 보기</a></p>
+    </div>
+
+    <h2 id="section-7">부분 성공을 다루는 첨부 재시도</h2>
+    <p>마지막 설계 결정은 가장 미묘한 상태에 관한 것이다. 제출은 사실 두 번의 네트워크 호출이다 — 이슈를 만들고(<code>createIssue</code>), 그 이슈에 파일을 붙인다(<code>addAttachment</code>). 그런데 이슈 생성은 성공했는데 첨부 업로드만 실패하면 어떻게 될까? 티켓은 이미 Jira에 만들어졌다. 여기서 전체를 실패로 처리하면 사용자는 "실패"를 보고 다시 누를 테고, 그러면 똑같은 티켓이 중복 생성된다.</p>
+    <p>그래서 이슈 생성 성공을 되돌릴 수 없는 사실로 받아들이고, 첨부 실패는 <strong>부분 성공</strong>으로 따로 다룬다. 성공 콜백 안에서 첨부를 올리고, 실패한 첨부만 골라 보관한다.</p>
+
+    <pre><code>service.<span class="fn">createIssue</span>(payload)
+    .<span class="fn">onSuccess</span> { ref -&gt;
+        <span class="kw">val</span> failed = <span class="fn">uploadAttachments</span>(ref.key, attachments)
+        <span class="kw">if</span> (failed.<span class="fn">isEmpty</span>()) {
+            session.<span class="fn">clear</span>(sessionId)
+            _events.<span class="fn">send</span>(<span class="typ">SubmitSucceeded</span>(ref.key, ref.url))  <span class="cmt">// 완전 성공</span>
+        } <span class="kw">else</span> {
+            failedAttachments = failed                       <span class="cmt">// 실패분만 보관</span>
+            _uiState.<span class="fn">update</span> { it.<span class="fn">copy</span>(partialBanner = <span class="typ">PartialBanner</span>(ref.key, ref.url, ...)) }
+        }
+    }
+    .<span class="fn">onFailure</span> { error -&gt;
+        <span class="kw">when</span> (error) {
+            <span class="kw">is</span> <span class="typ">JiraException</span>.<span class="typ">Auth</span>, <span class="kw">is</span> <span class="typ">JiraException</span>.<span class="typ">NoCredentials</span> -&gt;
+                _events.<span class="fn">send</span>(<span class="typ">RedirectToSettings</span>)   <span class="cmt">// 토큰 문제 → 설정으로</span>
+            <span class="kw">else</span> -&gt; _events.<span class="fn">send</span>(<span class="typ">SubmitFailed</span>(error.message ?: <span class="str">"제출 실패"</span>))
+        }
+    }</code></pre>
+
+    <p>첨부가 일부 실패하면 화면에 배너(<code>PartialBanner</code>)가 뜨고, 재시도 버튼은 <strong>실패한 첨부만</strong> 다시 올린다. 이미 올라간 스크린샷을 또 올리지 않는다.</p>
+
+    <pre><code><span class="kw">private fun</span> <span class="fn">retryAttachments</span>() {
+    <span class="kw">val</span> toRetry = failedAttachments   <span class="cmt">// 직전 실패분만</span>
+    <span class="kw">if</span> (toRetry.<span class="fn">isEmpty</span>()) <span class="kw">return</span>
+    viewModelScope.<span class="fn">launch</span> {
+        <span class="kw">val</span> failed = <span class="fn">uploadAttachments</span>(banner.issueKey, toRetry)
+        <span class="kw">if</span> (failed.<span class="fn">isEmpty</span>()) {
+            session.<span class="fn">clear</span>(sessionId)
+            _events.<span class="fn">send</span>(<span class="typ">SubmitSucceeded</span>(banner.issueKey, banner.issueUrl))
+        }
+    }
+}</code></pre>
+
+    <p><code>onFailure</code> 쪽도 짚어두자. <code>Auth</code>·<code>NoCredentials</code> 예외는 일반 실패와 다르게 취급해 <code>RedirectToSettings</code> 이벤트를 보낸다. 토큰이 없거나 만료된 것뿐이니, 사용자를 설정 화면으로 안내해 토큰을 등록·검증한 뒤 다시 제출하게 한다. 이 분기가 7단계 파이프라인에서 "최초 1회만 발생하는 토큰 등록"의 실체다.</p>
+
+    <div class="content-box">
+        <div class="content-box-title">이 섹션 한 줄 요약</div>
+        <p>"이슈 생성"과 "첨부 업로드"를 한 덩어리로 묶지 않고, 이슈 생성 성공을 확정 사실로 다뤄 <strong>중복 티켓을 원천 차단</strong>했다. 첨부는 실패분만 재시도한다.</p>
+    </div>
+
+    <h2 id="section-8">한계와 트레이드오프</h2>
+    <p>모든 설계엔 받아들인 비용이 있다. 이 도구가 의도적으로 포기한 것들을 분명히 적어둔다.</p>
+
+    <p><strong>토큰은 평문 SharedPreferences에 저장된다.</strong> <code>androidx-security-crypto</code> 같은 암호화 저장소를 도입하지 않았다. 새 의존성을 들이는 비용 대비, 이 도구가 디버그 빌드 전용이고 본인 디바이스에서만 쓰인다는 전제가 그 위험을 감당할 만하다고 판단했다. 대신 README에 디바이스 분실·공유 금지를 명시하고, 토큰을 다루는 코드에도 같은 가정을 주석으로 남겼다. 만약 이 도구를 공용 QA 디바이스로 확장한다면, 이 결정은 가장 먼저 재검토해야 할 항목이다.</p>
+
+    <p><strong>첨부 상한은 파일당 10MB다.</strong> Jira Cloud의 기본값을 그대로 따른다. 일반적인 스크린샷·텍스트 로그로는 닿을 일이 거의 없지만, 화면 녹화(코드에 <code>Recording</code> 자리만 잡혀 있다)를 붙이게 되면 부딪힐 수 있는 한계다.</p>
+
+    <p><strong>별도 백엔드 없이 클라이언트가 Jira를 직접 호출한다.</strong> 서버를 두면 토큰을 중앙에서 관리하고 호출을 통제할 수 있지만, 사내 디버그 도구 하나를 위해 백엔드를 세우는 건 과한 투자다. 사용자 본인 토큰으로 본인이 호출하는 모델은, Jira API 한도도 개인 단위로 자연히 나뉘므로 이 규모에는 합리적이다.</p>
+
+    <blockquote><p>좋은 트레이드오프는 비용을 숨기지 않는다. 평문 저장도, 직접 호출도 "지금 맥락에서 합리적인 선택"이지 "정답"이 아니다. 맥락이 바뀌면 결정도 바뀐다.</p></blockquote>
+
+    <h2 id="section-9">직접 켜보기</h2>
+    <p>디버그 빌드를 쓰고 있다면 켜는 건 간단하다. 눈여겨볼 점은 <strong>토큰 설정이 별도의 준비 단계가 아니라는 것</strong>이다. 토큰은 첫 신고를 시도하는 순간, 등록돼 있지 않으면 자연스럽게 끼어든다.</p>
+
+    <ul class="checklist">
+        <li><span class="checklist-num">1</span><span><strong>버그 리포트 ON</strong> — 개발자 모드 → QA → "버그 리포트" 토글을 켠다. 화면 우측에 Jira 플로팅 버튼이 나타난다.</span></li>
+        <li><span class="checklist-num">2</span><span><strong>신고</strong> — 버그 화면에서 버튼 탭 → 미리보기에서 스페이스(KMA/KQA)·이슈 타입 선택 → 제목 입력 → "Jira 티켓 생성". 성공하면 토스트로 이슈 키를 보여주고 화면이 닫힌다.</span></li>
+        <li><span class="checklist-num">3</span><span><strong>토큰 설정(최초 1회)</strong> — 토큰이 등록돼 있지 않으면, ②에서 "Jira 티켓 생성"을 누른 순간 설정 화면으로 <strong>자동 이동</strong>한다. Atlassian 이메일 + <a href="https://id.atlassian.com/manage-profile/security/api-tokens">API 토큰</a>을 입력하면 <code>/myself</code>로 검증되어 본인 이름이 표시되고, 저장 후 다시 제출하면 티켓이 만들어진다. 한 번 등록하면 이후엔 이 단계를 거치지 않는다.</span></li>
+    </ul>
+
+    <div class="phone-shots phone-shots-row">
+        <figure class="phone-figure">
+            <img src="assets/7686/developer_mode_setting.jpg" alt="개발자 모드 QA 섹션의 버그 리포트 토글 화면">
+            <figcaption class="phone-cap"><strong>① 버그 리포트 ON</strong><br>개발자 모드 → QA → 토글</figcaption>
+        </figure>
+        <figure class="phone-figure">
+            <img src="assets/7686/create_jira_ticket.jpg" alt="스페이스·이슈 타입 선택과 제목을 입력하는 미리보기 화면">
+            <figcaption class="phone-cap"><strong>② 신고</strong><br>스페이스·이슈 타입·제목 입력</figcaption>
+        </figure>
+        <figure class="phone-figure">
+            <img src="assets/7686/auth_jira.jpg" alt="Atlassian 이메일과 API 토큰을 입력하는 설정 화면">
+            <figcaption class="phone-cap"><strong>③ 토큰 설정 (최초 1회)</strong><br>토큰 없으면 자동 이동·검증</figcaption>
+        </figure>
+    </div>
+
+    <p>버그를 발견하고 신고하기까지의 거리를 좁히는 것 — 그게 이 도구가 한 일의 전부다. 스크린샷을 찍고 기기 정보를 받아적고 로그를 뽑던 다섯 단계가 "버튼 탭 + 제목 입력"으로 줄었다. 신고가 쉬워지면 더 많은 버그가 기록되고, 기록된 버그는 고쳐질 기회를 얻는다.</p>
+    <p>한 번 만들어두니 다른 욕심도 생긴다. 화면 녹화 첨부(<code>Recording</code> 자리는 이미 비워뒀다), 직전 네트워크 응답 캡처, 재현 단계 자동 기록 같은 것들. 같은 파이프라인 위에 얹으면 되는 확장들이다. 컨텍스트를 모아 한 번에 꽂는다는 골격은 그대로 두고 말이다.</p>
+
+</article>
+
+<div class="article">
+    <div class="footnotes">
+        <ol>
+            <li id="fn1">Atlassian, <em>The Jira Cloud platform REST API — Create issue</em>. description 등 리치 텍스트 필드는 ADF로 전달한다. <a href="https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issues/#api-rest-api-3-issue-post">developer.atlassian.com</a> <a href="#ref-1" class="fn-back">↩</a></li>
+            <li id="fn2">Atlassian, <em>Atlassian Document Format (ADF)</em>. 최상위 구조는 <code>version: 1</code>, <code>type: "doc"</code>, 노드 배열 <code>content</code>로 구성된다. <a href="https://developer.atlassian.com/cloud/jira/platform/apis/document/structure/">developer.atlassian.com</a> <a href="#ref-2" class="fn-back">↩</a></li>
+            <li>구현 출처: <code>:debug-helper</code> 모듈 <code>bugreport/</code> 패키지 (PR <a href="https://github.com/thefarmersfront/kurly-android/pull/7686">#7686</a>, KMA-7974). 코드 예제는 실제 구현에서 발췌했으며 지면을 위해 일부 생략(<code>// ...</code>)했다.</li>
+        </ol>
+    </div>
+</div>
+
+<footer class="article-footer">
+    <div>PR #7686 · KMA-7974 · :debug-helper</div>
+    <div class="share-buttons">
+        <button class="share-btn" onclick="navigator.clipboard.writeText(location.href)">링크 복사</button>
+    </div>
+</footer>
+
+</body>
+</html>

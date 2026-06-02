@@ -406,6 +406,20 @@
       <div class="year-content">
         <div class="grid active">
 
+          <a href="blog-7686-debug-helper-bug-report.html" class="card blog" data-type="blog" data-tags="debug,jira,automation,architecture" data-search="버그 리포트 jira 티켓 자동 생성 한 번의 탭 debug-helper 플로팅 버튼 스크린샷 메타데이터 로그 ScreenshotCapturer BugReportSession JiraIssueService TokenStore ADF Basic Auth RedactingInterceptor 이중 가드 FLAG_DEBUGGABLE TransactionTooLargeException 부분 성공 첨부 재시도 Compose Hilt Coroutines kma-7974 pr-7686 디버그 빌드 QA">
+            <div class="card-top">
+              <span class="card-badge">Blog</span>
+              <span class="card-date">2026 Q2</span>
+            </div>
+            <div class="card-title">한 번의 탭으로 버그를 티켓으로 — 디버그 빌드 전용 Jira 리포트 파이프라인 설계</div>
+            <div class="card-desc">스크린샷·메타데이터·로그를 자동 수집해 Jira REST API에 직접 꽂기까지, 그리고 Release 빌드를 건드리지 않는 이중 가드</div>
+            <div class="card-stats"><span class="cstat">PR #7686</span><span class="cstat">Deep Dive</span></div>
+            <div class="card-bottom">
+              <div class="card-tags"><span class="ctag">debug-helper</span><span class="ctag">Jira REST</span><span class="ctag">Hilt</span></div>
+              <span class="card-arrow">&#x2192;</span>
+            </div>
+          </a>
+
           <a href="blog-ci-claude-code-autofix.html" class="card blog" data-type="blog" data-tags="ci,github-actions,automation" data-search="ci 컴파일 에러 자동 수정 gemini claude code cli 에이전트 github actions search replace allowedTools max-turns oauth setup-token 테스트 컴파일 자동화 kma-7825 pr-7568">
             <div class="card-top">
               <span class="card-badge">Blog</span>
@@ -602,20 +616,6 @@
             <div class="card-stats"><span class="cstat">4개 변경점</span><span class="cstat">단일 경로</span></div>
             <div class="card-bottom">
               <div class="card-tags"><span class="ctag">DeepLink</span><span class="ctag">PAT-024</span></div>
-              <span class="card-arrow">&#x2192;</span>
-            </div>
-          </a>
-
-          <a href="7686-debug-helper-bug-report.html" class="card viz" data-type="viz" data-tags="debug,jira,automation,architecture" data-search="버그 리포트 jira 티켓 자동 생성 debug-helper 플로팅 버튼 스크린샷 메타데이터 로그 ScreenshotCapturer BugReportSession JiraIssueService TokenStore ADF Compose AndroidEntryPoint Hilt kma-7974 pr-7686 디버그 빌드 QA">
-            <div class="card-top">
-              <span class="card-badge">Viz</span>
-              <span class="card-date">KMA-7974</span>
-            </div>
-            <div class="card-title">디버그 빌드 Jira 버그 리포트 파이프라인</div>
-            <div class="card-desc">플로팅 1탭 → 스크린샷·메타·로그 자동 수집 → Jira REST 티켓 생성. 5개 역할 그룹 + 7단계 파이프라인 + 토큰 분기</div>
-            <div class="card-stats"><span class="cstat">PR #7686</span><span class="cstat">67 파일</span><span class="cstat">+3,184줄</span></div>
-            <div class="card-bottom">
-              <div class="card-tags"><span class="ctag">Debug</span><span class="ctag">Jira API</span><span class="ctag">Architecture</span></div>
               <span class="card-arrow">&#x2192;</span>
             </div>
           </a>
@@ -853,6 +853,12 @@
       </div>
       <div class="year-content">
         <div class="list-head"><span>Type</span><span>Title</span><span>Tags</span><span>Date</span></div>
+        <a href="blog-7686-debug-helper-bug-report.html" class="list-row blog" data-type="blog" data-tags="debug,jira,automation,architecture" data-search="버그 리포트 jira 티켓 자동 생성 한 번의 탭 debug-helper 플로팅 버튼 스크린샷 메타데이터 로그 이중 가드 ADF Basic Auth 부분 성공 첨부 재시도 kma-7974 pr-7686 디버그 빌드 QA">
+          <span class="lr-type blog">Blog</span>
+          <div class="lr-title-wrap"><span class="lr-title">한 번의 탭으로 버그를 티켓으로 — 디버그 빌드 전용 Jira 리포트 파이프라인 설계</span><span class="lr-desc">화면 컨텍스트를 자동 수집해 Jira에 직접 꽂기, Release를 막는 이중 가드</span></div>
+          <div class="lr-tags"><span class="ctag">debug-helper</span><span class="ctag">Jira REST</span></div>
+          <span class="lr-date">Q2</span>
+        </a>
         <a href="blog-ci-claude-code-autofix.html" class="list-row blog" data-type="blog" data-tags="ci,github-actions,automation" data-search="ci 컴파일 에러 자동 수정 gemini claude code cli 에이전트 github actions search replace allowedTools max-turns 테스트 컴파일 자동화 kma-7825 pr-7568">
           <span class="lr-type blog">Blog</span>
           <div class="lr-title-wrap"><span class="lr-title">Claude Code를 CI에 심다 — 컴파일 에러를 스스로 고치는 자동 수정 워크플로우</span><span class="lr-desc">search/replace API에서 코드 읽는 에이전트로, CI 자동 수정 재설계</span></div>
@@ -931,12 +937,6 @@
           <div class="lr-title-wrap"><span class="lr-title">딥링크 라우팅 단순화</span><span class="lr-desc">3갈래 → 단일 체인</span></div>
           <div class="lr-tags"><span class="ctag">KMA-6165</span></div>
           <span class="lr-date">Q1</span>
-        </a>
-        <a href="7686-debug-helper-bug-report.html" class="list-row viz" data-type="viz" data-tags="debug,jira,automation,architecture" data-search="버그 리포트 jira 티켓 자동 생성 debug-helper 플로팅 버튼 스크린샷 BugReportSession JiraIssueService kma-7974 pr-7686">
-          <span class="lr-type viz">Viz</span>
-          <div class="lr-title-wrap"><span class="lr-title">디버그 빌드 Jira 버그 리포트 파이프라인</span><span class="lr-desc">플로팅 1탭 → 스크린샷+메타+로그 → Jira REST · 67 파일 · +3,184줄</span></div>
-          <div class="lr-tags"><span class="ctag">KMA-7974</span></div>
-          <span class="lr-date">Q2</span>
         </a>
         <a href="7529-intent-generator-module-move.html" class="list-row viz" data-type="viz" data-tags="navigation,architecture,deeplink" data-search="IntentGenerator 모듈 이동 MainActivityNavigator DIP kma-7705 pr-7529">
           <span class="lr-type viz">Viz</span>
