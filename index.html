@@ -333,7 +333,7 @@
     <div class="sidebar-label">Browse</div>
     <button class="nav-item active" data-nav="all">
       <span class="nav-icon">&#9776;</span> 전체
-      <span class="nav-count" id="countAll">23</span>
+      <span class="nav-count" id="countAll">24</span>
     </button>
     <button class="nav-item" data-nav="blog">
       <span class="nav-icon" style="color:var(--blog);">&#9679;</span> 블로그
@@ -341,16 +341,16 @@
     </button>
     <button class="nav-item" data-nav="viz">
       <span class="nav-icon" style="color:var(--viz);">&#9679;</span> 시각화
-      <span class="nav-count" id="countViz">13</span>
+      <span class="nav-count" id="countViz">14</span>
     </button>
   </div>
 
   <div class="sidebar-section">
     <div class="sidebar-label">Overview</div>
     <div class="stats">
-      <div class="stat"><div class="stat-val">26</div><div class="stat-lbl">Total</div></div>
+      <div class="stat"><div class="stat-val">28</div><div class="stat-lbl">Total</div></div>
       <div class="stat"><div class="stat-val">4</div><div class="stat-lbl">Years</div></div>
-      <div class="stat"><div class="stat-val">27</div><div class="stat-lbl">PRs</div></div>
+      <div class="stat"><div class="stat-val">29</div><div class="stat-lbl">PRs</div></div>
       <div class="stat"><div class="stat-val">7</div><div class="stat-lbl">Categories</div></div>
     </div>
   </div>
@@ -400,11 +400,53 @@
       <div class="year-header">
         <span class="year-chevron">&#x25BE;</span>
         <span class="year-text">2026</span>
-        <span class="year-count">17</span>
+        <span class="year-count">19</span>
         <span class="year-line"></span>
       </div>
       <div class="year-content">
         <div class="grid active">
+
+          <a href="blog-alarmweb-obfuscation-mystery.html" class="card blog" data-type="blog" data-tags="postmortem,r8,obfuscation,android" data-search="알림 사라짐 난독화 obfuscation r8 minify mapping AlarmWeb 가명 이름표 광고 SDK gma next gen ads-mobile-sdk play-services-ads zza keep proguard 사전 난독화 SerializedName 영속 저장 DataStore 미스터리 포스트모템 전직군 비개발자 kma-8068 pr-7748">
+            <div class="card-top">
+              <span class="card-badge">Blog</span>
+              <span class="card-date">2026 Q2</span>
+            </div>
+            <div class="card-title">아무도 그 코드를 건드리지 않았다 — 광고 SDK가 알림을 지운 미스터리 추적기</div>
+            <div class="card-desc">코드 무변경인데 알림이 깨진 사건. 난독화 이름표가 한 칸 밀린 이유를 APK 분해까지 내려가 추적한 전 직군용 포스트모템</div>
+            <div class="card-stats"><span class="cstat">PR #7748</span><span class="cstat">Postmortem</span></div>
+            <div class="card-bottom">
+              <div class="card-tags"><span class="ctag">R8 난독화</span><span class="ctag">GMA SDK</span><span class="ctag">전 직군용</span></div>
+              <span class="card-arrow">&#x2192;</span>
+            </div>
+          </a>
+
+          <a href="7607-create-spec-prd-tasks-skill-compact.html" class="card viz" data-type="viz" data-tags="claude-code,skill,compact,workflow" data-search="create-spec 기획서 prd tasks 명세 기술 설계 자동 생성 쉬운 설명 compact 비개발자 기획자 검토 단계 검토 ai 동시 검토 claude code skill kma-7869 pr-7607">
+            <div class="card-top">
+              <span class="card-badge">Viz</span>
+              <span class="card-date">KMA-7869</span>
+            </div>
+            <div class="card-title">기획서 → 명세 문서 자동 생성 (쉬운 설명)</div>
+            <div class="card-desc">기획서 한 건 → 기획 명세 + 기술 설계 문서 4개 자동 생성. 비개발자용 쉬운 설명 버전</div>
+            <div class="card-stats"><span class="cstat">PR #7607</span><span class="cstat">Compact</span></div>
+            <div class="card-bottom">
+              <div class="card-tags"><span class="ctag">Claude Code</span><span class="ctag">Compact</span><span class="ctag">기획자용</span></div>
+              <span class="card-arrow">&#x2192;</span>
+            </div>
+          </a>
+
+          <a href="7607-create-spec-prd-tasks-skill.html" class="card viz" data-type="viz" data-tags="claude-code,skill,automation,workflow" data-search="create-spec create-prd create-tasks 기획서 prd tasks 2단계 spec 생성 스킬 검토 게이트 분석 에이전트 병렬 dispatch architect risk ux 보안 마이그레이션 opus sonnet phase1 phase2 오케스트레이터 claude code skill kma-7869 pr-7607">
+            <div class="card-top">
+              <span class="card-badge">Viz</span>
+              <span class="card-date">KMA-7869</span>
+            </div>
+            <div class="card-title">create-spec — 기획서 → PRD → Tasks 2단계 spec 스킬</div>
+            <div class="card-desc">PRD(무엇을) → 기획자 검토 게이트 → Tasks(어떻게) 파이프라인. 3개 스킬 분리 + 조건부 에이전트 2~5개 병렬 dispatch</div>
+            <div class="card-stats"><span class="cstat">PR #7607</span><span class="cstat">18 파일</span></div>
+            <div class="card-bottom">
+              <div class="card-tags"><span class="ctag">Claude Code</span><span class="ctag">Skill</span><span class="ctag">PRD</span></div>
+              <span class="card-arrow">&#x2192;</span>
+            </div>
+          </a>
 
           <a href="blog-7686-debug-helper-bug-report.html" class="card blog" data-type="blog" data-tags="debug,jira,automation,architecture" data-search="버그 리포트 jira 티켓 자동 생성 한 번의 탭 debug-helper 플로팅 버튼 스크린샷 메타데이터 로그 ScreenshotCapturer BugReportSession JiraIssueService TokenStore ADF Basic Auth RedactingInterceptor 이중 가드 FLAG_DEBUGGABLE TransactionTooLargeException 부분 성공 첨부 재시도 Compose Hilt Coroutines kma-7974 pr-7686 디버그 빌드 QA">
             <div class="card-top">
@@ -848,11 +890,23 @@
       <div class="year-header">
         <span class="year-chevron">&#x25BE;</span>
         <span class="year-text">2026</span>
-        <span class="year-count">17</span>
+        <span class="year-count">19</span>
         <span class="year-line"></span>
       </div>
       <div class="year-content">
         <div class="list-head"><span>Type</span><span>Title</span><span>Tags</span><span>Date</span></div>
+        <a href="blog-alarmweb-obfuscation-mystery.html" class="list-row blog" data-type="blog" data-tags="postmortem,r8,obfuscation,android" data-search="알림 사라짐 난독화 obfuscation r8 minify mapping AlarmWeb 가명 이름표 광고 SDK gma next gen ads-mobile-sdk zza keep proguard SerializedName 영속 저장 미스터리 포스트모템 전직군 kma-8068 pr-7748">
+          <span class="lr-type blog">Blog</span>
+          <div class="lr-title-wrap"><span class="lr-title">아무도 그 코드를 건드리지 않았다 — 광고 SDK가 알림을 지운 미스터리 추적기</span><span class="lr-desc">난독화 이름표가 한 칸 밀린 이유, APK 분해까지 내려간 전 직군용 포스트모템</span></div>
+          <div class="lr-tags"><span class="ctag">KMA-8068</span></div>
+          <span class="lr-date">Q2</span>
+        </a>
+        <a href="7607-create-spec-prd-tasks-skill.html" class="list-row viz" data-type="viz" data-tags="claude-code,skill,automation,workflow" data-search="create-spec create-prd create-tasks 기획서 prd tasks 2단계 spec 생성 스킬 검토 게이트 분석 에이전트 병렬 dispatch opus sonnet 오케스트레이터 claude code skill kma-7869 pr-7607">
+          <span class="lr-type viz">Viz</span>
+          <div class="lr-title-wrap"><span class="lr-title">create-spec — 기획서 → PRD → Tasks 2단계 spec 스킬</span><span class="lr-desc">3개 스킬 분리 + 조건부 에이전트 2~5개 병렬 dispatch</span></div>
+          <div class="lr-tags"><span class="ctag">KMA-7869</span></div>
+          <span class="lr-date">Q2</span>
+        </a>
         <a href="blog-7686-debug-helper-bug-report.html" class="list-row blog" data-type="blog" data-tags="debug,jira,automation,architecture" data-search="버그 리포트 jira 티켓 자동 생성 한 번의 탭 debug-helper 플로팅 버튼 스크린샷 메타데이터 로그 이중 가드 ADF Basic Auth 부분 성공 첨부 재시도 kma-7974 pr-7686 디버그 빌드 QA">
           <span class="lr-type blog">Blog</span>
           <div class="lr-title-wrap"><span class="lr-title">한 번의 탭으로 버그를 티켓으로 — 디버그 빌드 전용 Jira 리포트 파이프라인 설계</span><span class="lr-desc">화면 컨텍스트를 자동 수집해 Jira에 직접 꽂기, Release를 막는 이중 가드</span></div>
