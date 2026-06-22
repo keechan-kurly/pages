@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RecyclerView에선 멀쩡하던 WebView가 LazyColumn에서 버벅인 이유</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════
+   Toss Tech Light Theme — Blog Template
+   Reference: toss.tech/article/will-ai-replace-developers
+   ═══════════════════════════════════════════════ */
+:root {
+    /* Adaptive Grays (Toss Design System) */
+    --grey-50: #f9fafb;
+    --grey-100: #f2f4f6;
+    --grey-200: #e5e8eb;
+    --grey-300: #d1d6db;
+    --grey-400: #b0b8c1;
+    --grey-500: #8b95a1;
+    --grey-600: #6b7684;
+    --grey-700: #4e5968;
+    --grey-800: #333d4b;
+    --grey-900: #191f28;
+
+    /* Brand */
+    --toss-blue: #0064FF;
+    --toss-blue-light: rgba(0, 100, 255, 0.08);
+    --toss-blue-border: rgba(0, 100, 255, 0.2);
+
+    /* Semantic */
+    --bg: #ffffff;
+    --bg-elevated: var(--grey-50);
+    --bg-highlight: #ffc34236;
+    --bg-code: var(--grey-100);
+    --bg-blockquote: transparent;
+    --text-primary: var(--grey-900);
+    --text-secondary: var(--grey-700);
+    --text-tertiary: var(--grey-500);
+    --border-light: var(--grey-200);
+    --border-blockquote: var(--grey-800);
+
+    /* Layout */
+    --content-width: 680px;
+    --wide-width: 780px;
+    --radius: 16px;
+    --radius-sm: 10px;
+
+    /* Typography */
+    --font-body: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --font-code: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+}
+
+/* Reset */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text-primary);
+    line-height: 1.8;
+    font-size: 16.5px;
+    -webkit-font-smoothing: antialiased;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+}
+
+::selection {
+    background: rgba(0, 100, 255, 0.15);
+    color: var(--grey-900);
+}
+
+a { color: var(--toss-blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ═══════════════════════════════════════════════
+   Layout
+   ═══════════════════════════════════════════════ */
+.article {
+    max-width: var(--content-width);
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+.article-wide {
+    max-width: var(--wide-width);
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+/* ═══════════════════════════════════════════════
+   Hero Header
+   ═══════════════════════════════════════════════ */
+.hero {
+    padding: 80px 24px 48px;
+    max-width: var(--content-width);
+    margin: 0 auto;
+}
+
+.hero-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 24px;
+    font-size: 0.875rem;
+    color: var(--text-tertiary);
+}
+
+.hero-meta .author {
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.hero-meta .dot {
+    color: var(--grey-300);
+}
+
+.hero-title {
+    font-size: 2.2rem;
+    font-weight: 800;
+    line-height: 1.3;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+    letter-spacing: -0.02em;
+}
+
+.hero-subtitle {
+    font-size: 1.1rem;
+    line-height: 1.7;
+    color: var(--text-secondary);
+    max-width: 580px;
+}
+
+.hero-tags {
+    display: flex;
+    gap: 8px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+}
+
+.hero-tag {
+    padding: 4px 12px;
+    border-radius: var(--radius-sm);
+    background: var(--toss-blue-light);
+    border: 1px solid var(--toss-blue-border);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--toss-blue);
+}
+
+/* ═══════════════════════════════════════════════
+   Table of Contents
+   ═══════════════════════════════════════════════ */
+.toc {
+    margin: 0 0 48px 0;
+    padding: 24px 28px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+}
+
+.toc-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+}
+
+.toc-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.toc-list a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    font-size: 0.92rem;
+    color: var(--text-secondary);
+    transition: color 0.2s;
+}
+
+.toc-list a:hover {
+    color: var(--toss-blue);
+    text-decoration: none;
+}
+
+.toc-num {
+    width: 24px;
+    height: 24px;
+    border-radius: 7px;
+    background: var(--grey-200);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════
+   Typography
+   ═══════════════════════════════════════════════ */
+.article h2 {
+    font-size: 1.55rem;
+    font-weight: 800;
+    line-height: 1.35;
+    color: var(--text-primary);
+    margin: 56px 0 20px 0;
+    letter-spacing: -0.01em;
+}
+
+.article h2:first-child {
+    margin-top: 0;
+}
+
+.article h3 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    line-height: 1.4;
+    color: var(--text-primary);
+    margin: 40px 0 14px 0;
+}
+
+.article p {
+    margin: 0 0 20px 0;
+    color: var(--text-primary);
+}
+
+.article strong {
+    font-weight: 700;
+    color: var(--grey-900);
+}
+
+/* ═══════════════════════════════════════════════
+   Blockquote (Left border style — Toss)
+   ═══════════════════════════════════════════════ */
+.article blockquote {
+    margin: 28px 0;
+    padding: 0 0 0 20px;
+    border-left: 2.5px solid var(--border-blockquote);
+    font-size: 1.05rem;
+    font-weight: 600;
+    line-height: 1.7;
+    color: var(--text-primary);
+}
+
+.article blockquote p {
+    margin: 0;
+}
+
+/* ═══════════════════════════════════════════════
+   Highlight Box (Yellow — Toss)
+   ═══════════════════════════════════════════════ */
+.highlight-box {
+    margin: 28px 0;
+    padding: 20px 24px;
+    background: var(--bg-highlight);
+    border-radius: var(--radius);
+    font-weight: 600;
+    line-height: 1.7;
+    color: var(--text-primary);
+}
+
+/* ═══════════════════════════════════════════════
+   Content Box (Gray rounded — Toss)
+   ═══════════════════════════════════════════════ */
+.content-box {
+    margin: 28px 0;
+    padding: 24px 28px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+}
+
+.content-box-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+}
+
+/* ═══════════════════════════════════════════════
+   Code Blocks
+   ═══════════════════════════════════════════════ */
+.article code {
+    font-family: var(--font-code);
+    font-size: 0.88em;
+    padding: 2px 6px;
+    background: var(--bg-code);
+    border-radius: 5px;
+    color: var(--grey-800);
+}
+
+.article pre {
+    margin: 24px 0;
+    padding: 24px;
+    background: var(--grey-900);
+    border-radius: var(--radius);
+    overflow-x: auto;
+    line-height: 1.6;
+}
+
+.article pre code {
+    font-family: var(--font-code);
+    font-size: 0.85rem;
+    background: none;
+    padding: 0;
+    color: #abb2bf;
+    border-radius: 0;
+}
+
+/* Syntax highlighting (One Dark) */
+.kw { color: #c678dd; }       /* keyword */
+.str { color: #98c379; }      /* string */
+.cmt { color: #5c6370; font-style: italic; } /* comment */
+.typ { color: #e5c07b; }      /* type/class */
+.fn { color: #61afef; }       /* function */
+.ann { color: #d19a66; }      /* annotation/number */
+.op { color: #56b6c2; }       /* operator */
+
+/* ═══════════════════════════════════════════════
+   Lists
+   ═══════════════════════════════════════════════ */
+.article ul, .article ol {
+    margin: 0 0 20px 0;
+    padding-left: 24px;
+}
+
+.article li {
+    margin-bottom: 10px;
+    line-height: 1.7;
+}
+
+.article li::marker {
+    color: var(--text-tertiary);
+}
+
+/* Checklist style */
+.checklist {
+    list-style: none;
+    padding: 0;
+    counter-reset: check;
+}
+
+.checklist li {
+    counter-increment: check;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.checklist li:last-child {
+    border-bottom: none;
+}
+
+.checklist-num {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: var(--toss-blue);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: white;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+/* ═══════════════════════════════════════════════
+   Images
+   ═══════════════════════════════════════════════ */
+.article img, .article-wide img {
+    max-width: 100%;
+    border-radius: var(--radius);
+    margin: 28px 0;
+    display: block;
+}
+
+.img-caption {
+    text-align: center;
+    font-size: 0.82rem;
+    color: var(--text-tertiary);
+    margin-top: -16px;
+    margin-bottom: 28px;
+}
+
+/* ═══════════════════════════════════════════════
+   Metrics Table
+   ═══════════════════════════════════════════════ */
+.metrics-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0;
+    font-size: 0.9rem;
+}
+
+.metrics-table th {
+    text-align: left;
+    padding: 12px 16px;
+    background: var(--bg-elevated);
+    border-bottom: 2px solid var(--border-light);
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.metrics-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-light);
+    color: var(--text-secondary);
+}
+
+.metrics-table .metric-label {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.metrics-table .metric-good {
+    color: #16a34a;
+    font-weight: 700;
+}
+
+.metrics-table .metric-bad {
+    color: #dc2626;
+    font-weight: 600;
+}
+
+.metrics-table .metric-neutral {
+    color: var(--text-tertiary);
+}
+
+/* Delta badges */
+.delta {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.delta-good {
+    background: rgba(22, 163, 74, 0.1);
+    color: #16a34a;
+}
+
+.delta-bad {
+    background: rgba(220, 38, 38, 0.1);
+    color: #dc2626;
+}
+
+.delta-neutral {
+    background: var(--grey-100);
+    color: var(--text-tertiary);
+}
+
+/* ═══════════════════════════════════════════════
+   Summary / Key Takeaway Box
+   ═══════════════════════════════════════════════ */
+.summary-box {
+    margin: 36px 0;
+    padding: 24px 28px;
+    background: var(--toss-blue-light);
+    border: 1px solid var(--toss-blue-border);
+    border-radius: var(--radius);
+}
+
+.summary-box-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--toss-blue);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.summary-box p, .summary-box li {
+    color: var(--text-primary);
+    font-size: 0.95rem;
+}
+
+/* ═══════════════════════════════════════════════
+   Comparison Cards (Inline)
+   — 이중 박스 구조 제거: 카드 배경/보더 없음, 라벨 + 코드 블록만으로 비교 단위
+   — Grid 1fr 의 자식 폭 초과 방지: minmax(0, 1fr) + child min-width: 0
+   ═══════════════════════════════════════════════ */
+.compare-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 16px;
+    margin: 28px 0;
+}
+
+.compare-card {
+    padding: 0;
+    background: transparent;
+    border: none;
+    min-width: 0;  /* Grid 자식의 폭 초과 방지 */
+}
+
+.compare-card-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 10px;
+}
+.compare-card-label::before {
+    content: "";
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+.compare-before .compare-card-label { color: var(--text-tertiary); }
+.compare-before .compare-card-label::before { background: var(--grey-400); }
+.compare-after .compare-card-label { color: var(--toss-blue); }
+.compare-after .compare-card-label::before { background: var(--toss-blue); }
+
+.compare-card pre {
+    margin: 0;
+    padding: 14px;
+    font-size: 0.72rem;
+    border-radius: 12px;
+    overflow-x: auto;
+}
+.compare-card pre code { font-size: 0.72rem; }
+
+/* ═══════════════════════════════════════════════
+   User Quote (사용자 피드백 인용 — accessibility_face)
+   ═══════════════════════════════════════════════ */
+.user-quote {
+    margin: 28px 0;
+    padding: 20px 24px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+    border-left: 3px solid var(--toss-blue);
+}
+
+.user-quote-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--toss-blue);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 8px;
+}
+
+.user-quote p {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.7;
+    color: var(--text-primary);
+    font-style: italic;
+}
+
+/* ═══════════════════════════════════════════════
+   Media (비디오/오디오 — accessibility_face)
+   ═══════════════════════════════════════════════ */
+.media-wrap {
+    margin: 28px 0;
+}
+
+.media-wrap video, .media-wrap audio {
+    width: 100%;
+    border-radius: var(--radius);
+    display: block;
+}
+
+.media-wrap audio {
+    margin-top: 8px;
+}
+
+/* ═══════════════════════════════════════════════
+   Author Credits (복수 저자 — accessibility_face)
+   ═══════════════════════════════════════════════ */
+.credits {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-light);
+    font-size: 0.85rem;
+    color: var(--text-tertiary);
+}
+
+.credits-role {
+    font-weight: 700;
+    color: var(--text-secondary);
+    margin-right: 4px;
+}
+
+.credits-sep {
+    margin: 0 12px;
+    color: var(--grey-300);
+}
+
+/* ═══════════════════════════════════════════════
+   Separator
+   ═══════════════════════════════════════════════ */
+.article hr {
+    border: none;
+    height: 1px;
+    background: var(--border-light);
+    margin: 48px 0;
+}
+
+/* ═══════════════════════════════════════════════
+   Footnotes
+   ═══════════════════════════════════════════════ */
+.footnotes {
+    margin-top: 56px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border-light);
+    font-size: 0.82rem;
+    color: var(--text-tertiary);
+    line-height: 1.8;
+}
+
+.footnotes a {
+    color: var(--text-tertiary);
+    text-decoration: underline;
+}
+
+.footnotes ol { padding-left: 20px; }
+.footnotes li { margin-bottom: 6px; scroll-margin-top: 24px; }
+
+.footnote-ref {
+    font-size: 0.75em;
+    vertical-align: super;
+    font-weight: 600;
+}
+
+.footnote-ref a {
+    color: var(--toss-blue);
+    text-decoration: none;
+}
+
+.footnote-ref a:hover { text-decoration: underline; }
+
+.fn-back {
+    color: var(--text-tertiary);
+    text-decoration: none;
+    margin-left: 6px;
+    font-size: 0.9em;
+}
+
+.fn-back:hover { color: var(--toss-blue); }
+
+/* ═══════════════════════════════════════════════
+   Footer
+   ═══════════════════════════════════════════════ */
+.article-footer {
+    margin-top: 56px;
+    padding: 32px 0;
+    text-align: center;
+    color: var(--text-tertiary);
+    font-size: 0.82rem;
+}
+
+.share-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.share-btn {
+    padding: 8px 20px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-light);
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.share-btn:hover {
+    background: var(--grey-200);
+    color: var(--text-primary);
+}
+
+/* ═══════════════════════════════════════════════
+   Responsive
+   ═══════════════════════════════════════════════ */
+@media (max-width: 768px) {
+    .hero { padding: 48px 20px 32px; }
+    .hero-title { font-size: 1.7rem; }
+    .article, .article-wide { padding: 0 20px; }
+    .article h2 { font-size: 1.35rem; margin-top: 40px; }
+    .article h3 { font-size: 1.1rem; }
+    .compare-grid { grid-template-columns: 1fr; }
+    .article pre { padding: 16px; margin-left: -8px; margin-right: -8px; border-radius: 12px; }
+}
+
+/* ═══════════════════════════════════════════════
+   Print
+   ═══════════════════════════════════════════════ */
+@media print {
+    body { font-size: 11pt; }
+    .hero { padding: 24px 0; }
+    .article pre { white-space: pre-wrap; }
+    .toc, .share-buttons, .article-footer { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     Hero Header
+     ═══════════════════════════════════════════ -->
+<header class="hero">
+    <div class="hero-meta">
+        <span class="author">홍기찬</span>
+        <span class="dot">&middot;</span>
+        <span>Android</span>
+        <span class="dot">&middot;</span>
+        <time>2026.06.22</time>
+    </div>
+    <h1 class="hero-title">RecyclerView에선 멀쩡하던 WebView가 LazyColumn에서 버벅인 이유</h1>
+    <p class="hero-subtitle">같은 하드웨어 레이어, 다른 결과 — Perfetto로 추적한 재래스터화 비용</p>
+    <div class="hero-tags">
+        <span class="hero-tag">Android</span>
+        <span class="hero-tag">WebView</span>
+        <span class="hero-tag">Jetpack Compose</span>
+        <span class="hero-tag">렌더링 성능</span>
+        <span class="hero-tag">Perfetto</span>
+    </div>
+</header>
+
+<!-- ═══════════════════════════════════════════
+     Table of Contents
+     ═══════════════════════════════════════════ -->
+<nav class="article">
+    <div class="toc">
+        <div class="toc-label">목차</div>
+        <ol class="toc-list">
+            <li><a href="#section-1"><span class="toc-num">1</span> 코드는 그대로였다</a></li>
+            <li><a href="#section-2"><span class="toc-num">2</span> 증상: 마이그레이션이 깨운 jank</a></li>
+            <li><a href="#section-3"><span class="toc-num">3</span> 리팩토링 전: RecyclerView 시절</a></li>
+            <li><a href="#section-4"><span class="toc-num">4</span> 조사: Perfetto로 범인 찾기</a></li>
+            <li><a href="#section-5"><span class="toc-num">5</span> 왜 컨테이너가 결과를 바꿨나</a></li>
+            <li><a href="#section-6"><span class="toc-num">6</span> 수정: 레이어와 인프라를 함께 걷어내다</a></li>
+            <li><a href="#section-7"><span class="toc-num">7</span> 검증: 세 각도, 같은 결론</a></li>
+            <li><a href="#section-8"><span class="toc-num">8</span> 최적화에는 유효기간이 있다</a></li>
+        </ol>
+    </div>
+</nav>
+
+<!-- ═══════════════════════════════════════════
+     Article Body
+     ═══════════════════════════════════════════ -->
+<article class="article">
+
+    <!-- ── 1 ── -->
+    <h2 id="section-1">코드는 그대로였다</h2>
+    <p>코드는 그대로였다. 상품상세 상품설명 탭을 담는 스크롤 컨테이너만 <code>RecyclerView</code>에서 <code>LazyColumn</code>으로 바꿨을 뿐인데, 스크롤이 버벅이기 시작했다. WebView도, 그 WebView에 걸어둔 <code>LAYER_TYPE_HARDWARE</code> 설정도 손대지 않았다. 그런데 결과는 갈렸다.</p>
+    <p>이 글은 그 역설을 추적한 기록이다. 같은 WebView, 같은 하드웨어 레이어인데 왜 컨테이너에 따라 한쪽은 부드럽고 한쪽은 끊겼는가. 먼저 결론을 한 줄로 박아두자.</p>
+    <div class="highlight-box">하드웨어 레이어는 내용이 고정된 뷰에서만 캐시로 동작한다. 그런데 이 WebView는 매 프레임 스스로를 무효화한다 — 그래서 레이어는 RecyclerView든 LazyColumn이든 <strong>매 프레임 다시 그려지는 순수 오버헤드</strong>였다. 두 컨테이너의 차이는 그 비용이 어디서 체감 임계를 넘느냐였을 뿐이다.</p></div>
+    <p>Android Studio Profiler와 Perfetto 트레이스로 그 한 줄을 어떻게 증명했는지, 그리고 RecyclerView와 LazyColumn의 렌더링 모델이 정확히 어디서 갈라지는지 따라가 본다.</p>
+
+    <!-- ── 2 ── -->
+    <h2 id="section-2">증상: 마이그레이션이 깨운 jank</h2>
+    <p>상품설명 탭은 원래 <code>RecyclerView</code> + <code>ComposeView</code> 혼합 구조였다. 이미지·정보·리뷰·추천 같은 섹션이 각각 ViewHolder였고, 맨 아래 상품설명 영역은 WebView를 품은 ViewHolder였다. 이 화면을 통째로 <code>LazyColumn</code> 기반으로 옮겼다. 보이는 결과물과 기능은 동일했다.</p>
+    <p>전환 직후 QA가 아니라 스크롤 손맛에서 먼저 티가 났다. 상품설명 영역을 지날 때 눈에 띄게 끊겼다. Android Studio Profiler의 System Trace로 잡아 보니 <strong>Janky Frame</strong>이 빨갛게 도배돼 있었다.</p>
+    <div class="content-box">
+        <div class="content-box-title">증거물 — 개선 전 Profiler (Display / Janky frames 트랙)</div>
+        <img src="assets/webview-hwlayer/profiler-before.jpg" alt="개선 전 Android Studio Profiler — Janky frames가 빨갛게 다수 표시됨"
+             style="width:100%; margin:0 0 14px 0; border:1px solid var(--border-light); border-radius:12px;">
+        <p style="margin:0;">상단 <strong>Display 트랙</strong>의 빨간 구간이 모두 vsync 마감을 놓친 프레임이다. 오른쪽 프레임 표의 Frame Duration이 16.6ms를 줄줄이 넘긴다.</p>
+    </div>
+    <p>수치로 보면 더 분명하다. 전체 프레임의 <strong>60.6%</strong>가 janky였고, 앱이 직접 유발한 Self Jank가 178건, 평균 프레임 시간은 23.77ms로 60fps 마감선(16.6ms)을 한참 넘겼다. 여기서 중요한 건 단 하나다. <strong>바뀐 변수는 컨테이너뿐이라는 사실.</strong> 원인은 WebView 안이 아니라, WebView를 담는 방식 어딘가에 있었다.</p>
+
+    <!-- ── 3 ── -->
+    <h2 id="section-3">리팩토링 전: RecyclerView 시절</h2>
+    <p>그렇다면 RecyclerView 시절의 WebView는 어떻게 그려지고 있었을까. 옛 구조에서 상품설명 WebView는 <code>ProductDetailInformationLayerViewHolder</code> 안에서 초기화됐고, 거기엔 이미 하드웨어 레이어가 걸려 있었다.</p>
+    <pre><code><span class="cmt">// (구) RecyclerView ViewHolder — 상품설명 WebView 초기화</span>
+<span class="kw">private fun</span> <span class="fn">initView</span>() {
+    webViewFacade.<span class="fn">initWebView</span>(binding.webView, View.<span class="typ">LAYER_TYPE_HARDWARE</span>)
+    webViewFacade.<span class="fn">initJavascriptInterfaces</span>(binding.webView)
+}</code></pre>
+    <p>이 <code>LAYER_TYPE_HARDWARE</code>는 사연이 있는 코드다. WebView에 하드웨어 가속을 의도하고 걸어둔 레이어인데, 바로 이 레이어가 한때 저사양 단말에서 앱을 죽인 적이 있다. GPU가 허용하는 최대 텍스처 크기가 16383인 단말에서, 레이어 높이가 64의 배수로 올림되며 16384가 되어 <code>IllegalStateException: Unable to create layer — requested size 16384, max size 16383</code>으로 크래시가 1만 건 넘게 터졌다.</p>
+    <div class="summary-box">
+        <div class="summary-box-title">이 레이어가 처음 말썽을 부린 이야기</div>
+        <p>그 크래시의 추적과 우회 과정은 별도 글에 정리돼 있다. 이 글은 그 후속편에 해당한다.<br>
+        <a href="blog-webview-texture-crash.html">→ 1px이 앱을 죽였다 — 저사양 단말 WebView 크래시 1만 건의 원인과 대응</a></p>
+    </div>
+    <p>당시의 해법은 레이어를 없애는 게 아니라 <strong>디바이스로 분기</strong>하는 것이었다. 단말의 <code>GL_MAX_TEXTURE_SIZE</code>를 EGL로 직접 조회하는 <code>LayerTypeInspector</code>를 만들어, 텍스처 크기가 64의 배수가 아닌 위험 단말(예: 16383)만 <code>LAYER_TYPE_NONE</code>으로 떨구고 <strong>나머지 대다수 단말은 <code>LAYER_TYPE_HARDWARE</code>를 그대로 유지</strong>했다.<sup class="footnote-ref" id="ref-3"><a href="#fn3">[3]</a></sup></p>
+    <p>그래서 짚어둘 점은 이거다. <strong>RecyclerView 시절에도 대다수 단말의 이 WebView엔 똑같이 하드웨어 레이어가 걸려 있었다. 하지만 그때 문제는 일부 단말의 "크래시"였지 "스크롤 버벅임"이 아니었다.</strong> RecyclerView 스크롤 자체는 매끄러웠다. 같은 레이어가, 컨테이너가 바뀌자 이번엔 크래시가 아니라 jank라는 새 얼굴로 돌아온 셈이다.</p>
+
+    <!-- ── 4 ── -->
+    <h2 id="section-4">조사: Perfetto로 범인 찾기</h2>
+    <p>Profiler가 "프레임이 느리다"까지 알려줬다면, 그 프레임 안에서 무엇이 시간을 먹는지는 Perfetto 트레이스로 들어가야 보인다. 개선 전/후 트레이스를 떠서 두 갈래로 좁혔다. 먼저 <code>actual_frame_timeline_slice</code>의 <code>jank_tag</code>로 앱이 책임지는 Self Jank를 셌고, 그다음 RenderThread의 슬라이스를 시간순으로 분해했다.</p>
+    <p>RenderThread를 펼치자 한 슬라이스가 눈에 들어왔다.</p>
+    <pre><code><span class="cmt">// RenderThread 슬라이스 (개선 전, 스크롤 구간)</span>
+drawLayer [WebView] 1080.0 x 13907.0
+   호출 1,026회 · 합계 5,464.6ms · 평균 5.33ms · 최대 37.57ms</code></pre>
+    <p><code>drawLayer</code>는 하드웨어 레이어의 내용을 GPU 텍스처(FBO)에 다시 그리는 작업이다. 크기를 보자. <strong>1080 × 13907px</strong> — 상품설명 페이지가 <code>WRAP_CONTENT</code>로 펼쳐진 전체 높이다. 이 한 장짜리 거대한 텍스처를, 스크롤하는 동안 프레임당 약 1번씩(1,026회 ≈ 프레임 수) 다시 그리고 있었다.</p>
+    <div class="content-box">
+        <div class="content-box-title">귀속 검증 — 이 슬라이스가 정말 주범인가</div>
+        <p style="margin-bottom:8px;">RenderThread의 <code>Drawing</code> 루트 슬라이스 합계가 8,872ms → 3,250ms로 줄었는데, 그 감소분(약 5,622ms)의 <strong>97%</strong>가 이 <code>drawLayer[WebView]</code> 하나의 제거로 설명됐다.</p>
+        <p style="margin:0;">슬라이스의 부모-자식 관계(<code>ancestor_slice</code>)로도 확인했다. 레이어를 채우던 skia 연산(<code>FillRectOp</code> 등)이 모두 이 <code>drawLayer</code>의 자손이었고, 함께 사라졌다.</p>
+    </div>
+    <p>범인은 잡았다. 그런데 의문은 더 커진다. 같은 WebView, 같은 레이어인데 RecyclerView에선 이 비용이 문제로 보이지 않았다. 무엇이 달랐나.</p>
+
+    <!-- ── 5 ── -->
+    <h2 id="section-5">왜 컨테이너가 결과를 바꿨나</h2>
+    <p>답은 하드웨어 레이어의 정의 자체에 있다. Android 공식 문서는 레이어가 언제 다시 그려지는지를 이렇게 못 박는다.<sup class="footnote-ref" id="ref-1"><a href="#fn1">[1]</a></sup></p>
+    <blockquote><p>"Once a view is rendered into a layer, its drawing code does not have to be executed <strong>until the view calls <code>invalidate()</code></strong>."</p></blockquote>
+    <p>즉 하드웨어 레이어는 "내용은 고정이고 위치·투명도 같은 <em>변형</em>만 바뀔 때" 빛을 본다. <code>translationX/Y</code>, <code>alpha</code>, <code>rotation</code> 같은 속성은 레이어를 다시 그리지 않고 GPU가 캐시된 텍스처를 합성만 하면 되기 때문이다. 그래서 공식 문서는 하드웨어 레이어를 <strong>"애니메이션이 도는 동안만" 켜라</strong>고 권고한다. 영구적으로 켜두는 용도가 아니다.</p>
+    <p>그런데 이 WebView는 정확히 그 반대다. 크기·위치만 바뀌는 정적인 뷰가 아니라, chromium의 GL functor가 <strong>매 프레임 <code>invalidate()</code>를 던지는</strong> 살아 있는 표면이다. 결정적 증거가 있다 — 스크롤을 멈추고 가만히 둬도 <code>show_layers_updates</code>를 켜면 이 WebView 영역은 계속 초록색으로 깜빡인다. 컨테이너가 RecyclerView든 LazyColumn이든 똑같다.</p>
+    <div class="highlight-box">이 WebView에게 하드웨어 레이어는 처음부터 <strong>캐시가 아니라 순수 오버헤드</strong>였다. functor가 매 프레임 스스로를 무효화하니, 레이어는 매 프레임 다시 그려질 수밖에 없다. 그 비용은 어느 컨테이너에서든 발생한다.</div>
+    <p>실제로 RecyclerView 트레이스를 떠 보면 분명하다. RecyclerView에서도 <code>drawLayer[WebView]</code>는 <strong>1,692프레임 중 1,690회</strong> — 사실상 매 프레임 실행되고 있었다. 처음에 세웠던 "RecyclerView는 레이어를 재사용한다"는 가설은 틀렸다.</p>
+    <table class="metrics-table">
+        <thead><tr><th>지표 (둘 다 HARDWARE)</th><th>RecyclerView</th><th>LazyColumn</th></tr></thead>
+        <tbody>
+            <tr><td class="metric-label">drawLayer[WebView] 횟수</td><td>1,690 / 1,692f</td><td>1,026 / 1,036f</td></tr>
+            <tr><td class="metric-label">drawLayer p50 (중앙값)</td><td>1.01ms</td><td>1.99ms</td></tr>
+            <tr><td class="metric-label">drawLayer p90</td><td>1.80ms</td><td><span class="delta delta-bad">28.45ms</span></td></tr>
+            <tr><td class="metric-label">Janky 프레임 비율</td><td>32.8%</td><td>60.6%</td></tr>
+            <tr><td class="metric-label">Self Jank</td><td>83</td><td>178</td></tr>
+        </tbody>
+    </table>
+    <p>그러니 진짜 답은 "재사용이냐 재래스터화냐"가 아니다. <strong>둘 다 매 프레임 재래스터화하지만, 그 비용의 분포가 다르다.</strong> RecyclerView에선 재래스터의 90%가 1.8ms 이하로 값싸고(거의 캐시처럼 동작), 비싼 건 상위 1%(p99 31ms)뿐이다. 반면 LazyColumn에선 <strong>p90이 28ms</strong> — 재래스터의 10% 이상이 16.6ms 버짓을 통째로 넘긴다. 같은 레이어를 RecyclerView는 대체로 싸게, LazyColumn은 자주 비싸게 다시 그린 것이다.</p>
+    <p>그래서 <strong>RecyclerView도 "멀쩡"하진 않았다</strong> — 32.8%가 이미 janky였다. 다만 비싼 재래스터가 드물어 체감 임계 아래에 머물렀을 뿐이다. LazyColumn 마이그레이션이 비싼 재래스터의 빈도를 끌어올리자, 줄곧 거기 있던 낭비가 비로소 jank로 터져 나온 것이다.</p>
+    <div class="content-box">
+        <div class="content-box-title">정직성 노트 — 무엇이 통제된 비교인가</div>
+        <p style="margin:0 0 14px;"><strong>측정된 사실</strong> &mdash; "두 컨테이너 모두 매 프레임 재래스터화", "RecyclerView도 32.8% janky"는 각 트레이스에서 직접 측정한 값이다.</p>
+        <p style="margin:0 0 14px;"><strong>통제의 한계</strong> &mdash; 두 캡처는 스크롤 강도가 완전히 같진 않다. 평균은 유휴 프레임에 흔들리지만, p50/p90 분포는 캡처 길이에 강건해 "비용이 꼬리(p90)에서 갈린다"는 결론은 유지된다.</p>
+        <p style="margin:0 0 14px;"><strong>가장 엄밀한 비교</strong> &mdash; <em>같은 컨테이너</em>(LazyColumn)에서의 HARDWARE→NONE이다. 그것이 <code>drawLayer</code>를 0으로 만들고 jank를 절반으로 줄였다(다음 절).</p>
+        <p style="margin:0;"><strong>남은 질문</strong> &mdash; "왜 LazyColumn 재래스터가 비싼가"라는 내부 메커니즘. 유력 후보는 Compose의 매 프레임 interop redraw 오버헤드<sup class="footnote-ref" id="ref-2"><a href="#fn2">[2]</a></sup>이며, 정밀 확인은 후속 과제다.</p>
+    </div>
+
+    <!-- ── 6 ── -->
+    <h2 id="section-6">수정: 레이어와 인프라를 함께 걷어내다</h2>
+    <p>원인이 "이 WebView에서 처음부터 캐시가 아니었던 하드웨어 레이어"라면, 해법은 단순하다. 레이어를 없애는 것이다. 변경은 한 줄이었다.</p>
+    <div class="compare-grid">
+        <div class="compare-card compare-before">
+            <div class="compare-card-label">Before</div>
+            <pre style="margin:0;"><code>webViewFacade.<span class="fn">initWebView</span>(
+  <span class="kw">this</span>,
+  LayerTypeInspector.<span class="fn">getType</span>()
+)</code></pre>
+        </div>
+        <div class="compare-card compare-after">
+            <div class="compare-card-label">After</div>
+            <pre style="margin:0;"><code>webViewFacade.<span class="fn">initWebView</span>(
+  <span class="kw">this</span>,
+  View.<span class="typ">LAYER_TYPE_NONE</span>
+)</code></pre>
+        </div>
+    </div>
+    <p>그리고 레이어가 사라지면서, 그 레이어를 저사양 단말에서 <em>안전하게</em> 쓰려고 디바이스를 분기하던 장치도 통째로 불필요해졌다. 앞서 크래시 대응 때 만들었던 <code>LayerTypeInspector</code>(EGL로 최대 텍스처 크기를 조회하던 115줄)와 그 진단 로깅이 함께 삭제됐다. 모든 단말을 <code>NONE</code>으로 보내니, 텍스처 크기로 단말을 가르던 분기 자체가 의미를 잃었기 때문이다. 전편에서 만든 안전장치를 후속편에서 걷어낸 셈이다. PR 전체로는 <strong>+4 / −120</strong>줄 — 추가가 아니라 덜어냄으로 끝난 변경이다.</p>
+    <div class="highlight-box"><code>LAYER_TYPE_NONE</code>으로 바꿔도 WebView의 GPU 가속은 꺼지지 않는다. 가속은 윈도우/앱 레벨에서 유지되며, 개선 후 트레이스에도 chromium의 자체 GPU 경로인 <code>WebViewFunctor::drawGl</code>은 그대로 살아 있다. 우리가 없앤 것은 그 위에 덧씌워진 <strong>중복 캐싱 레이어</strong>일 뿐이다.</div>
+
+    <!-- ── 7 ── -->
+    <h2 id="section-7">검증: 세 각도, 같은 결론</h2>
+    <p>"버벅임이 줄어든 것 같다"로는 부족했다. 서로 독립적인 세 방법으로 같은 결론이 나오는지 확인했다.</p>
+    <h3>① Perfetto 트레이스 — 두 번 측정</h3>
+    <p>다른 세션에서 두 번 떠도 결론은 동일하게 재현됐다.</p>
+    <table class="metrics-table">
+        <thead>
+            <tr><th>지표</th><th>1차 전 → 후</th><th>2차 전 → 후</th></tr>
+        </thead>
+        <tbody>
+            <tr><td class="metric-label">Janky 프레임 비율</td><td>60.6% → 26.3%</td><td>73.5% → 43.2%</td></tr>
+            <tr><td class="metric-label">Self Jank (앱 책임)</td><td>178 → 23 <span class="delta delta-good">-87%</span></td><td>147 → 20 <span class="delta delta-good">-86%</span></td></tr>
+            <tr><td class="metric-label">평균 프레임 시간</td><td>23.77 → 12.97ms</td><td>21.28 → 11.33ms</td></tr>
+            <tr><td class="metric-label">drawLayer[WebView]</td><td>5,464ms → <strong>0</strong></td><td>4,091ms → <strong>0</strong></td></tr>
+        </tbody>
+    </table>
+    <p>두 측정 모두에서 <code>drawLayer[WebView]</code>는 완전히 사라졌고, Self Jank는 86~87% 줄었다.<sup class="footnote-ref" id="ref-4"><a href="#fn4">[4]</a></sup></p>
+    <h3>② 육안 — 하드웨어 레이어 업데이트 표시</h3>
+    <p>가장 직관적인 확인은 눈으로 보는 것이다. 개발자 옵션의 "하드웨어 레이어 업데이트 표시"(<code>debug.hwui.show_layers_updates</code>)를 켜면, 레이어가 재래스터화될 때마다 초록색으로 플래시한다.</p>
+    <div class="compare-grid">
+        <div class="compare-card compare-before">
+            <div class="compare-card-label">Before · HARDWARE</div>
+            <img src="assets/webview-hwlayer/flash-hardware-green.jpg" alt="개선 전 — 스크롤 중 WebView 상품정보 영역이 초록색으로 물듦"
+                 style="width:100%; border-radius:10px;">
+            <p style="margin:10px 0 0; font-size:0.88rem;">스크롤 내내 WebView 영역만 초록색으로 깜빡인다 = 매 프레임 재래스터화.</p>
+        </div>
+        <div class="compare-card compare-after">
+            <div class="compare-card-label">After · NONE</div>
+            <img src="assets/webview-hwlayer/flash-none.jpg" alt="개선 후 — 스크롤 중 초록 플래시 없음"
+                 style="width:100%; border-radius:10px;">
+            <p style="margin:10px 0 0; font-size:0.88rem;">하드웨어 레이어가 없으니 초록 플래시도 없다 = 재래스터화 대상 자체가 사라짐.</p>
+        </div>
+    </div>
+    <p>화면 위쪽 상품 카드나 아래 버튼은 초록색이 아닌데 WebView 영역만 물든다는 점이 핵심이다. 그 영역만 매 프레임 다시 그려지고 있었다는 뜻이다.<sup class="footnote-ref" id="ref-5"><a href="#fn5">[5]</a></sup></p>
+    <p>Perfetto가 측정값으로, 육안 오버레이가 실시간 동작으로 같은 지점을 가리켰다. 세 각도가 한 결론으로 모였다.</p>
+
+    <!-- ── 8 ── -->
+    <h2 id="section-8">최적화에는 유효기간이 있다</h2>
+    <p>이 사건의 진짜 교훈은 <strong>효과 없는 최적화는 임계 아래에 숨어 있다가 환경이 바뀌면 드러난다</strong>는 것이다. 하드웨어 레이어는 매 프레임 무효화되는 이 WebView에서 RecyclerView 시절부터 줄곧 순수 오버헤드였다. 다만 그 비용이 체감 임계 아래라 "멀쩡해 보였을" 뿐이고, LazyColumn 마이그레이션이 비용을 조금 더 얹자 비로소 jank로 터져 나왔다. 즉 마이그레이션이 버그를 <em>만든</em> 게 아니라, 줄곧 있던 낭비를 <em>드러낸</em> 것이다.</p>
+    <p>그래서 일반화할 수 있는 규칙은 이렇다.</p>
+    <ul class="checklist">
+        <li><span class="checklist-num">1</span><span>Compose 스크롤 컨테이너(<code>LazyColumn</code> 등) 안의 무거운 <code>AndroidView</code>(WebView·MapView 등)에는 <code>LAYER_TYPE_HARDWARE</code>를 걸지 않는다. 하드웨어 레이어는 "애니메이션 동안만"이 공식 권고다.</span></li>
+        <li><span class="checklist-num">2</span><span>XML → Compose 마이그레이션 시, View 시절의 성능 최적화를 그대로 들고 오지 말고 <strong>새 런타임에서 다시 측정</strong>한다. 한 환경에서 "문제없어 보이던" 최적화가 실은 효과 없는 오버헤드이고, 다른 환경에서 비로소 드러날 수 있다.</span></li>
+        <li><span class="checklist-num">3</span><span>스크롤 버벅임은 RenderThread를 의심한다. <code>drawLayer</code> 슬라이스가 프레임마다 보이면, 그 레이어는 캐시가 아니라 비용이다.</span></li>
+    </ul>
+    <p>남은 과제도 있다. 레이어를 걷어낸 뒤에도 개선 후 트레이스엔 약 2.5%의 Self Jank가 남아 있는데, 이는 스크롤 중 Compose recomposition 비용으로 이번 건과는 다른 줄기다. 그건 다음 이야기로 미뤄둔다.</p>
+    <div class="summary-box">
+        <div class="summary-box-title">한 문장 요약</div>
+        <p>매 프레임 무효화되는 WebView 위의 하드웨어 레이어는 RecyclerView·LazyColumn 양쪽에서 매 프레임 재래스터화되는 순수 오버헤드였다(RecyclerView 32.8% · LazyColumn 60.6% janky). LazyColumn이 그 비용을 체감 임계 위로 밀어올렸을 뿐이고, 레이어를 제거(<code>LAYER_TYPE_NONE</code>)하자 Self Jank가 178 → 23으로 떨어졌다. 한 환경에서 멀쩡해 보이던 최적화는 환경이 바뀌면 다시 측정해야 한다.</p>
+    </div>
+
+
+</article>
+
+<!--
+    NOTE: 시각화 페이지는 별도 파일({topic}.html)로 분리한다.
+    블로그 본문에는 summary-box 링크만 삽입한다. 임베드하지 않는다.
+-->
+
+<!-- ═══════════════════════════════════════════
+     Footnotes
+     ═══════════════════════════════════════════ -->
+<div class="article">
+    <div class="footnotes">
+        <ol>
+            <li id="fn1">Android Developers — <em>Hardware acceleration · View layers</em>. "Once a view is rendered into a layer, its drawing code does not have to be executed until the view calls invalidate()." <a href="https://developer.android.com/topic/performance/hardware-accel" target="_blank" rel="noopener">developer.android.com/topic/performance/hardware-accel</a> <a href="#ref-1" class="fn-back">↩</a></li>
+            <li id="fn2">Android Developers — <em>Use Views in Compose (AndroidView)</em>. AndroidView는 Compose와 같은 빈도로 recompose/redraw되며, lazy list에서는 스크롤 시 redraw 비용이 발생한다(<code>onReset</code>/<code>onRelease</code> 재사용 오버로드 제공). <a href="https://developer.android.com/develop/ui/compose/migrate/interoperability-apis/views-in-compose" target="_blank" rel="noopener">developer.android.com/.../views-in-compose</a> <a href="#ref-2" class="fn-back">↩</a></li>
+            <li id="fn3">PR #7834 — KMA-8216 상품상세 WebView 스크롤 성능 개선 (LayerTypeInspector 삭제, +4/−120). <a href="https://github.com/thefarmersfront/kurly-android/pull/7834" target="_blank" rel="noopener">github.com/thefarmersfront/kurly-android/pull/7834</a> <a href="#ref-3" class="fn-back">↩</a></li>
+            <li id="fn4">분석 도구: Perfetto <code>trace_processor</code> + <a href="https://github.com/android/skills/tree/main/profilers/perfetto-trace-analysis" target="_blank" rel="noopener">android/skills · perfetto-trace-analysis</a>. 수치는 <code>actual_frame_timeline_slice</code>(jank_tag)·RenderThread slice 집계 기준. (2차 before의 단발 2,055ms 슬라이스는 트레이스 종료 경계 아티팩트로, 핵심 수치에서 제외) <a href="#ref-4" class="fn-back">↩</a></li>
+            <li id="fn5">육안 검증: <code>adb shell setprop debug.hwui.show_layers_updates true</code> (개발자 옵션 "하드웨어 레이어 업데이트 표시"). 하드웨어 레이어가 갱신될 때 초록색으로 표시된다. <a href="#ref-5" class="fn-back">↩</a></li>
+        </ol>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     Footer
+     ═══════════════════════════════════════════ -->
+<footer class="article-footer">
+    <div class="share-buttons">
+        <button class="share-btn" onclick="navigator.clipboard.writeText(location.href)">링크 복사</button>
+    </div>
+</footer>
+
+</body>
+</html>

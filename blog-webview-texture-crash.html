@@ -591,6 +591,12 @@ a:hover { text-decoration: underline; }
     <li><strong>wrap_content의 구조적 문제</strong> — 상품상세 WebView가 <code>wrap_content</code>를 사용하고 있어, 컨텐츠 길이에 따라 런타임에 높이가 크게 변동된다. 위험 구간(16321~16383)으로 진입할 확률은 낮지만 0이 아니다. <code>match_parent</code> 또는 고정 높이 정책으로 전환하는 것이 바람직하다.</li>
 </ul>
 
+<div class="summary-box">
+    <div class="summary-box-title">후속편 — 이 우회 로직은 결국 어떻게 됐나</div>
+    <p>여기서 만든 <code>LayerTypeInspector</code>(디바이스별 HARDWARE/NONE 분기)는 이후 상품설명 탭이 RecyclerView에서 LazyColumn으로 마이그레이션되며 전혀 다른 문제 — 크래시가 아닌 <strong>스크롤 jank</strong> — 로 다시 도마에 올랐다. 결론은 모든 단말을 <code>LAYER_TYPE_NONE</code>으로 보내고 이 분기 장치를 삭제하는 것이었다.<br>
+    <a href="blog-webview-hardware-layer-lazycolumn.html">→ RecyclerView에선 멀쩡하던 WebView가 LazyColumn에서 버벅인 이유</a></p>
+</div>
+
 <!-- ═══════════════════ Section 7 ═══════════════════ -->
 <h2 id="section-7">Takeaways</h2>
 
