@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>상품상세 WebView 높이 계산 이슈 — 조기 Composition으로 인한 스크롤 걸림 구조 개선</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════
+   Toss Tech Light Theme — Blog Template
+   Reference: toss.tech/article/will-ai-replace-developers
+   ═══════════════════════════════════════════════ */
+:root {
+    /* Adaptive Grays (Toss Design System) */
+    --grey-50: #f9fafb;
+    --grey-100: #f2f4f6;
+    --grey-200: #e5e8eb;
+    --grey-300: #d1d6db;
+    --grey-400: #b0b8c1;
+    --grey-500: #8b95a1;
+    --grey-600: #6b7684;
+    --grey-700: #4e5968;
+    --grey-800: #333d4b;
+    --grey-900: #191f28;
+
+    /* Brand */
+    --toss-blue: #0064FF;
+    --toss-blue-light: rgba(0, 100, 255, 0.08);
+    --toss-blue-border: rgba(0, 100, 255, 0.2);
+
+    /* Semantic */
+    --bg: #ffffff;
+    --bg-elevated: var(--grey-50);
+    --bg-highlight: #ffc34236;
+    --bg-code: var(--grey-100);
+    --bg-blockquote: transparent;
+    --text-primary: var(--grey-900);
+    --text-secondary: var(--grey-700);
+    --text-tertiary: var(--grey-500);
+    --border-light: var(--grey-200);
+    --border-blockquote: var(--grey-800);
+
+    /* Layout */
+    --content-width: 680px;
+    --wide-width: 780px;
+    --radius: 16px;
+    --radius-sm: 10px;
+
+    /* Typography */
+    --font-body: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --font-code: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+}
+
+/* Reset */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text-primary);
+    line-height: 1.8;
+    font-size: 16.5px;
+    -webkit-font-smoothing: antialiased;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+}
+
+::selection {
+    background: rgba(0, 100, 255, 0.15);
+    color: var(--grey-900);
+}
+
+a { color: var(--toss-blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ═══════════════════════════════════════════════
+   Layout
+   ═══════════════════════════════════════════════ */
+.article {
+    max-width: var(--content-width);
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+.article-wide {
+    max-width: var(--wide-width);
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+/* ═══════════════════════════════════════════════
+   Hero Header
+   ═══════════════════════════════════════════════ */
+.hero {
+    padding: 80px 24px 48px;
+    max-width: var(--content-width);
+    margin: 0 auto;
+}
+
+.hero-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 24px;
+    font-size: 0.875rem;
+    color: var(--text-tertiary);
+}
+
+.hero-meta .author {
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.hero-meta .dot {
+    color: var(--grey-300);
+}
+
+.hero-title {
+    font-size: 2.2rem;
+    font-weight: 800;
+    line-height: 1.3;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+    letter-spacing: -0.02em;
+}
+
+.hero-subtitle {
+    font-size: 1.1rem;
+    line-height: 1.7;
+    color: var(--text-secondary);
+    max-width: 580px;
+}
+
+.hero-tags {
+    display: flex;
+    gap: 8px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+}
+
+.hero-tag {
+    padding: 4px 12px;
+    border-radius: var(--radius-sm);
+    background: var(--toss-blue-light);
+    border: 1px solid var(--toss-blue-border);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--toss-blue);
+}
+
+/* ═══════════════════════════════════════════════
+   Table of Contents
+   ═══════════════════════════════════════════════ */
+.toc {
+    margin: 0 0 48px 0;
+    padding: 24px 28px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+}
+
+.toc-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+}
+
+.toc-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.toc-list a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    font-size: 0.92rem;
+    color: var(--text-secondary);
+    transition: color 0.2s;
+}
+
+.toc-list a:hover {
+    color: var(--toss-blue);
+    text-decoration: none;
+}
+
+.toc-num {
+    width: 24px;
+    height: 24px;
+    border-radius: 7px;
+    background: var(--grey-200);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════
+   Typography
+   ═══════════════════════════════════════════════ */
+.article h2 {
+    font-size: 1.55rem;
+    font-weight: 800;
+    line-height: 1.35;
+    color: var(--text-primary);
+    margin: 56px 0 20px 0;
+    letter-spacing: -0.01em;
+}
+
+.article h2:first-child {
+    margin-top: 0;
+}
+
+.article h3 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    line-height: 1.4;
+    color: var(--text-primary);
+    margin: 40px 0 14px 0;
+}
+
+.article p {
+    margin: 0 0 20px 0;
+    color: var(--text-primary);
+}
+
+.article strong {
+    font-weight: 700;
+    color: var(--grey-900);
+}
+
+/* ═══════════════════════════════════════════════
+   Blockquote (Left border style — Toss)
+   ═══════════════════════════════════════════════ */
+.article blockquote {
+    margin: 28px 0;
+    padding: 0 0 0 20px;
+    border-left: 2.5px solid var(--border-blockquote);
+    font-size: 1.05rem;
+    font-weight: 600;
+    line-height: 1.7;
+    color: var(--text-primary);
+}
+
+.article blockquote p {
+    margin: 0;
+}
+
+/* ═══════════════════════════════════════════════
+   Highlight Box (Yellow — Toss)
+   ═══════════════════════════════════════════════ */
+.highlight-box {
+    margin: 28px 0;
+    padding: 20px 24px;
+    background: var(--bg-highlight);
+    border-radius: var(--radius);
+    font-weight: 600;
+    line-height: 1.7;
+    color: var(--text-primary);
+}
+
+/* ═══════════════════════════════════════════════
+   Content Box (Gray rounded — Toss)
+   ═══════════════════════════════════════════════ */
+.content-box {
+    margin: 28px 0;
+    padding: 24px 28px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+}
+
+.content-box-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+}
+
+/* ═══════════════════════════════════════════════
+   Code Blocks
+   ═══════════════════════════════════════════════ */
+.article code {
+    font-family: var(--font-code);
+    font-size: 0.88em;
+    padding: 2px 6px;
+    background: var(--bg-code);
+    border-radius: 5px;
+    color: var(--grey-800);
+}
+
+.article pre {
+    margin: 24px 0;
+    padding: 24px;
+    background: var(--grey-900);
+    border-radius: var(--radius);
+    overflow-x: auto;
+    line-height: 1.6;
+}
+
+.article pre code {
+    font-family: var(--font-code);
+    font-size: 0.85rem;
+    background: none;
+    padding: 0;
+    color: #abb2bf;
+    border-radius: 0;
+}
+
+/* Syntax highlighting (One Dark) */
+.kw { color: #c678dd; }       /* keyword */
+.str { color: #98c379; }      /* string */
+.cmt { color: #5c6370; font-style: italic; } /* comment */
+.typ { color: #e5c07b; }      /* type/class */
+.fn { color: #61afef; }       /* function */
+.ann { color: #d19a66; }      /* annotation/number */
+.op { color: #56b6c2; }       /* operator */
+
+/* Log emphasis (본 글 전용 — 계측 로그 강조) */
+.article pre .hi { color: #e5c07b; }    /* 주목할 값 (contentH 등) */
+.article pre .zero { color: #e06c75; }  /* 0 / 문제 지점 */
+.article pre .cmt-r { color: #7f8c99; font-style: italic; } /* 로그 우측 주석 */
+
+/* ═══════════════════════════════════════════════
+   Lists
+   ═══════════════════════════════════════════════ */
+.article ul, .article ol {
+    margin: 0 0 20px 0;
+    padding-left: 24px;
+}
+
+.article li {
+    margin-bottom: 10px;
+    line-height: 1.7;
+}
+
+.article li::marker {
+    color: var(--text-tertiary);
+}
+
+/* Checklist style */
+.checklist {
+    list-style: none;
+    padding: 0;
+    counter-reset: check;
+}
+
+.checklist li {
+    counter-increment: check;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.checklist li:last-child {
+    border-bottom: none;
+}
+
+.checklist-num {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: var(--toss-blue);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: white;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+/* ═══════════════════════════════════════════════
+   Images
+   ═══════════════════════════════════════════════ */
+.article img, .article-wide img {
+    max-width: 100%;
+    border-radius: var(--radius);
+    margin: 28px 0;
+    display: block;
+}
+
+.img-caption {
+    text-align: center;
+    font-size: 0.82rem;
+    color: var(--text-tertiary);
+    margin-top: -16px;
+    margin-bottom: 28px;
+}
+
+/* ═══════════════════════════════════════════════
+   Metrics Table
+   ═══════════════════════════════════════════════ */
+.metrics-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0;
+    font-size: 0.9rem;
+}
+
+.metrics-table th {
+    text-align: left;
+    padding: 12px 16px;
+    background: var(--bg-elevated);
+    border-bottom: 2px solid var(--border-light);
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.metrics-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-light);
+    color: var(--text-secondary);
+}
+
+.metrics-table .metric-label {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.metrics-table .metric-good {
+    color: #16a34a;
+    font-weight: 700;
+}
+
+.metrics-table .metric-bad {
+    color: #dc2626;
+    font-weight: 600;
+}
+
+.metrics-table .metric-neutral {
+    color: var(--text-tertiary);
+}
+
+/* Delta badges */
+.delta {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.delta-good {
+    background: rgba(22, 163, 74, 0.1);
+    color: #16a34a;
+}
+
+.delta-bad {
+    background: rgba(220, 38, 38, 0.1);
+    color: #dc2626;
+}
+
+.delta-neutral {
+    background: var(--grey-100);
+    color: var(--text-tertiary);
+}
+
+/* ═══════════════════════════════════════════════
+   Summary / Key Takeaway Box
+   ═══════════════════════════════════════════════ */
+.summary-box {
+    margin: 36px 0;
+    padding: 24px 28px;
+    background: var(--toss-blue-light);
+    border: 1px solid var(--toss-blue-border);
+    border-radius: var(--radius);
+}
+
+.summary-box-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--toss-blue);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.summary-box p, .summary-box li {
+    color: var(--text-primary);
+    font-size: 0.95rem;
+}
+
+/* ═══════════════════════════════════════════════
+   Comparison Cards (Inline)
+   ═══════════════════════════════════════════════ */
+.compare-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 16px;
+    margin: 28px 0;
+}
+
+.compare-card {
+    padding: 0;
+    background: transparent;
+    border: none;
+    min-width: 0;
+}
+
+.compare-card-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 10px;
+}
+.compare-card-label::before {
+    content: "";
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+.compare-before .compare-card-label { color: var(--text-tertiary); }
+.compare-before .compare-card-label::before { background: var(--grey-400); }
+.compare-after .compare-card-label { color: var(--toss-blue); }
+.compare-after .compare-card-label::before { background: var(--toss-blue); }
+
+.compare-card p {
+    margin: 0;
+    font-size: 0.92rem;
+    line-height: 1.7;
+}
+
+/* ═══════════════════════════════════════════════
+   Footnotes
+   ═══════════════════════════════════════════════ */
+.footnotes {
+    margin-top: 56px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border-light);
+    font-size: 0.82rem;
+    color: var(--text-tertiary);
+    line-height: 1.8;
+}
+
+.footnotes a {
+    color: var(--text-tertiary);
+    text-decoration: underline;
+}
+
+.footnotes ol { padding-left: 20px; }
+.footnotes li { margin-bottom: 6px; scroll-margin-top: 24px; }
+
+.footnote-ref {
+    font-size: 0.75em;
+    vertical-align: super;
+    font-weight: 600;
+}
+
+.footnote-ref a {
+    color: var(--toss-blue);
+    text-decoration: none;
+}
+
+.footnote-ref a:hover { text-decoration: underline; }
+
+.fn-back {
+    color: var(--text-tertiary);
+    text-decoration: none;
+    margin-left: 6px;
+    font-size: 0.9em;
+}
+
+.fn-back:hover { color: var(--toss-blue); }
+
+/* ═══════════════════════════════════════════════
+   Footer
+   ═══════════════════════════════════════════════ */
+.article-footer {
+    margin-top: 56px;
+    padding: 32px 0;
+    text-align: center;
+    color: var(--text-tertiary);
+    font-size: 0.82rem;
+}
+
+.share-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.share-btn {
+    padding: 8px 20px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-light);
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.share-btn:hover {
+    background: var(--grey-200);
+    color: var(--text-primary);
+}
+
+/* ═══════════════════════════════════════════════
+   Responsive
+   ═══════════════════════════════════════════════ */
+@media (max-width: 768px) {
+    .hero { padding: 48px 20px 32px; }
+    .hero-title { font-size: 1.7rem; }
+    .article, .article-wide { padding: 0 20px; }
+    .article h2 { font-size: 1.35rem; margin-top: 40px; }
+    .article h3 { font-size: 1.1rem; }
+    .compare-grid { grid-template-columns: 1fr; }
+    .article pre { padding: 16px; margin-left: -8px; margin-right: -8px; border-radius: 12px; }
+}
+
+@media print {
+    body { font-size: 11pt; }
+    .hero { padding: 24px 0; }
+    .article pre { white-space: pre-wrap; }
+    .toc, .share-buttons, .article-footer { display: none; }
+}
+
+/* ═══════════════════════════════════════════════
+   재측정 신호 경쟁 애니메이션 (§3 인라인, .wvanim 으로 스코프)
+   ═══════════════════════════════════════════════ */
+.wvanim{--wv-ink:#191f28;--wv-sub:#4e5968;--wv-mut:#8b95a1;--wv-line:#e5e8eb;--wv-surf:#f9fafb;
+  --wv-fail:#dc2626;--wv-fail-bg:#fef2f2;--wv-fail-line:#f7c9c9;
+  --wv-ok:#16a34a;--wv-ok-bg:#ecfdf3;--wv-ok-line:#b7ebc6;--wv-blue:#0064ff;
+  --wv-phone:#cfd6dd;--wv-notch:#aeb7c0;--wvd:13s;
+  margin:28px 0; font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard",sans-serif;}
+.wvanim *{box-sizing:border-box;}
+.wva-stage{display:grid; grid-template-columns:1fr 1fr; gap:20px;}
+@media(max-width:680px){.wva-stage{grid-template-columns:1fr;}}
+.wva-panel{border:1px solid var(--wv-line); border-radius:16px; background:#fff; padding:18px 16px 20px; box-shadow:0 1px 3px rgba(0,0,0,.05);}
+.wva-p1{--wv-acc:var(--wv-fail);--wv-acc-bg:var(--wv-fail-bg);--wv-acc-line:var(--wv-fail-line);}
+.wva-p2{--wv-acc:var(--wv-ok);--wv-acc-bg:var(--wv-ok-bg);--wv-acc-line:var(--wv-ok-line);}
+.wva-tag{display:inline-flex; align-items:center; gap:7px; font-size:12.5px; font-weight:800; color:var(--wv-acc); background:var(--wv-acc-bg); border:1px solid var(--wv-acc-line); padding:5px 12px; border-radius:999px; margin-bottom:14px;}
+.wva-tag .wva-dot{width:8px; height:8px; border-radius:50%; background:var(--wv-acc);}
+.wva-phone{width:190px; margin:0 auto 16px; background:var(--wv-phone); border-radius:26px; padding:9px; box-shadow:0 6px 16px rgba(0,0,0,.10);}
+.wva-notch{width:60px; height:5px; border-radius:3px; background:var(--wv-notch); margin:2px auto 7px;}
+.wva-screen{position:relative; height:300px; background:#fff; border-radius:18px; overflow:hidden;}
+.wva-col{position:absolute; left:0; right:0; top:0; padding:10px;}
+.wva-col.wva-r1{animation:wva-scrollR1 var(--wvd) infinite;}
+.wva-col.wva-r2{animation:wva-scrollR2 var(--wvd) infinite;}
+@keyframes wva-scrollR1{0%,14%{transform:translateY(0);}44%,90%{transform:translateY(-132px);}96%,100%{transform:translateY(0);}}
+@keyframes wva-scrollR2{0%,14%{transform:translateY(0);}44%,56%{transform:translateY(-132px);}72%,88%{transform:translateY(-250px);}96%,100%{transform:translateY(0);}}
+.wva-blk{border-radius:8px; margin-bottom:8px;}
+.wva-img{height:66px; background:linear-gradient(180deg,#eef1f4,#e3e8ee);}
+.wva-info{height:42px; background:var(--wv-surf); border:1px solid var(--wv-line); display:flex; flex-direction:column; justify-content:center; gap:5px; padding:8px;}
+.wva-info i{display:block; height:5px; border-radius:3px; background:#e0e5ea;}
+.wva-info i:nth-child(1){width:70%;} .wva-info i:nth-child(2){width:45%;}
+.wva-sec{background:var(--wv-surf); border:1px solid var(--wv-line); display:flex; align-items:center; justify-content:center; font-size:10px; color:var(--wv-mut);}
+.wva-wv{border:1.5px dashed var(--wv-acc-line); border-radius:9px; overflow:hidden; margin-bottom:8px; background:var(--wv-acc-bg);}
+.wva-wv.wva-r1{animation:wva-disposeR1 var(--wvd) infinite;}
+@keyframes wva-disposeR1{0%,58%{opacity:1;}61%{opacity:.3;}64%{opacity:1;}67%{opacity:.45;}70%,100%{opacity:1;}}
+.wva-wvhd{font-size:9.5px; font-weight:700; color:var(--wv-acc); padding:4px 8px; display:flex; justify-content:space-between; align-items:center;}
+.wva-hdr{position:relative; display:inline-block; height:12px; min-width:66px; text-align:right;}
+.wva-bwait,.wva-bout{position:absolute; right:0; top:0; font-size:9px; font-weight:800; white-space:nowrap;}
+.wva-bwait{color:var(--wv-mut); animation:wva-bwaitF var(--wvd) infinite;}
+@keyframes wva-bwaitF{0%,56%{opacity:1;}61%,92%{opacity:0;}96%,100%{opacity:1;}}
+.wva-bout{opacity:0; animation:wva-boutF var(--wvd) infinite;}
+@keyframes wva-boutF{0%,59%{opacity:0;}64%,88%{opacity:1;}93%,100%{opacity:0;}}
+.wva-bout.wva-r1{color:var(--wv-fail);} .wva-bout.wva-r2{color:var(--wv-ok);}
+.wva-wvbody{background:#fff; height:8px;}
+.wva-wvbody.wva-r2{animation:wva-wvGrow var(--wvd) infinite;}
+@keyframes wva-wvGrow{0%,58%{height:8px;}68%{height:128px;}88%{height:128px;}94%,100%{height:8px;}}
+.wva-wvlines{padding:9px; display:flex; flex-direction:column; gap:7px; opacity:0; animation:wva-linesIn var(--wvd) infinite;}
+@keyframes wva-linesIn{0%,62%{opacity:0;}72%,88%{opacity:1;}93%,100%{opacity:0;}}
+.wva-wvlines .wva-ph{height:32px; border-radius:6px; background:linear-gradient(180deg,#eef1f4,#e6ebf0);}
+.wva-wvlines .wva-tx{height:6px; border-radius:3px; background:#e3e8ee;}
+.wva-wvlines .wva-tx.s{width:60%;}
+.wva-nudge{position:absolute; left:50%; top:72%; transform:translate(-50%,-50%) rotate(-8deg); font-size:11.5px; font-weight:800; color:var(--wv-fail); background:#fff; border:2px solid var(--wv-fail); border-radius:8px; padding:5px 10px; opacity:0; white-space:nowrap; box-shadow:0 3px 10px rgba(220,38,38,.18); animation:wva-nudgeIn var(--wvd) infinite;}
+@keyframes wva-nudgeIn{0%,62%{opacity:0;}68%,88%{opacity:1;}93%,100%{opacity:0;}}
+.wva-stall{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); font-size:11px; font-weight:800; color:#fff; background:rgba(25,31,40,.82); border-radius:8px; padding:4px 11px; opacity:0; white-space:nowrap; animation:wva-stallIn var(--wvd) infinite;}
+@keyframes wva-stallIn{0%,44%{opacity:0;}47%,55%{opacity:1;}58%,100%{opacity:0;}}
+.wva-hint{position:absolute; right:8px; bottom:8px; font-size:10px; font-weight:700; color:#fff; background:rgba(25,31,40,.72); border-radius:999px; padding:3px 9px; opacity:0;}
+.wva-hint.wva-r1{animation:wva-hintR1 var(--wvd) infinite;}
+.wva-hint.wva-r2{animation:wva-hintR2 var(--wvd) infinite;}
+@keyframes wva-hintR1{0%,15%{opacity:0;}20%,42%{opacity:1;}47%,100%{opacity:0;}}
+@keyframes wva-hintR2{0%,15%{opacity:0;}20%,42%{opacity:1;}47%,60%{opacity:0;}64%,74%{opacity:1;}80%,100%{opacity:0;}}
+.wva-thumb{position:absolute; right:3px; top:6px; width:3px; height:34px; border-radius:2px; background:rgba(0,0,0,.14);}
+.wva-thumb.wva-r1{animation:wva-thumbR1 var(--wvd) infinite;}
+.wva-thumb.wva-r2{animation:wva-thumbR2 var(--wvd) infinite;}
+@keyframes wva-thumbR1{0%,14%{top:6px;}44%,90%{top:210px;}96%,100%{top:6px;}}
+@keyframes wva-thumbR2{0%,14%{top:6px;}44%,56%{top:175px;}72%,88%{top:220px;}96%,100%{top:6px;}}
+.wva-pipe{margin-top:2px;}
+.wva-pstep{display:flex; gap:10px; align-items:flex-start; padding:6px 0;}
+.wva-pnum{flex:0 0 auto; min-width:22px; height:22px; padding:0 7px; border-radius:11px; background:var(--wv-surf); border:1.5px solid var(--wv-line); color:var(--wv-sub); font-size:10px; font-weight:800; white-space:nowrap; display:flex; align-items:center; justify-content:center;}
+.wva-pbody{font-size:11.5px; color:var(--wv-sub);}
+.wva-pbody b{color:var(--wv-ink); font-weight:700;}
+.wva-pbody code{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:10px; background:var(--wv-surf); border-radius:4px; padding:1px 4px; color:var(--wv-sub);}
+.wva-conn{position:relative; margin:2px 0 2px 10px; width:2px; height:24px; background:var(--wv-line);}
+.wva-sdot{position:absolute; left:50%; top:0; width:8px; height:8px; border-radius:50%; transform:translateX(-50%); opacity:0;}
+.wva-sdot.wva-r1{background:var(--wv-fail); animation:wva-dotR1 var(--wvd) infinite;}
+.wva-sdot.wva-r2{background:var(--wv-ok); animation:wva-dotR2 var(--wvd) infinite;}
+@keyframes wva-dotR1{0%,48%{top:0;opacity:0;}51%{opacity:1;}57%{top:12px;opacity:1;}60%{top:12px;opacity:0;}100%{opacity:0;}}
+@keyframes wva-dotR2{0%,48%{top:0;opacity:0;}51%{opacity:1;}62%{top:22px;opacity:1;}65%{top:22px;opacity:0;}100%{opacity:0;}}
+.wva-recv{border-radius:9px; padding:9px 11px; border:1.5px solid var(--wv-line); background:var(--wv-surf);}
+.wva-recv .wva-rct{font-size:11.5px; font-weight:800; display:flex; align-items:center; gap:6px;}
+.wva-recv .wva-rcs{font-size:10.5px; margin-top:2px;}
+.wva-recv.wva-r1{animation:wva-recvR1 var(--wvd) infinite;}
+.wva-recv.wva-r2{animation:wva-recvR2 var(--wvd) infinite;}
+@keyframes wva-recvR1{0%,59%{background:var(--wv-surf);border-color:var(--wv-line);}64%,88%{background:var(--wv-fail-bg);border-color:var(--wv-fail-line);}93%,100%{background:var(--wv-surf);border-color:var(--wv-line);}}
+@keyframes wva-recvR2{0%,59%{background:var(--wv-surf);border-color:var(--wv-line);}64%,88%{background:var(--wv-ok-bg);border-color:var(--wv-ok-line);box-shadow:0 0 0 4px rgba(22,163,74,.10);}93%,100%{background:var(--wv-surf);border-color:var(--wv-line);box-shadow:none;}}
+.wva-mark{opacity:0; animation:wva-markIn var(--wvd) infinite;}
+.wva-mark.wva-r1{color:var(--wv-fail);} .wva-mark.wva-r2{color:var(--wv-ok);}
+@keyframes wva-markIn{0%,60%{opacity:0;}65%,88%{opacity:1;}93%,100%{opacity:0;}}
+.wva-out{color:var(--wv-mut);} .wva-out.wva-r1{color:var(--wv-fail);} .wva-out.wva-r2{color:var(--wv-ok);}
+
+/* ═══════════════════════════════════════════════
+   단말별 뷰포트 vs WebView 오프셋 목업 (§2, 정적 · .devcmp 스코프)
+   ═══════════════════════════════════════════════ */
+.devcmp{--d-ink:#191f28;--d-sub:#4e5968;--d-mut:#8b95a1;--d-line:#e5e8eb;--d-surf:#f9fafb;
+  --d-fail:#dc2626;--d-fail-bg:#fef2f2;--d-fail-line:#f7c9c9;
+  --d-ok:#16a34a;--d-ok-bg:#ecfdf3;--d-ok-line:#b7ebc6; --d-bezel:#cbd3db;
+  margin:32px 0; font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard",sans-serif;}
+.devcmp *{box-sizing:border-box;}
+.devcmp-grid{display:grid; grid-template-columns:1fr 1fr; gap:24px;}
+@media(max-width:680px){.devcmp-grid{grid-template-columns:1fr;}}
+.dev{border:1px solid var(--d-line); border-radius:18px; background:var(--d-surf); padding:18px 16px;}
+.dev.g{--acc:var(--d-fail);--acc-bg:var(--d-fail-bg);--acc-line:var(--d-fail-line);}
+.dev.p{--acc:var(--d-ok);--acc-bg:var(--d-ok-bg);--acc-line:var(--d-ok-line);}
+.dev-hd{font-size:13.5px; font-weight:800; color:var(--d-ink); display:flex; align-items:center; gap:7px;}
+.dev-hd::before{content:""; width:9px; height:9px; border-radius:50%; background:var(--acc); flex:0 0 auto;}
+.dev-vp{font-size:11.5px; color:var(--d-mut); margin:4px 0 18px 16px;}
+.dev-phone{position:relative; width:202px; margin:0 auto; background:var(--d-bezel); border-radius:30px; padding:10px 9px 13px; box-shadow:0 10px 24px rgba(20,30,50,.14);}
+.dev-notch{width:50px; height:5px; border-radius:3px; background:rgba(0,0,0,.16); margin:1px auto 8px;}
+.dev-body{position:relative; height:350px; border-radius:20px; overflow:hidden; background:#fff;}
+.dev-blk{position:absolute; left:11px; right:11px; border-radius:8px; overflow:hidden; border:1px solid #dce3ec; display:flex; flex-direction:column; align-items:flex-start; gap:7px; padding:9px 11px; font-size:10.5px; font-weight:700; color:var(--d-sub); z-index:1;}
+.dev-img{background:linear-gradient(155deg,#eef2f6,#dde4ec); color:var(--d-mut);}
+.dev-info{background:#f4f7fa;}
+.dev-info i{display:block; height:6px; border-radius:3px; background:#dce3ec;}
+.dev-info i:nth-of-type(1){width:78%;} .dev-info i:nth-of-type(2){width:52%;}
+.dev-scrim{position:absolute; left:0; right:0; bottom:0; border-top:2px dashed var(--acc); z-index:2; background:repeating-linear-gradient(45deg, rgba(100,116,139,.05) 0 7px, rgba(100,116,139,.11) 7px 14px);}
+.dev-foldlab{position:absolute; right:7px; transform:translateY(-50%); font-size:9.5px; font-weight:800; color:var(--acc); background:#fff; border:1px solid var(--acc-line); border-radius:6px; padding:2px 7px; z-index:4; white-space:nowrap; box-shadow:0 1px 3px rgba(0,0,0,.08);}
+.dev-wv{position:absolute; left:8px; right:8px; height:20px; border:1.5px dashed var(--acc); border-radius:6px; background:#fff; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:800; color:var(--acc); z-index:3; box-shadow:0 1px 5px rgba(0,0,0,.08);}
+.dev-out{margin-top:16px; text-align:center; font-size:12px; font-weight:700; color:var(--d-sub); background:var(--acc-bg); border:1px solid var(--acc-line); border-radius:10px; padding:10px; line-height:1.6;}
+.dev-out strong{color:var(--acc);}
+.devcmp-note{font-size:11px; color:var(--d-mut); text-align:center; margin:18px auto 0; line-height:1.65; max-width:600px;}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     Hero Header
+     ═══════════════════════════════════════════ -->
+<header class="hero">
+    <div class="hero-meta">
+        <span class="author">홍기찬</span>
+        <span class="dot">&middot;</span>
+        <span>Android</span>
+        <span class="dot">&middot;</span>
+        <time>2026.07.01</time>
+    </div>
+    <h1 class="hero-title">상품상세 WebView 높이 계산 이슈</h1>
+    <p class="hero-subtitle">조기 Composition으로 인한 스크롤 걸림 — 구조 개선. 폴더블에서만 재현된 LazyColumn 속 WebView blank를 실기기 로그로 추적한 기록</p>
+    <div class="hero-tags">
+        <span class="hero-tag">Android</span>
+        <span class="hero-tag">WebView</span>
+        <span class="hero-tag">Jetpack Compose</span>
+        <span class="hero-tag">LazyColumn</span>
+        <span class="hero-tag">디버깅</span>
+    </div>
+</header>
+
+<!-- ═══════════════════════════════════════════
+     Table of Contents
+     ═══════════════════════════════════════════ -->
+<nav class="article">
+    <div class="toc">
+        <div class="toc-label">목차</div>
+        <ol class="toc-list">
+            <li><a href="#section-1"><span class="toc-num">1</span> 스크롤이 걸리는 자리</a></li>
+            <li><a href="#section-2"><span class="toc-num">2</span> 재현의 벽: 왜 폴더블에서만?</a></li>
+            <li><a href="#section-3"><span class="toc-num">3</span> 근본 원인: 화면 밖에서는 높이를 못 잰다</a></li>
+            <li><a href="#section-4"><span class="toc-num">4</span> 측정으로 풀려는 다섯 번의 시도</a></li>
+            <li><a href="#section-5"><span class="toc-num">5</span> 딜레마: 두 조건은 양립하지 않는다</a></li>
+            <li><a href="#section-6"><span class="toc-num">6</span> 왜 두 번 그려졌나 — 살아있는 노드의 리컴포지션</a></li>
+            <li><a href="#section-7"><span class="toc-num">7</span> 완화: 조기 컴포지션을 없앤 두 겹의 가드</a></li>
+            <li><a href="#section-8"><span class="toc-num">8</span> 근본은 여전히 "구조"다 — 측정을 걷어내는 방향</a></li>
+            <li><a href="#section-9"><span class="toc-num">9</span> 교훈</a></li>
+        </ol>
+    </div>
+</nav>
+
+<!-- ═══════════════════════════════════════════
+     Article Body
+     ═══════════════════════════════════════════ -->
+<article class="article">
+
+    <h2 id="section-1">스크롤이 걸리는 자리</h2>
+
+    <p>상품상세 화면을 아래로 스크롤한다. 상품설명(WebView) 자리에서 <strong>아무것도 그려지지 않고 스크롤이 걸린다.</strong> 그런데 살짝 위로 올렸다가 다시 내리면, 그제서야 내용이 나타난다. 어떤 기기에서는 늘 그렇고, 어떤 기기에서는 한 번도 재현되지 않는다.</p>
+
+    <p>구조는 단순하다. <code>LazyColumn</code> 안에 <code>AndroidView</code>로 <code>WebView</code>를 얹어 상품설명 HTML을 렌더링한다. 흔한 interop 패턴이다. 그런데 이 조합이 특정 기기에서만, 그것도 간헐적으로 blank를 냈다. "간헐적·기기 의존적"이라는 두 단어는 대개 <strong>타이밍</strong>과 <strong>레이아웃 조건</strong>이 얽혀 있다는 신호다.</p>
+
+    <p>이 글은 그 증상을 실기기 계측 로그로 끝까지 추적한 기록이다. 결론부터 말하면 — <strong>WebView의 높이를 "측정해서" 맞추려는 접근은 다섯 가지 방법 모두 실패했고</strong>, 그 실패들이 하나의 구조적 사실로 수렴했다. 실패의 과정 자체가 이 글의 본론이다.</p>
+
+    <div class="summary-box">
+        <div class="summary-box-title">한눈에</div>
+        <p style="margin:0">상단 섹션이 로딩 중 0높이라 WebView가 <strong>화면 밖(off-screen)에서 조기 compose</strong>된다. WebView는 <strong>그려지기 전(draw 전)에는 self-measure가 0</strong>이고, 부모(<code>AndroidView</code>)는 자식 크기 변화에 재측정하지 않아 그 0에 고정된다. 측정으로 이 높이를 복구하려는 모든 시도가 이 두 사실 앞에서 무너졌다.</p>
+    </div>
+
+    <h2 id="section-2">재현의 벽: 왜 폴더블에서만?</h2>
+
+    <p>가장 먼저 잡아야 할 것은 "언제 재현되는가"였다. 같은 코드인데 <strong>Galaxy Z Flip5(폴더블)에서는 재현되고, Pixel 10에서는 재현되지 않았다.</strong> 이 차이가 원인을 정확히 가리키는 열쇠가 됐다.</p>
+
+    <p>이 화면에는 빠른 로딩을 위한 최적화가 있다 — <strong>미리보기(preview) 상품을 먼저 그려 두고, API 응답이 오면 실제 데이터로 다시 그린다.</strong> 그래서 진입 직후에는 WebView 위의 중간 섹션들(브랜드로고·리뷰·라운지·광고·추천)이 아직 데이터를 받기 전이라 그려지지 않고, 높이가 모두 0이다. 이 <strong>"상단이 잠깐 0인 창"</strong>이 이 버그의 출발점이다.</p>
+
+    <p>LazyColumn이 진입 직후 실제로 어떤 item을 어떤 크기로 compose하는지를 <code>listState.layoutInfo</code>로 찍었다. 아래는 진입 후 스크롤을 전혀 하지 않은 상태의 첫 프레임이다.</p>
+
+    <p><strong>Galaxy Z Flip5</strong> — 뷰포트 1985px:</p>
+    <pre><code>LAYOUT[0] vp=0..<span class="hi">1985</span> total=10 visible=[
+  #0(sz=1080) #1(sz=684) #2(sz=0) #3(sz=0) #4(sz=0)
+  #5(sz=0) #6(sz=0) #7(sz=0) #8(sz=0)
+  <span class="zero">#9(sz=23, key=product_detail_information)</span>   <span class="cmt-r">← WebView, 스크롤 전에 이미 compose됨</span>
+]</code></pre>
+
+    <p><strong>Pixel 10</strong> — 뷰포트 1705px:</p>
+    <pre><code>LAYOUT[0] vp=0..<span class="hi">1705</span> total=10 visible=[
+  #0(sz=1080) #1(sz=885)]   <span class="cmt-r">← #0+#1=1965 &gt; 1705, WebView 도달 못 함</span></code></pre>
+
+    <p>차이는 명확하다. 진입 시점에 WebView 위의 중간 섹션들(브랜드로고·리뷰·라운지·광고·추천 등, <code>#2~#8</code>)은 (앞서 말한 미리보기 단계라) 아직 데이터 전이라 <strong>모두 높이 0</strong>이다. 그래서 WebView(<code>#9</code>)의 오프셋은 사실상 <code>#0(이미지) + #1(상품정보)</code>밖에 되지 않는다. 이 오프셋이 기기 뷰포트보다 작으면 WebView가 첫 프레임에 뷰포트 안으로 딸려 들어온다.</p>
+
+    <table class="metrics-table">
+        <thead>
+            <tr><th>항목</th><th>Galaxy Z Flip5</th><th>Pixel 10</th><th>결과</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="metric-label">LazyColumn 뷰포트</td>
+                <td>1985px</td>
+                <td>1705px</td>
+                <td class="metric-neutral">폴더블이 더 김</td>
+            </tr>
+            <tr>
+                <td class="metric-label">#0+#1 오프셋 (로딩 중)</td>
+                <td>1764px</td>
+                <td>1965px</td>
+                <td class="metric-neutral">—</td>
+            </tr>
+            <tr>
+                <td class="metric-label">WebView 조기 compose</td>
+                <td class="metric-bad">발생 (1764 &lt; 1985)</td>
+                <td class="metric-good">미발생 (1965 &gt; 1705)</td>
+                <td><span class="delta delta-bad">재현 갈림</span></td>
+            </tr>
+            <tr>
+                <td class="metric-label">증상</td>
+                <td class="metric-bad">blank / 스크롤 걸림</td>
+                <td class="metric-good">정상</td>
+                <td class="metric-neutral">—</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="devcmp">
+      <div class="devcmp-grid">
+
+        <div class="dev g">
+          <div class="dev-hd">GALAXY Z FLIP5 · 폴더블</div>
+          <div class="dev-vp">LazyColumn 뷰포트 1985px · 세로로 긺</div>
+          <div class="dev-phone">
+            <div class="dev-notch"></div>
+            <div class="dev-body">
+              <div class="dev-blk dev-img" style="top:0;height:180px;">#0 상품이미지</div>
+              <div class="dev-blk dev-info" style="top:180px;height:114px;">#1 상품정보<i></i><i></i></div>
+              <div class="dev-wv" style="top:294px;">WebView · offset 1764px</div>
+              <div class="dev-scrim" style="top:331px;"></div>
+              <span class="dev-foldlab" style="top:331px;">뷰포트 하단 1985px</span>
+            </div>
+          </div>
+          <div class="dev-out"><strong>1764 &lt; 1985</strong> · WebView가 뷰포트 <strong>안</strong><br>→ 조기 compose → <strong>blank · 걸림</strong></div>
+        </div>
+
+        <div class="dev p">
+          <div class="dev-hd">PIXEL 10</div>
+          <div class="dev-vp">LazyColumn 뷰포트 1705px</div>
+          <div class="dev-phone">
+            <div class="dev-notch"></div>
+            <div class="dev-body">
+              <div class="dev-blk dev-img" style="top:0;height:180px;">#0 상품이미지</div>
+              <div class="dev-blk dev-info" style="top:180px;height:146px;">#1 상품정보<i></i><i></i></div>
+              <div class="dev-wv" style="top:326px;">WebView · offset 1965px</div>
+              <div class="dev-scrim" style="top:284px;"></div>
+              <span class="dev-foldlab" style="top:284px;">뷰포트 하단 1705px</span>
+            </div>
+          </div>
+          <div class="dev-out"><strong>1965 &gt; 1705</strong> · WebView가 뷰포트 <strong>밖</strong><br>→ 미compose → <strong>정상</strong></div>
+        </div>
+
+      </div>
+      <div class="devcmp-note">화면(뷰포트)은 흰 영역, fold 아래(빗금)는 화면 밖. 중간 섹션(#2~#8: 브랜드·리뷰·라운지·광고·추천)은 로딩 중 0px라 WebView 오프셋 ≈ #0(이미지) + #1(상품정보) — 뷰포트가 이 오프셋보다 길면 WebView가 화면 안으로 들어와 조기 compose된다.</div>
+    </div>
+
+    <div class="highlight-box">
+        <strong>재현 조건의 일반화.</strong> "0px item은 첫 measure에 전부 compose된다"는 것은 문서화된 LazyColumn 동작이다<sup class="footnote-ref" id="ref-1"><a href="#fn1">[1]</a></sup>. 따라서 이 버그는 특정 기기의 문제가 아니라, <strong>세로로 긴 뷰포트</strong>(폴더블·태블릿·상하 크롬이 얇은 기기)라면 필연적으로 걸린다. Flip5는 턱걸이로 걸렸고 Pixel 10은 아슬하게 비켜갔을 뿐이다.
+    </div>
+
+    <p style="color:var(--text-secondary);font-size:0.95rem">요약하면, 기기 차이는 원인이 아니라 <strong>증상의 트리거</strong>다. 뷰포트가 로딩 중 오프셋보다 길기만 하면 어디서든 재현된다.</p>
+
+    <h2 id="section-3">근본 원인: 화면 밖에서는 높이를 못 잰다</h2>
+
+    <p>조기 compose된 WebView가 왜 0에 고정되는지, 세 지점을 계측했다. <code>②</code> factory attach 시점, <code>②-b</code> WebView 자체 레이아웃 변화, <code>③</code> Compose(<code>AndroidView</code>)가 측정한 item 높이다.</p>
+
+    <pre><code>② factory attach: webView w=1080 h=<span class="zero">0</span> contentH=0
+③ onSizeChanged(LazyColumn latch): 1080x<span class="zero">0</span> webViewContentH=0
+②-b webView layoutChange: size=1080x<span class="zero">0</span> <span class="hi">contentH=25609</span>   <span class="cmt-r">← 콘텐츠는 로드됨, 뷰 높이는 0</span>
+②-b webView layoutChange: size=1080x<span class="zero">0</span> <span class="hi">contentH=25609</span></code></pre>
+
+    <p>핵심은 마지막 두 줄이다. WebView의 HTML 문서 높이(<code>contentHeight</code>)는 <strong>25609</strong>로 정상 로드됐는데, 뷰의 실제 레이아웃 높이는 여전히 <strong>0</strong>이다. 문서는 있는데 뷰는 비어 있다. 이유는 두 겹이다.</p>
+
+    <ol>
+        <li><strong>WebView는 draw 전에는 self-measure가 0이다.</strong> 화면 밖(off-screen)이라 아직 그려지지 않은 WebView는 <code>onMeasure</code>가 콘텐츠 높이를 반영하지 못하고 0을 반환한다. <code>contentHeight</code>(렌더러가 아는 문서 높이)와 뷰의 측정 파이프라인은 <strong>별개의 경로</strong>다. 문서 높이를 안다고 뷰가 그 높이로 측정되는 게 아니다.</li>
+        <li><strong>자식(WebView)의 크기 변화가 부모(LazyColumn)에 잘 전파되지 않는다.</strong> 일반 View라면 자식이 <code>requestLayout</code>으로 부모에게 재측정을 요청하지만, LazyColumn + AndroidView에서는 이 자식→부모 신호가 <strong>대체로 닿지 않는다.</strong> 그래서 off-screen에서 0으로 측정된 item은 스크롤이 재측정을 강제할 때까지 0에 고정되고, "살짝 스크롤(nudge)"이 그 강제 재측정을 깨운다.</li>
+    </ol>
+
+    <p>Pixel이 멀쩡한 이유도 여기서 나온다. Pixel은 WebView가 <strong>on-screen에서 compose·draw</strong>되므로 self-measure가 정상 동작한다. 결국 버그의 본질은 <strong>"화면 밖에서 조기 compose된 WebView가 0으로 측정되고, 그 0이 갱신되지 않는 것"</strong>이다.</p>
+
+    <h3>왜 매번 다를까 — 신호가 닿느냐의 경쟁</h3>
+
+    <p>바로 이 두 번째 겹에 "간헐성"이 숨어 있다. 같은 기기·같은 조작인데 어떤 때는 첫 스크롤에 바로 그려지고, 어떤 때는 nudge를 해야 한다. 재측정에는 <strong>두 주체</strong>가 필요하기 때문이다 — WebView가 "나 커졌어"라고 알리는 쪽(<code>②-b</code>)과, LazyColumn이 그걸 받아 칸을 늘리는 쪽(<code>③</code>). WebView는 거의 항상 알리지만, <strong>LazyColumn이 그 순간 받아주느냐가 타이밍 경쟁</strong>이다.</p>
+
+    <p>같은 조건으로 두 번 진입한 실측(조기 compose가 살아있는 원형 상태)이 이를 그대로 보여준다.</p>
+
+    <table class="metrics-table">
+        <thead><tr><th>첫 스크롤에서</th><th>Run 1 · 실패</th><th>Run 2 · 성공</th></tr></thead>
+        <tbody>
+            <tr><td class="metric-label">WebView가 알림 <code>②-b</code></td><td>contentH=15750</td><td>contentH=15750</td></tr>
+            <tr><td class="metric-label">LazyColumn이 받음 <code>③</code></td><td class="metric-bad">1080x0 (안 받음)</td><td class="metric-good">1080x11073 (받음)</td></tr>
+            <tr><td class="metric-label">결과</td><td class="metric-bad">onDispose — 0 고정, nudge 필요</td><td class="metric-good">11073 → … → 15080 수렴</td></tr>
+        </tbody>
+    </table>
+
+    <p>두 실행 다 WebView는 "커졌어"라고 알렸는데, LazyColumn이 받아준 건 Run 2뿐이다. 게다가 0높이는 <strong>자기강화적</strong>이다 — 자리를 안 차지하니 스크롤에 빨리 지나쳐 dispose되고, 그러면 재측정 기회 자체가 사라진다. 반대로 한 번 non-zero를 잡으면 자리를 차지해 화면에 머물며 수렴한다. 이 <strong>수십 ms의 승패</strong>는 렌더링·스크롤·프레임 타이밍에 좌우돼 통제할 수 없어, 같은 조작이어도 결과가 갈린다. <code>nudge</code>가 통하는 건 칸을 뷰포트에 다시 넣어 <strong>LazyColumn이 강제로 재측정</strong>하게 만들기 때문이다.</p>
+
+    <div class="wvanim">
+      <div class="wva-stage">
+
+        <div class="wva-panel wva-p1">
+          <span class="wva-tag"><span class="wva-dot"></span>RUN 1 · 실패 (nudge 필요)</span>
+          <div class="wva-phone">
+            <div class="wva-notch"></div>
+            <div class="wva-screen">
+              <div class="wva-col wva-r1">
+                <div class="wva-blk wva-img"></div>
+                <div class="wva-blk wva-info"><i></i><i></i></div>
+                <div class="wva-blk wva-sec" style="height:34px;">브랜드</div>
+                <div class="wva-blk wva-sec" style="height:58px;">리뷰</div>
+                <div class="wva-blk wva-sec" style="height:38px;">라운지</div>
+                <div class="wva-blk wva-sec" style="height:46px;">광고</div>
+                <div class="wva-blk wva-sec" style="height:54px;">추천</div>
+                <div class="wva-wv wva-r1">
+                  <div class="wva-wvhd"><span>상품설명 (WebView)</span>
+                    <span class="wva-hdr"><span class="wva-bwait">0px</span><span class="wva-bout wva-r1">✗ dispose</span></span>
+                  </div>
+                  <div class="wva-wvbody wva-r1"></div>
+                </div>
+              </div>
+              <div class="wva-thumb wva-r1"></div>
+              <div class="wva-hint wva-r1">스크롤 ↓</div>
+              <div class="wva-stall">추천에서 걸림 · 0px</div>
+              <div class="wva-nudge">✗ 안 그려짐 · nudge 필요</div>
+            </div>
+          </div>
+          <div class="wva-pipe">
+            <div class="wva-pstep">
+              <div class="wva-pnum">알림</div>
+              <div class="wva-pbody"><b>WebView가 "커졌어" 알림</b><br><code>contentH=15750</code> · 거의 항상 발생</div>
+            </div>
+            <div class="wva-conn"><span class="wva-sdot wva-r1"></span></div>
+            <div class="wva-recv wva-r1">
+              <div class="wva-rct">LazyColumn이 받나? <span class="wva-mark wva-r1">✗ 못 받음</span></div>
+              <div class="wva-rcs wva-out wva-r1"><code>onSizeChanged: 1080×0</code> → onDispose</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="wva-panel wva-p2">
+          <span class="wva-tag"><span class="wva-dot"></span>RUN 2 · 성공 (첫 스크롤에 그려짐)</span>
+          <div class="wva-phone">
+            <div class="wva-notch"></div>
+            <div class="wva-screen">
+              <div class="wva-col wva-r2">
+                <div class="wva-blk wva-img"></div>
+                <div class="wva-blk wva-info"><i></i><i></i></div>
+                <div class="wva-blk wva-sec" style="height:34px;">브랜드</div>
+                <div class="wva-blk wva-sec" style="height:58px;">리뷰</div>
+                <div class="wva-blk wva-sec" style="height:38px;">라운지</div>
+                <div class="wva-blk wva-sec" style="height:46px;">광고</div>
+                <div class="wva-blk wva-sec" style="height:54px;">추천</div>
+                <div class="wva-wv">
+                  <div class="wva-wvhd"><span>상품설명 (WebView)</span>
+                    <span class="wva-hdr"><span class="wva-bwait">0px</span><span class="wva-bout wva-r2">11073px</span></span>
+                  </div>
+                  <div class="wva-wvbody wva-r2">
+                    <div class="wva-wvlines">
+                      <div class="wva-ph"></div>
+                      <div class="wva-tx"></div>
+                      <div class="wva-tx s"></div>
+                      <div class="wva-ph"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="wva-thumb wva-r2"></div>
+              <div class="wva-hint wva-r2">스크롤 ↓</div>
+              <div class="wva-stall">추천에서 걸림 · 0px</div>
+            </div>
+          </div>
+          <div class="wva-pipe">
+            <div class="wva-pstep">
+              <div class="wva-pnum">알림</div>
+              <div class="wva-pbody"><b>WebView가 "커졌어" 알림</b><br><code>contentH=15750</code> · 거의 항상 발생</div>
+            </div>
+            <div class="wva-conn"><span class="wva-sdot wva-r2"></span></div>
+            <div class="wva-recv wva-r2">
+              <div class="wva-rct">LazyColumn이 받나? <span class="wva-mark wva-r2">✓ 받음</span></div>
+              <div class="wva-rcs wva-out wva-r2"><code>onSizeChanged: 1080×11073</code> → 15080 수렴</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <p>여기까지가 관찰된 사실이고, 다음은 이 0을 측정으로 되살리려 한 기록이다.</p>
+
+    <h2 id="section-4">측정으로 풀려는 다섯 번의 시도</h2>
+
+    <p>"그렇다면 올바른 높이를 구해서 명시해 주면 되지 않나?" — 이 직관을 다섯 가지 방법으로 시도했고, 각각 다른 이유로 무너졌다.</p>
+
+    <table class="metrics-table">
+        <thead>
+            <tr><th>#</th><th>접근</th><th>실패 사유 (실측)</th></tr>
+        </thead>
+        <tbody>
+            <tr><td class="metric-label">1</td><td><code>WRAP_CONTENT</code> (현행)</td><td class="metric-bad">off-screen에서 0, 그대로 걸림</td></tr>
+            <tr><td class="metric-label">2</td><td>컨테이너 <code>heightIn(min)</code></td><td class="metric-bad">WebView가 0px라 draw 안 됨 → 공백만 예약</td></tr>
+            <tr><td class="metric-label">3</td><td>state 재측정 트리거 (<code>Modifier.layout</code>)</td><td class="metric-bad">off-screen WebView measure가 0</td></tr>
+            <tr><td class="metric-label">4</td><td><code>contentHeight × scale</code> 명시 높이</td><td class="metric-bad">전환 중 scale·웹 DOM 여백으로 부정확</td></tr>
+            <tr><td class="metric-label">5</td><td><code>onMeasure.measuredHeight</code> 캡처</td><td class="metric-bad">전환 중 부분값 → 고정 시 이미지 잘림</td></tr>
+        </tbody>
+    </table>
+
+    <p>다섯 중 두 시도가 특히 많은 것을 알려줬다. 하나는 가장 순진했던 접근, 다른 하나는 가장 근접했던 실패다.</p>
+
+    <h3>시도 2 — 컨테이너에 최소 높이를 주면?</h3>
+
+    <p>Box에 <code>heightIn(min = 1뷰포트)</code>를 줘서 0 붕괴를 막아봤다. 스크롤 걸림은 사라졌지만 <strong>WebView 자리에 공백만 남고 내용은 그려지지 않았다.</strong></p>
+
+    <pre><code>③ onSizeChanged: 1080x<span class="zero">0</span> webViewContentH=0
+②-b webView layoutChange: size=1080x<span class="zero">0</span> contentH=9665   <span class="cmt-r">← 컨테이너는 min만큼 예약, 자식은 여전히 0px</span></code></pre>
+
+    <p>컨테이너에 최소 높이를 줘도 <strong>그 안의 WebView는 0px 그대로다.</strong> 0px 뷰는 draw되지 않고, draw되지 않으니 영원히 self-measure가 0이다. 컨테이너 min은 <em>공간을 예약</em>할 뿐 <em>자식을 그리게 만들지</em> 못한다. 이 시도는 "걸림"을 "공백"으로 바꿨을 뿐 근본 원인을 건드리지 못했다.</p>
+
+    <h3>시도 5 — WebView가 잰 값을 그대로 쓰면? (가장 근접했던 실패)</h3>
+
+    <p>커스텀 WebView에서 <code>onMeasure</code>의 <code>measuredHeight</code>를 콜백으로 끌어올려 명시 높이로 되먹였다. off-screen에서도 <strong>non-zero</strong>가 나왔다 — 진전이었다. 그러나 그 값이 함정이었다.</p>
+
+    <pre><code>④ onMeasure: measuredHeight=<span class="hi">6156</span> contentH=<span class="hi">8756</span>   <span class="cmt-r">← 6156 = 8756 × 0.703 (전환 중 scale)</span>
+③ onSizeChanged(LazyColumn latch): 1080x6156
+④ onMeasure: measuredHeight=6156   <span class="cmt-r">← 6156에 clamp돼 더 안 커짐</span></code></pre>
+
+    <p><code>measuredHeight=6156</code>은 <strong>scale이 확정되기 전(0.703)의 부분값</strong>이었다. 최종 scale(≈2.81)이면 <code>8756 × 2.81 ≈ 24600</code>이어야 하는데 6156에서 잡혔다. 이 값을 <code>Modifier.height</code>로 고정하면 WebView는 정확히 6156으로 clamp되고, <strong>이어붙인 상세 이미지들이 그 아래로 잘렸다.</strong> 게다가 clamp됐으니 콘텐츠가 커져도 다시 늘어나지 않는다. 살아있는 값을 얻었지만, 옳은 값은 아니었다.</p>
+
+    <h2 id="section-5">딜레마: 두 조건은 양립하지 않는다</h2>
+
+    <p>다섯 번의 실패는 서로 다른 증상처럼 보였지만, 하나의 모순으로 수렴했다. 진짜 높이를 얻는 조건과, 그 높이가 반영되는 조건이 <strong>정반대</strong>였던 것이다.</p>
+
+    <div class="compare-grid">
+        <div class="compare-card compare-before">
+            <div class="compare-card-label">Unclamped (WRAP_CONTENT)</div>
+            <p>진짜 높이를 재려면 WebView가 콘텐츠에 맞춰 자랄 수 있어야 한다. <strong>그러나</strong> 부모(<code>AndroidView</code>)가 자식 크기 변화에 재측정하지 않아, off-screen에서 잡힌 첫 부분값(또는 0)에 고정된다.</p>
+        </div>
+        <div class="compare-card compare-after">
+            <div class="compare-card-label">Clamp (명시 높이)</div>
+            <p>부모 재측정을 강제하려면 높이를 명시해 고정해야 한다. <strong>그러나</strong> 그 순간 콘텐츠 성장이 막혀, 전환 중 부분값에 갇히면 이어붙인 이미지가 잘린다.</p>
+        </div>
+    </div>
+
+    <div class="highlight-box">
+        <strong>딜레마.</strong> 정확한 높이를 재려면 <strong>unclamped</strong>여야 하고, 그 높이를 반영시키려면 <strong>clamp</strong>해야 한다. 두 조건은 동시에 만족될 수 없다. 측정 기반 접근이 실패한 것은 방법이 부족해서가 아니라, <strong>구조 자체가 모순을 품고 있었기</strong> 때문이다.
+    </div>
+
+    <h2 id="section-6">왜 두 번 그려졌나 — 살아있는 노드의 리컴포지션</h2>
+
+    <p>근본 원인을 Compose 계층에서 한 겹 더 파고들면, 이 버그가 왜 "간헐적"이었는지가 드러난다. 수정 전 코드에서 상품설명 item은 진입 시 <strong>컴포지션 → 리컴포지션, 두 번</strong> 실행됐다. 이 2회가 어디서 오는지가 열쇠다.</p>
+
+    <h3>2회의 출처 — <code>initUiState</code>가 preview·real 두 번 호출된다</h3>
+
+    <p><code>ProductDetailViewModel</code>은 상품 로드를 <code>Loading → LoadSuccess</code>로 흘려보낸다. 그런데 화면 섹션들이 참조하는 <code>descriptionDeferreds</code>(연관상품·리뷰·라운지 등 지연 로딩 핸들)는 <strong><code>LoadSuccess</code>보다 한참 앞선 <code>Loading</code> 구간에</strong> 세팅된다 — <code>async{}</code> 핸들만 즉시 만들어 대입하기 때문이다(결과를 기다리지 않는다).</p>
+
+    <pre><code><span class="fn">emit</span>(UIState.Loading)                  <span class="cmt">// currentProduct = previewData</span>
+createProductDescriptionDeferreds(...)   <span class="cmt">// ↓ 이 안에서</span>
+  descriptionDeferreds.value = ...       <span class="cmt">// async 핸들 즉시 대입 (await 아님)</span>
+productDetail.<span class="fn">await</span>()                    <span class="cmt">// ← 여기서 비로소 네트워크 대기</span>
+<span class="fn">emit</span>(UIState.LoadSuccess(...))           <span class="cmt">// currentProduct = 실상품</span></code></pre>
+
+    <p>그 결과 화면에 데이터를 공급하는 flow는 <strong>두 번 방출</strong>한다.</p>
+
+    <table class="metrics-table">
+        <thead><tr><th>시점</th><th>product</th><th>deferreds</th><th>방출 → initUiState</th></tr></thead>
+        <tbody>
+            <tr><td class="metric-label">Loading 중</td><td>previewData (skeleton)</td><td>방금 non-null</td><td class="metric-bad">(preview) → 1회차</td></tr>
+            <tr><td class="metric-label">LoadSuccess</td><td>실상품</td><td>그대로</td><td class="metric-good">(real) → 2회차</td></tr>
+        </tbody>
+    </table>
+
+    <p>타이밍 레이스가 아니라 <strong>초기 로드에서 구조적으로 보장되는 2회</strong>다. deferreds가 <code>Loading</code> 구간에 세팅되므로 preview 방출이 반드시 먼저 나온다. 그리고 <code>initUiState</code>는 매 호출마다 <strong>새 <code>ProductDetailInformationLayerViewModel</code> 인스턴스</strong>를 만들어 동일 key(<code>product_detail_information</code>)의 item에 순차로 주입한다. <em>(전제: 상품 리스트에서 진입해 <code>previewData</code>가 존재하는 경로. 딥링크 등 preview가 없으면 양상이 달라질 수 있다.)</em></p>
+
+    <h3>가시성은 "탄생·소멸"만 gate한다 — 리컴포지션은 아니다</h3>
+
+    <p>여기서 직관과 어긋나는 지점이 있다. "실데이터가 오면 상단 섹션이 커져 WebView가 화면 밖으로 밀리니, 리컴포지션도 안 돼야 하지 않나?" LazyColumn의 규칙을 정확히 보면 그렇지 않다.</p>
+
+    <div class="content-box">
+        <div class="content-box-title">LazyColumn에서 가시성이 관여하는 두 순간</div>
+        <p style="margin:0 0 8px"><strong>탄생</strong> — 아직 컴포지션된 적 없는 item을 처음 subcompose할지 (viewport + prefetch 안일 때만)</p>
+        <p style="margin:0"><strong>소멸</strong> — 이미 살아있는 item이 범위 밖으로 나갈 때 dispose할지</p>
+    </div>
+
+    <p><strong>이미 살아있는 노드의 리컴포지션은 여기에 해당하지 않는다.</strong> 입력(여기선 <code>viewModel</code> 파라미터)이 바뀌면, 그 노드가 지금 화면 밖에 있든 없든 리컴포지션된다. 리컴포지션은 "스냅샷 상태를 읽은 살아있는 컴포지션"에 일어나는 것이지, 현재 가시성으로 다시 게이팅되지 않는다.</p>
+
+    <p>그래서 수정 전 흐름은 이렇게 전개됐다.</p>
+    <ol>
+        <li><strong>preview 방출</strong>: 상품정보(skeleton)가 짧아 WebView 오프셋이 폴더블 뷰포트 안에 들어옴 → item <strong>탄생(컴포지션 #1)</strong>. 이제 노드가 살아있다.</li>
+        <li><strong>real 방출</strong>: 새 VM이 <strong>살아있는 그 노드</strong>에 주입 → <strong>리컴포지션 #2</strong>. 이 순간 "화면 안이냐"를 다시 묻지 않는다.</li>
+        <li>이후 상품정보가 실데이터로 커지며 WebView가 fold 아래로 밀려도, <strong>리컴포지션은 이미 끝난 뒤</strong>다. 그리고 노드는 dispose되지 않고 <strong>0에 박힌 채 잔존</strong> → 그게 blank(nudge 전까지 안 그려짐)다.</li>
+    </ol>
+
+    <p>"컴포지션 + 리컴포지션 2회"는 로그로도 확인된다. <code>factory</code>(노드 탄생)는 노드당 1회만 도는데, 계측 배너 로그는 composable 본문 최상단이라 <strong>본문 실행마다(탄생 1 + 리컴포지션 1)</strong> 찍힌다. 즉 <code>factory</code> 1회 + 배너 2회다. 결정적으로 그 <code>factory</code> 로그의 <code>contentH</code> 값이 탄생 시점을 못박는다.</p>
+
+    <table class="metrics-table">
+        <thead><tr><th></th><th>factory 발생 시점</th><th>그때 contentH</th><th>해석</th></tr></thead>
+        <tbody>
+            <tr><td class="metric-label">수정 전</td><td>진입(preview)</td><td><code>contentH=0</code></td><td class="metric-bad">문서 로드 전 = 이른 탄생</td></tr>
+            <tr><td class="metric-label">수정 후</td><td>스크롤</td><td><code>contentH=16090</code></td><td class="metric-good">로드 후 = 늦은 탄생</td></tr>
+        </tbody>
+    </table>
+
+    <p>노드가 <strong>preview 단계에 태어났다</strong>는 직접 증거다. 바로 이 "이른 탄생"이 수정의 표적이 된다.</p>
+
+    <h2 id="section-7">완화: 조기 컴포지션을 없앤 두 겹의 가드</h2>
+
+    <p>측정을 고칠 수 없다면, <strong>측정이 깨지는 유일한 순간 — preview 단계의 조기 탄생 — 자체를 없애면 된다.</strong> 실제로 먼저 적용한 수정이 이것이다. 상품 로드가 "지금 preview인가"를 flow에 실어 보내고, preview면 WebView item을 <strong>리스트에서 아예 뺀다.</strong></p>
+
+    <pre><code><span class="cmt">// ProductDescriptionScreen.kt</span>
+<span class="kw">if</span> (!sectionViewModels.productDetailInformation.isPreview) {
+    item(key = PRODUCT_DETAIL_INFO_ITEM_KEY) {
+        <span class="fn">ProductDetailInformationSectionRoute</span>(...)
+    }
+}</code></pre>
+
+    <p><code>isPreview</code>는 <code>ProductDetailViewModel</code>에서 "<code>LoadSuccess</code>가 아니면 true"로 태깅되어 화면까지 전파된다. preview 단계엔 item이 리스트에 없으므로 <strong>preview 탄생(컴포지션 #1) 자체가 일어나지 않는다.</strong> 살아있는 노드가 없으니 뒤따르던 리컴포지션 #2도 사라진다.</p>
+
+    <p>그러면 앞의 의문 — "가드 후에도 실상품 로드 시 한 번은 탄생해야 하지 않나?" — 이 남는다. 여기서 <strong>item을 리스트에 넣는 것과 컴포지션은 다르다</strong>는 점이 작동한다. item은 <code>LoadSuccess</code> 때 추가되지만, 그 시점에 상단 섹션이 <strong>충분히 커져 있으면</strong> WebView 오프셋이 뷰포트를 넘어 fold 아래에 놓이고, 노드는 탄생하지 않고 <strong>스크롤을 기다린다.</strong> 스크롤로 뷰포트에 들어오면 on-screen에서 탄생·draw → self-measure 정상 — Pixel 경로다.</p>
+
+    <p>수정 후 실기기 로그가 이를 보여준다.</p>
+    <pre><code>진입:  ① loadUrl: parent=null w=0 h=0 contentH=0            <span class="cmt-r">← 화면레벨 프리로드만, item 미탄생</span>
+스크롤: ② factory attach: webView w=0 h=0 <span class="hi">contentH=16090</span>   <span class="cmt-r">← 이제야 탄생, 문서는 이미 로드됨</span>
+       ③ onSizeChanged: 1080x<span class="hi">11312</span>  webViewContentH=16090
+       ③ onSizeChanged: 1080x<span class="hi">45250</span>  webViewContentH=16090   <span class="cmt-r">← scale settle 중 진동</span>
+       ③ onSizeChanged: 1080x<span class="hi">15080</span>  webViewContentH=5363    <span class="cmt-r">← 실값으로 수렴</span></code></pre>
+
+    <p>진입 시 <code>②</code>/<code>③</code>가 사라지고(<code>①</code>만 화면레벨 프리로드로 발생), 스크롤 시에만 <code>②</code> + <strong>0이 아닌 실측 높이</strong>가 찍힌다. 가드가 의도대로 동작한 <strong>해피 경로</strong>다. <strong>하지만 이것이 유일한 결과는 아니었다.</strong></p>
+
+    <h3>가드로도 안 닫힌 두 번째 창</h3>
+
+    <p>계측을 더 돌리자, 같은 리스트 진입인데도 진입 시 <code>②</code>/<code>③</code>가 다시 찍히는 실행이 나타났다. 가드는 <strong>preview 창</strong>만 없앴는데, <strong>실데이터(<code>Live</code>) 전환 직후에도</strong> WebView 위 async 섹션(브랜드·리뷰·라운지·광고·추천)은 각각 별도 비동기라 아직 0이다. 그 순간 item이 리스트에 붙으면 오프셋은 <code>#0(1080) + #1(842) = 1922</code>, 뷰포트 <code>1985</code>보다 딱 <strong>63px</strong> 작아 fold 안쪽에 <strong>걸쳐서 탄생</strong>한다.</p>
+
+    <pre><code>진입: [Layout] visible=[(0,1080),(1,842),(2,0)…(8,0),(9,<span class="hi">23</span>)]  infoItem offset=<span class="hi">1922</span> &lt; viewport 1985
+     ② factory attach: contentH=0  →  ③ 1080x<span class="zero">0</span>  →  onDispose!   <span class="cmt-r">← 다시 조기 탄생·0·dispose</span></code></pre>
+
+    <p>그러곤 위 섹션이 높이를 얻는 순간 fold 밖으로 밀려 <code>dispose</code>된다 — §3에서 본 "0높이는 자기강화적"이 그대로 재현된 것이다. 반대로 위 섹션 중 하나라도 <strong>먼저</strong> 커지면 오프셋이 뷰포트를 넘겨 애초에 탄생하지 않는다(해피 경로). 어느 쪽이 먼저냐는 §3의 <em>"신호가 닿느냐"</em>와 같은 계열의 타이밍 경쟁이라, §7 가드 뒤에도 간헐적으로 남았다. 요컨대 가드는 <strong>첫 창(preview)</strong>을 닫았지만 <strong>두 번째 창(Live 전환 직후 · 상위 섹션 0)</strong>은 열려 있었다.</p>
+
+    <h3>두 번째 가드: 위 섹션이 화면을 채운 뒤에만 부착</h3>
+
+    <p>첫 창을 "preview면 빼기"로 닫았으니, 두 번째 창도 같은 발상 — <strong>탄생 자체를 늦춘다.</strong> 이번엔 신호를 WebView가 아니라 <strong>LazyColumn의 레이아웃</strong>에서 얻는다. <strong>웹뷰를 제외한 위 섹션들의 높이 합이 뷰포트를 넘을 때까지 item을 리스트에 넣지 않는다.</strong> 부착 시점엔 웹뷰가 이미 fold 밖이라 조기 탄생이 불가능하고, 스크롤로 들어올 땐 문서 로드가 끝나 있어 on-screen에서 정상 측정된다.</p>
+
+    <pre><code><span class="kw">val</span> isEnabled = !viewModel.isPreview <span class="kw">&amp;&amp;</span> upperFilledViewport
+<span class="cmt">// upperFilledViewport: visibleItemsInfo(웹뷰 제외).sumOf { it.size } &gt; viewport 이면 true</span></code></pre>
+
+    <p>왜 <code>contentHeight</code>가 아니라 레이아웃 높이인가? <code>contentHeight</code>는 시도들에서 봤듯 <strong>진동하는 값</strong>이라 신뢰가 어렵지만, 위 섹션들의 측정 높이 합은 LazyColumn이 확정한 값이다. 두 가지 안전장치를 둔다 — <strong>latch</strong>: 한 번 뷰포트를 넘으면 상태를 유지해, 스크롤로 위 섹션이 화면 밖으로 나가 합이 다시 작아져도 item이 사라지지 않게 한다(안 그러면 스크롤 도중 항목이 제거된다). <strong>타임아웃 폴백</strong>: 리뷰·추천이 모두 빈 상품이나 큰 화면처럼 위 콘텐츠가 영영 뷰포트를 못 채우는 경우, 일정 시간 뒤 부착을 보장한다. 그땐 위 섹션이 이미 안정돼 화면에 붙어도 더 밀려나지 않는다.</p>
+
+    <div class="highlight-box">
+        <strong>두 가드 모두 "완화"다.</strong> preview 가드와 위 섹션 오버플로 게이트는 조기 탄생의 두 <em>트리거</em>(창)를 닫았을 뿐, WebView를 LazyColumn item으로 두고 높이를 재는 <strong>구조 자체의 취약성</strong>(off-screen 0, unclamped ↔ clamp 딜레마)은 그대로 남아 있다. "언제 부착하나"를 미루는 타이밍 조정이지, 측정을 없앤 것은 아니다.
+    </div>
+
+    <h2 id="section-8">근본은 여전히 "구조"다 — 측정을 걷어내는 방향</h2>
+
+    <p>가드가 트리거를 막았지만, 위 강조처럼 <strong>측정 취약성 자체는 남는다.</strong> 근원이 "WebView를 LazyColumn item으로 두고 높이를 재는 것"에 있으므로, 장기적으로는 <strong>측정 의존을 걷어내는 방향</strong>이 답이다. 실제로 검토한 구조 개선 방향은 두 갈래다.</p>
+
+    <ul>
+        <li><strong>Compose용 WebView로 마이그레이션.</strong> 이 이슈는 <code>Compose</code> + <code>AndroidView</code> 조합에서 WebView의 <code>onMeasure</code> 호출 시점이 어긋나 생기는 문제라, 공식 Compose WebView가 나오면 자연스럽게 해소될 여지가 크다. 다만 공식 출시 일정은 아직 미정이다.</li>
+        <li><strong>높이를 <code>wrap_content</code> 대신 고정 + 내부 스크롤.</strong> WebView를 뷰포트 높이로 고정(<code>match_parent</code>)하고 내부 스크롤을 <code>NestedScrollConnection</code>으로 바깥 LazyColumn과 연동하면, 높이 측정 자체가 불필요해져 off-screen 0·clamp 잘림·공백이 원리적으로 사라진다. 다만 <code>wrap_content</code>→고정 전환은 비용·리스크가 커 당장 적용은 어렵다.</li>
+    </ul>
+
+    <p>이 방향은 공식 문서의 입장과도 맞닿는다 — Compose 공식 가이드는 <em>"WebView를 LazyColumn 같은 스크롤 컨테이너에 중첩하는 것은 현재 제대로 동작하지 않는다"</em>고 명시한다<sup class="footnote-ref" id="ref-2"><a href="#fn2">[2]</a></sup>. (다만 이 문서의 주 서술은 스크롤 제스처 관점으로, 우리가 겪은 measure 이슈와는 부분적으로만 겹친다.)</p>
+
+    <p>결국 <strong>지금 채택한 것은 최소 스코프의 완화 — 조기 탄생의 두 창을 닫는 두 겹의 가드(§7: preview 가드 + 위 섹션 오버플로 게이트)</strong>다. 위 구조 개선들은 비용·일정 문제로 후속 과제(<strong>KMA-8478</strong>)로 남겨 두었다. 이 글은 왜 완화에 머물 수밖에 없었는지, 그리고 언젠가 구조를 바꿔야 하는 이유를 실측으로 남긴 기록이다.</p>
+
+    <h2 id="section-9">교훈</h2>
+
+    <ul class="checklist">
+        <li><span class="checklist-num">1</span><span><strong>"같은 코드, 다른 기기"는 타이밍·뷰포트 차이를 의심하라.</strong> Galaxy/Pixel의 재현 차이가 곧 근본 원인(뷰포트 vs 오프셋)의 지문이었다. 기기 차이를 로그로 정량화한 것이 조사에서 가장 큰 진전이었다.</span></li>
+        <li><span class="checklist-num">2</span><span><strong>WebView의 <code>contentHeight</code>와 뷰 measure는 다른 파이프라인이다.</strong> 문서 높이를 안다고 뷰가 그 높이로 측정되는 게 아니다. off-screen에서는 특히 그렇다.</span></li>
+        <li><span class="checklist-num">3</span><span><strong>측정값의 "존재"와 "정확성"은 다르다.</strong> 시도 5에서 <code>measuredHeight</code>는 non-zero였지만 전환 중 부분값이었다. 살아있는 값이라고 옳은 값은 아니다.</span></li>
+        <li><span class="checklist-num">4</span><span><strong>근거는 재현된 것만.</strong> 유사 제목의 외부 이슈(issuetracker)는 본문·repro 환경을 확인하지 못해 근거에서 제외했다<sup class="footnote-ref" id="ref-3"><a href="#fn3">[3]</a></sup>. 판단의 1차 근거는 우리 기기 로그뿐이다.</span></li>
+        <li><span class="checklist-num">5</span><span><strong>"리스트에 넣는 것"과 "컴포지션"은 다르다.</strong> LazyColumn의 가시성은 노드의 <em>탄생(최초 subcompose)</em>과 <em>소멸(dispose)</em>을 gate하지만, 이미 살아있는 노드의 리컴포지션은 gate하지 않는다. "2회"의 미스터리는 이 구분에서 풀렸다.</span></li>
+        <li><span class="checklist-num">6</span><span><strong>완화와 근본을 구분하라.</strong> 조기 컴포지션을 없앤 가드는 증상의 트리거를 제거했지만(완화), WebView를 item으로 재는 측정 취약성(근본)은 남는다. 무엇을 고쳤고 무엇이 남았는지를 명확히 적어두는 것이 다음 사람을 구한다.</span></li>
+        <li><span class="checklist-num">7</span><span><strong>완화는 끝이 아니라 다음 관찰의 시작이다.</strong> 1차 가드(preview)를 넣은 뒤에도 계측을 더 돌리자 <strong>두 번째 창</strong>(Live 전환 직후 상위 섹션 0)이 드러났다. "고쳤다"가 아니라 "이 트리거는 닫혔다"로 적고 계속 관찰해야 다음 창을 놓치지 않는다.</span></li>
+    </ul>
+
+    <div class="summary-box">
+        <div class="summary-box-title">Takeaways</div>
+        <p style="margin:0">LazyColumn 안의 <code>WRAP_CONTENT</code> WebView는 <strong>세로 긴 기기에서 off-screen 조기 compose → 0 고정</strong>으로 깨진다. 이 조기 compose는 preview·real <strong>2회 초기화</strong>가 skeleton 오프셋에서 노드를 먼저 태우기 때문이며, preview 단계 item을 리스트에서 빼는 <strong>가드로 첫 트리거를 막았고</strong>, 그것만으로 안 닫힌 <strong>두 번째 창(Live 전환 직후 상위 섹션 0)</strong>은 <strong>위 섹션이 뷰포트를 채운 뒤에만 부착하는 오버플로 게이트</strong>로 막았다(완화, 두 겹). 다만 측정 기반 보정은 <strong>unclamped ↔ clamp 딜레마</strong>로 전부 실패했고, 두 가드 모두 "언제 부착하나" 타이밍 조정일 뿐이라 측정 자체를 없애는 <strong>구조 개선(Compose-WebView 마이그레이션·뷰포트 높이 고정)</strong>은 후속 과제(KMA-8478)로 남겼다.</p>
+    </div>
+
+</article>
+
+<!-- ═══════════════════════════════════════════
+     Footnotes
+     ═══════════════════════════════════════════ -->
+<div class="article">
+    <div class="footnotes">
+        <ol>
+            <li id="fn1">Lazy lists — LazyColumn이 0px item을 첫 measure에 전량 compose하는 동작 및 placeholder 권고. <a href="https://developer.android.com/develop/ui/compose/lists">developer.android.com/develop/ui/compose/lists</a> <a href="#ref-1" class="fn-back">↩</a></li>
+            <li id="fn2">Wrap a WebView in Compose — WebView × LazyColumn 미지원 서술(주로 스크롤 제스처 관점). <a href="https://developer.android.com/develop/ui/compose/migrate/interoperability-apis/wrap-webview-in-compose">developer.android.com/.../wrap-webview-in-compose</a> <a href="#ref-2" class="fn-back">↩</a></li>
+            <li id="fn3">issuetracker #148731508 / #242463987 / #324429692 — 제목상 유사하나 로그인 제약으로 본문·repro 환경을 확인하지 못해 근거에서 제외. <a href="#ref-3" class="fn-back">↩</a></li>
+        </ol>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     Footer
+     ═══════════════════════════════════════════ -->
+<footer class="article-footer">
+    <div class="share-buttons">
+        <button class="share-btn" onclick="navigator.clipboard.writeText(location.href)">링크 복사</button>
+    </div>
+</footer>
+
+</body>
+</html>
