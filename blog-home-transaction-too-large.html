@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TransactionTooLargeException : 536KB의 행방</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    --grey-50: #f9fafb; --grey-100: #f2f4f6; --grey-200: #e5e8eb; --grey-300: #d1d6db;
+    --grey-400: #b0b8c1; --grey-500: #8b95a1; --grey-600: #6b7684; --grey-700: #4e5968;
+    --grey-800: #333d4b; --grey-900: #191f28;
+    --toss-blue: #0064FF; --toss-blue-light: rgba(0, 100, 255, 0.08); --toss-blue-border: rgba(0, 100, 255, 0.2);
+    --bg: #ffffff; --bg-elevated: var(--grey-50); --bg-highlight: #ffc34236; --bg-code: var(--grey-100);
+    --text-primary: var(--grey-900); --text-secondary: var(--grey-700); --text-tertiary: var(--grey-500);
+    --border-light: var(--grey-200); --border-blockquote: var(--grey-800);
+    --content-width: 680px; --wide-width: 780px; --radius: 16px; --radius-sm: 10px;
+    --font-body: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --font-code: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { font-family: var(--font-body); background: var(--bg); color: var(--text-primary); line-height: 1.8; font-size: 16.5px; -webkit-font-smoothing: antialiased; word-break: keep-all; overflow-wrap: break-word; }
+::selection { background: rgba(0, 100, 255, 0.15); color: var(--grey-900); }
+a { color: var(--toss-blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.article { max-width: var(--content-width); margin: 0 auto; padding: 0 24px; }
+.hero { padding: 80px 24px 48px; max-width: var(--content-width); margin: 0 auto; }
+.hero-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 24px; font-size: 0.875rem; color: var(--text-tertiary); }
+.hero-meta .author { color: var(--text-secondary); font-weight: 600; }
+.hero-meta .dot { color: var(--grey-300); }
+.hero-title { font-size: 2.2rem; font-weight: 800; line-height: 1.3; color: var(--text-primary); margin-bottom: 16px; letter-spacing: -0.02em; }
+.hero-subtitle { font-size: 1.1rem; line-height: 1.7; color: var(--text-secondary); max-width: 580px; }
+.hero-tags { display: flex; gap: 8px; margin-top: 20px; flex-wrap: wrap; }
+.hero-tag { padding: 4px 12px; border-radius: var(--radius-sm); background: var(--toss-blue-light); border: 1px solid var(--toss-blue-border); font-size: 0.8rem; font-weight: 600; color: var(--toss-blue); }
+.toc { margin: 0 0 48px 0; padding: 24px 28px; background: var(--bg-elevated); border-radius: var(--radius); border: 1px solid var(--border-light); }
+.toc-label { font-size: 0.75rem; font-weight: 700; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px; }
+.toc-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.toc-list a { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 0.92rem; color: var(--text-secondary); transition: color 0.2s; }
+.toc-list a:hover { color: var(--toss-blue); text-decoration: none; }
+.toc-num { width: 24px; height: 24px; border-radius: 7px; background: var(--grey-200); display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; color: var(--text-secondary); flex-shrink: 0; }
+.article h2 { font-size: 1.55rem; font-weight: 800; line-height: 1.35; color: var(--text-primary); margin: 56px 0 20px 0; letter-spacing: -0.01em; }
+.article h2:first-child { margin-top: 0; }
+.article h3 { font-size: 1.2rem; font-weight: 700; line-height: 1.4; color: var(--text-primary); margin: 40px 0 14px 0; }
+.article p { margin: 0 0 20px 0; color: var(--text-primary); }
+.article strong { font-weight: 700; color: var(--grey-900); }
+.article blockquote { margin: 28px 0; padding: 0 0 0 20px; border-left: 2.5px solid var(--border-blockquote); font-size: 1.05rem; font-weight: 600; line-height: 1.7; color: var(--text-primary); }
+.article blockquote p { margin: 0; }
+.highlight-box { margin: 28px 0; padding: 20px 24px; background: var(--bg-highlight); border-radius: var(--radius); font-weight: 600; line-height: 1.7; color: var(--text-primary); }
+.content-box { margin: 28px 0; padding: 24px 28px; background: var(--bg-elevated); border-radius: var(--radius); border: 1px solid var(--border-light); }
+.content-box-title { font-size: 0.95rem; font-weight: 700; color: var(--text-primary); margin-bottom: 12px; }
+.article code { font-family: var(--font-code); font-size: 0.88em; padding: 2px 6px; background: var(--bg-code); border-radius: 5px; color: var(--grey-800); }
+.article pre { margin: 24px 0; padding: 24px; background: var(--grey-900); border-radius: var(--radius); overflow-x: auto; line-height: 1.6; }
+.article pre code { font-family: var(--font-code); font-size: 0.85rem; background: none; padding: 0; color: #abb2bf; border-radius: 0; }
+.kw { color: #c678dd; } .str { color: #98c379; } .cmt { color: #5c6370; font-style: italic; }
+.typ { color: #e5c07b; } .fn { color: #61afef; } .ann { color: #d19a66; } .op { color: #56b6c2; }
+.dim { color: #5c6370; }
+.article ul, .article ol { margin: 0 0 20px 0; padding-left: 24px; }
+.article li { margin-bottom: 10px; line-height: 1.7; }
+.article li::marker { color: var(--text-tertiary); }
+.checklist { list-style: none; padding: 0; counter-reset: check; }
+.checklist li { counter-increment: check; display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border-light); }
+.checklist li:last-child { border-bottom: none; }
+.checklist-num { width: 28px; height: 28px; border-radius: 8px; background: var(--toss-blue); display: flex; align-items: center; justify-content: center; font-size: 0.78rem; font-weight: 700; color: white; flex-shrink: 0; margin-top: 2px; }
+.metrics-table { width: 100%; border-collapse: collapse; margin: 24px 0; font-size: 0.9rem; }
+.metrics-table th { text-align: left; padding: 12px 16px; background: var(--bg-elevated); border-bottom: 2px solid var(--border-light); font-weight: 700; font-size: 0.8rem; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.04em; }
+.metrics-table td { padding: 12px 16px; border-bottom: 1px solid var(--border-light); color: var(--text-secondary); }
+.metrics-table .metric-label { color: var(--text-primary); font-weight: 600; }
+.metrics-table .metric-good { color: #16a34a; font-weight: 700; }
+.metrics-table .metric-bad { color: #dc2626; font-weight: 600; }
+.delta { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 6px; font-size: 0.78rem; font-weight: 700; }
+.delta-good { background: rgba(22, 163, 74, 0.1); color: #16a34a; }
+.delta-bad { background: rgba(220, 38, 38, 0.1); color: #dc2626; }
+.delta-neutral { background: var(--grey-100); color: var(--text-tertiary); }
+.summary-box { margin: 36px 0; padding: 24px 28px; background: var(--toss-blue-light); border: 1px solid var(--toss-blue-border); border-radius: var(--radius); }
+.summary-box-title { font-size: 0.82rem; font-weight: 700; color: var(--toss-blue); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.06em; }
+.summary-box p, .summary-box li { color: var(--text-primary); font-size: 0.95rem; }
+.compare-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; margin: 28px 0; }
+.compare-card { padding: 0; background: transparent; border: none; min-width: 0; }
+.compare-card-label { display: inline-flex; align-items: center; gap: 6px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
+.compare-card-label::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; }
+.compare-before .compare-card-label { color: var(--text-tertiary); }
+.compare-before .compare-card-label::before { background: var(--grey-400); }
+.compare-after .compare-card-label { color: var(--toss-blue); }
+.compare-after .compare-card-label::before { background: var(--toss-blue); }
+.compare-card pre { margin: 0; padding: 14px; font-size: 0.72rem; border-radius: 12px; overflow-x: auto; }
+.compare-card pre code { font-size: 0.72rem; }
+.article hr { border: none; height: 1px; background: var(--border-light); margin: 48px 0; }
+.footnotes { margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--border-light); font-size: 0.82rem; color: var(--text-tertiary); line-height: 1.8; }
+.footnotes a { color: var(--text-tertiary); text-decoration: underline; }
+.footnotes ol { padding-left: 20px; }
+.footnotes li { margin-bottom: 6px; scroll-margin-top: 24px; }
+.footnote-ref { font-size: 0.75em; vertical-align: super; font-weight: 600; }
+.footnote-ref a { color: var(--toss-blue); text-decoration: none; }
+.footnote-ref a:hover { text-decoration: underline; }
+.fn-back { color: var(--text-tertiary); text-decoration: none; margin-left: 6px; font-size: 0.9em; }
+.fn-back:hover { color: var(--toss-blue); }
+.article-footer { margin-top: 56px; padding: 32px 0; text-align: center; color: var(--text-tertiary); font-size: 0.82rem; }
+.share-buttons { display: flex; justify-content: center; gap: 12px; margin-top: 16px; }
+.share-btn { padding: 8px 20px; border-radius: var(--radius-sm); background: var(--bg-elevated); border: 1px solid var(--border-light); font-size: 0.82rem; font-weight: 600; color: var(--text-secondary); cursor: pointer; transition: all 0.2s; }
+.share-btn:hover { background: var(--grey-200); color: var(--text-primary); }
+/* 트리 로그 — monospace, 가로 스크롤 */
+.tree { margin: 24px 0; padding: 20px 22px; background: var(--grey-900); border-radius: var(--radius); overflow-x: auto; white-space: pre; font-family: var(--font-code); font-size: 0.8rem; line-height: 1.7; color: #abb2bf; tab-size: 2; }
+.tree .hot { color: #e06c75; font-weight: 600; }
+.tree .cool { color: #98c379; }
+.tree .lbl { color: #61afef; }
+@media (max-width: 768px) {
+    .hero { padding: 48px 20px 32px; } .hero-title { font-size: 1.7rem; }
+    .article { padding: 0 20px; } .article h2 { font-size: 1.35rem; margin-top: 40px; } .article h3 { font-size: 1.1rem; }
+    .compare-grid { grid-template-columns: 1fr; }
+    .article pre { padding: 16px; margin-left: -8px; margin-right: -8px; border-radius: 12px; }
+}
+</style>
+</head>
+<body>
+
+<header class="hero">
+    <div class="hero-meta">
+        <span class="author">keechan</span>
+        <span class="dot">&middot;</span>
+        <span>Android</span>
+        <span class="dot">&middot;</span>
+        <time>2026.07.08</time>
+    </div>
+    <h1 class="hero-title">TransactionTooLargeException : 536KB의 행방</h1>
+    <p class="hero-subtitle">홈 화면 <code>TransactionTooLargeException</code>을, 로그의 Bundle stats만 보고 코드 레벨 근본 원인까지 추적하고 49KB로 줄이기까지.</p>
+    <div class="hero-tags">
+        <span class="hero-tag">Android</span>
+        <span class="hero-tag">TransactionTooLargeException</span>
+        <span class="hero-tag">ViewPager</span>
+        <span class="hero-tag">SavedStateHandle</span>
+        <span class="hero-tag">디버깅</span>
+    </div>
+</header>
+
+<nav class="article">
+    <div class="toc">
+        <div class="toc-label">목차</div>
+        <ol class="toc-list">
+            <li><a href="#s1"><span class="toc-num">1</span> 536,760 bytes — 스택트레이스가 가리킨 곳</a></li>
+            <li><a href="#s2"><span class="toc-num">2</span> Bundle stats 해부 — 416KB의 정체는 viewPager였다</a></li>
+            <li><a href="#s3"><span class="toc-num">3</span> 왜 하필 3.78.0인가</a></li>
+            <li><a href="#s4"><span class="toc-num">4</span> 진짜 범인 — 47KB가 두 번 저장되고 있었다</a></li>
+            <li><a href="#s5"><span class="toc-num">5</span> 추론을 멈추고 측정하기 — 계층 로거</a></li>
+            <li><a href="#s6"><span class="toc-num">6</span> 근본 수정 — 대용량을 Bundle에 싣지 않는다</a></li>
+            <li><a href="#s7"><span class="toc-num">7</span> 536KB → 49KB, 그리고 남는 것</a></li>
+        </ol>
+    </div>
+</nav>
+
+<article class="article">
+
+<h2 id="s1">536,760 bytes — 스택트레이스가 가리킨 곳</h2>
+
+<p>Crashlytics에 낯선 크래시가 올라왔다. 메시지는 이랬다.</p>
+
+<pre><code><span class="typ">java.lang.RuntimeException</span>: android.os.<span class="typ">TransactionTooLargeException</span>:
+    data parcel size <span class="ann">536760</span> bytes
+    <span class="cmt">...</span>
+    at android.app.servertransaction.PendingTransactionActions$StopInfo.run(...)
+Caused by: android.os.<span class="typ">TransactionTooLargeException</span>: data parcel size <span class="ann">536760</span> bytes
+    at android.os.BinderProxy.transactNative(<span class="typ">Native Method</span>)
+    at android.app.IActivityClientController$Stub$Proxy.<span class="fn">activityStopped</span>(...)</code></pre>
+
+<p>두 가지가 눈에 띈다. 하나는 <strong>536,760 bytes(약 524KB)</strong>라는 숫자. 다른 하나는 크래시가 터진 지점이 <code>activityStopped</code>라는 것. 사용자 입력이나 렌더링이 아니라, <strong>액티비티가 화면에서 가려지며 상태를 저장하는 경로</strong>에서 죽었다.</p>
+
+<p>여기서 한 가지 짚고 넘어가자. <code>activityStopped</code>(즉 <code>onStop</code>)는 "백그라운드로 내려갈 때"만 발생하지 않는다. <strong>다른 액티비티로 이동해 현재 화면이 가려질 때(A→B)도</strong> 똑같이 stop된다. 홈 셸인 <code>MainActivity</code>는 상품상세·장바구니·카테고리로 이동할 때 늘 stop되므로, 오히려 이쪽이 더 잦은 트리거일 수 있다. 스택트레이스만으로는 둘을 구분할 수 없다. 다만 <strong>어느 경로든 공통점은 하나다 — 시스템이 "이 액티비티가 죽을 수 있으니 상태를 저장해 두자"며 상태 저장을 트리거했다는 것.</strong> 이게 이번 크래시가 입력·렌더링 문제가 아니라 <strong>저장되는 Bundle의 크기</strong> 문제라는 첫 단서다.</p>
+
+<p>안드로이드는 액티비티가 멈출 때 <code>onSaveInstanceState</code>로 화면 상태를 <code>Bundle</code>에 담아 시스템 프로세스로 전달한다. 이 전달은 Binder 트랜잭션을 타는데, Binder에는 프로세스 전체가 공유하는 약 1MB 버퍼가 있고 단일 트랜잭션은 실무상 512KB 부근에서 한계에 부딪힌다.<sup class="footnote-ref" id="ref-1"><a href="#fn1">[1]</a></sup> 우리가 저장하려던 Bundle이 그 선을 넘은 것이다. 그리고 근본 원인이 Bundle 크기인 이상, 이 크래시는 트리거(백그라운드든 화면 이동이든)와 무관하게 재현된다.</p>
+
+<p>다행히 이 크래시 로그에는 시스템이 친절하게 붙여 준 <strong>Bundle stats</strong>가 딸려 있었다. 어떤 키가 몇 바이트를 먹었는지 트리로 찍힌다. 재현 기기도, 힙 덤프도 없이 이 트리 하나만으로 근본 원인까지 내려가 보기로 했다.</p>
+
+<div class="summary-box">
+    <div class="summary-box-title">이 글에서 도착할 곳</div>
+    <ol style="margin:0; padding-left:22px;">
+        <li>스택트레이스의 Bundle stats를 해부해 범인을 특정한다.</li>
+        <li>"왜 이 버전부터 터지는가"를 밝힌다.</li>
+        <li><strong>크래시가 나기 전에 크래시 Bundle을 재현하는 계층 로거</strong>로 가설을 하나씩 실측 소거한다.</li>
+        <li>저장 위치를 바꾸는 우회책이 아니라 <strong>대용량을 Bundle에 아예 싣지 않는</strong> 근본 수정으로 536KB를 49KB까지 줄인다.</li>
+    </ol>
+</div>
+
+<h2 id="s2">Bundle stats 해부 — 416KB의 정체는 viewPager였다</h2>
+
+<p>로그의 Bundle stats를 위에서부터 따라 내려가면 무게가 어디에 쏠려 있는지 금방 드러난다. 크기 순으로 가지치기하면 이렇다.</p>
+
+<div class="tree"><span class="cool">total 536,760</span>
+└ android:support:fragments  <span class="dim">527,204</span>
+  └ fragment_b673…  <span class="dim">(HomeRootFragment)  526,780</span>
+    ├ viewState
+    │  └ <span class="hot">0x7f0a07db  416,048</span>   <span class="cmt">← ?</span>
+    └ childFragmentManager  <span class="dim">106,808</span>
+       ├ fragment_a20d…  <span class="dim">(HomeRecommendation)  5,480</span>
+       └ fragment_c44a…  <span class="dim">100,648</span>
+          └ … └ arguments / <span class="hot">productListInfo  47,672</span>
+              └ registryState / … / <span class="hot">productListInfo  47,672</span></div>
+
+<p>지배적인 두 덩어리가 보인다. 하나는 <code>viewState</code> 안의 <code>0x7f0a07db</code>가 혼자 먹는 <strong>416KB</strong>. 다른 하나는 <code>childFragmentManager</code> 깊숙한 곳에서 <code>productListInfo</code>라는 값이 <strong>47KB씩 두 번</strong> 나타나는 것.</p>
+
+<p>먼저 <code>0x7f0a07db</code>. 이건 리소스 ID의 16진수 값이다. 빌드 산출물의 <code>R.txt</code>에서 바로 역참조할 수 있다.</p>
+
+<pre><code><span class="cmt"># app/build/intermediates/runtime_symbol_list/.../R.txt</span>
+int id bottom_navigation <span class="ann">0x7f0a00db</span>
+int id viewPager         <span class="ann">0x7f0a07db</span>   <span class="cmt">← 416KB의 정체</span></code></pre>
+
+<p><code>0x7f0a07db</code> = <code>R.id.viewPager</code>. 홈 루트 화면(<code>HomeRootFragment</code>)의 <strong>ViewPager가 저장하는 상태만 416KB</strong>였다. 나머지 47KB×2는 그 안 어딘가의 상품 목록 데이터. 두 실마리를 각각 끝까지 따라가면 된다.</p>
+
+<h2 id="s3">왜 하필 3.78.0인가</h2>
+
+<p>여기서 중요한 제약이 하나 걸렸다. 이 크래시는 <strong>특정 버전(3.78.0)부터</strong> 관측됐다. 오래 잠복해 있던 문제가 아니라 <strong>회귀</strong>라는 뜻이다. 그렇다면 원인은 "누적된 구조"가 아니라 "그 버전에서 바뀐 무언가"다. <code>git log</code>로 홈 관련 파일들의 변경을 훑었다.</p>
+
+<p>홈 루트는 여러 개의 서브탭을 <code>ViewPager</code> + <code>FragmentStatePagerAdapter</code>로 붙인다. 탭 종류는 서버 설정으로 내려온다 — 추천, 컬렉션, 컬렉션그룹, 카테고리, 이벤트 등. 문제의 버전에 들어간 커밋 하나가 이 중 <strong>컬렉션그룹 탭을 XML 기반에서 Compose 기반으로 전환</strong>하면서 내부 구조를 바꿔 놓았다.</p>
+
+<div class="compare-grid">
+    <div class="compare-card compare-before">
+        <div class="compare-card-label">3.77 이전 — 컬렉션그룹 탭</div>
+<pre><code><span class="kw">class</span> <span class="typ">HomeCollectionGroupFragment</span> :
+    <span class="typ">BaseFragment</span>(...) {
+  <span class="cmt">// RecyclerView + Mediator 로</span>
+  <span class="cmt">// 목록을 직접 그림.</span>
+  <span class="cmt">// 자식 Fragment 없음 → light</span>
+}</code></pre>
+    </div>
+    <div class="compare-card compare-after">
+        <div class="compare-card-label">3.78.0 이후</div>
+<pre><code><span class="kw">class</span> <span class="typ">HomeCollectionGroupFragment</span> :
+    <span class="typ">Fragment</span>(...) {
+  <span class="cmt">// ComposeView + 자식</span>
+  <span class="cmt">// ProductListFragment 호스팅</span>
+  <span class="cmt">// → 47KB 페이로드 탑재 → heavy</span>
+}</code></pre>
+    </div>
+</div>
+
+<p>전환 자체는 정상적인 마이그레이션이다. 문제는 부수 효과였다. 자식 <code>ProductListFragment</code>는 예전부터 자신의 <code>arguments</code>에 상품 목록 정보(<code>ProductListInfoUIModel</code>)를 담아 왔는데, 이 객체가 배너·정렬·필터·섹션 리스트에 상위 카테고리까지 재귀로 안고 있어 <strong>직렬화하면 수십 KB</strong>에 이른다.</p>
+
+<p>정리하면 이렇다. 컬렉션·카테고리 탭은 <strong>이전부터</strong> 이 무거운 자식을 안고 있었다(heavy). 컬렉션그룹 탭만 예외적으로 RecyclerView라 가벼웠는데(light), 3.78.0이 이걸 heavy로 바꿨다. 문제의 사용자 화면은 컬렉션그룹 탭이 여러 개인 구성이었다.</p>
+
+<div class="highlight-box">
+3.78.0의 회귀는 "탭 하나가 더 무거워진 것"이 아니라 <strong>"무거운 탭의 개수가 늘어난 것"</strong>이었다. 그리고 <code>FragmentStatePagerAdapter</code>는 스쳐 간 탭들의 상태를 누적한다.
+</div>
+
+<h2 id="s4">진짜 범인 — 47KB가 두 번 저장되고 있었다</h2>
+
+<p>이제 두 실마리가 하나로 합쳐진다. 왜 <code>productListInfo</code>가 <strong>두 번</strong> 저장되고, 왜 viewPager 상태가 <strong>416KB</strong>까지 부풀었는가.</p>
+
+<h3>productListInfo가 저장되는 두 곳 — arguments, 그리고 아무도 쓰지 않는 SavedStateHandle</h3>
+
+<p>첫 번째 사본은 명백하다. <code>ProductListFragment</code>를 만들 때 47KB 객체를 <code>arguments</code> 번들에 넣는다. 두 번째 사본이 함정이었다. 로그에는 같은 값이 ViewModel의 <code>SavedStateHandle</code> 아래에도 47KB로 찍혀 있었다.</p>
+
+<pre><code><span class="cmt">// 저장되는 Bundle 트리 — 같은 값이 두 곳에</span>
+arguments / productListInfo                          <span class="ann">47,672</span>
+registryState / … / SavedStateHandlesProvider /
+    VIEW_MODEL_KEY_PRODUCT_FILTER / productListInfo   <span class="ann">47,672</span></code></pre>
+
+<p>그런데 코드베이스 어디에도 <code>savedStateHandle["productListInfo"] = ...</code>로 이 값을 <strong>직접 쓰는 곳이 없었다</strong>(grep으로 확인). 그렇다면 이 사본은 어디서 왔는가?</p>
+
+<blockquote><p>Hilt로 만든 ViewModel의 <code>SavedStateHandle</code>은 소유 Fragment의 <code>arguments</code>를 <strong>기본값으로 자동 시딩</strong>한다. 그리고 프로세스 사후 복원을 대비해, 자신이 들고 있는 모든 키를 저장 시점에 다시 직렬화한다.</p></blockquote>
+
+<p>즉 <code>arguments</code>에 47KB를 넣는 순간, 프레임워크가 그 값을 <code>SavedStateHandle</code>로 복사하고, 저장 때 한 번 더 직렬화한다. 아무도 명시적으로 쓰지 않았는데도 <strong>47KB × 2</strong>가 된다. 이 프로젝트에서는 그 값을 <code>SavedStateHandle</code>에서 읽지도 않으니, 두 번째 사본은 순수한 잉여였다.<sup class="footnote-ref" id="ref-2"><a href="#fn2">[2]</a></sup></p>
+
+<h3>416KB — 파괴된 탭들의 누적</h3>
+
+<p>남은 416KB, 즉 viewPager 상태를 보자. <code>FragmentStatePagerAdapter</code>는 화면 밖으로 밀려난 오프스크린 페이지의 <strong>Fragment 인스턴스는 파괴</strong>하지만, 돌아왔을 때 복원하려고 그 <strong>상태 스냅샷은 내부 리스트에 보관</strong>한다. 이 리스트는 트리밍되지 않는다 — 방문했던 모든 위치의 스냅샷이 쌓인다.<sup class="footnote-ref" id="ref-3"><a href="#fn3">[3]</a></sup></p>
+
+<p>한 탭의 스냅샷에는 그 탭의 childFragmentManager, 곧 중첩된 <code>ProductListFragment</code>의 47KB×2가 통째로 들어간다. 사용자가 무거운 탭들을 스와이프하며 지나갈수록 스냅샷이 누적된다. <strong>방문한 heavy 탭 수 × ~95KB</strong>가 이 416KB의 실체다.</p>
+
+<div class="content-box">
+    <div class="content-box-title">크래시의 전체 공식</div>
+    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:6px 0 20px;">
+        <span style="font-family:var(--font-code); font-weight:700; font-size:0.95rem; color:var(--text-primary);">total</span>
+        <span style="color:var(--text-tertiary); font-weight:700;">=</span>
+        <div style="flex:1 1 200px; min-width:0; padding:12px 14px; background:rgba(22,163,74,0.08); border:1px solid rgba(22,163,74,0.28); border-radius:12px;">
+            <div style="font-family:var(--font-code); font-weight:700; font-size:0.82rem; color:#16a34a; overflow-wrap:anywhere;">childFragmentManager</div>
+            <div style="font-size:0.8rem; color:var(--text-secondary); margin-top:5px;">살아있는 탭 &middot; <strong>유한</strong> (≤ 3개)</div>
+        </div>
+        <span style="color:var(--text-tertiary); font-weight:700;">+</span>
+        <div style="flex:1 1 200px; min-width:0; padding:12px 14px; background:rgba(220,38,38,0.07); border:1px solid rgba(220,38,38,0.28); border-radius:12px;">
+            <div style="font-family:var(--font-code); font-weight:700; font-size:0.82rem; color:#dc2626;">viewPager</div>
+            <div style="font-size:0.8rem; color:var(--text-secondary); margin-top:5px;">파괴된 탭 누적 &middot; <strong>가변</strong> — 한도 초과의 주범</div>
+        </div>
+    </div>
+    <p style="margin:0">살아있는 탭은 <code>offscreenPageLimit</code>(현재 ±1)로 3개에 묶여 유한하다. <strong>한도를 넘기는 변수는 누적되는 <code>viewPager</code>(파괴된 탭) 쪽</strong>이다. 그리고 각 탭이 무거운 이유는 47KB가 두 번 저장되기 때문이다.</p>
+</div>
+
+<h2 id="s5">추론을 멈추고 측정하기 — 계층 로거</h2>
+
+<p>여기까지는 로그 한 장에서 짜낸 추론이다. 그럴듯하지만 검증되지 않았다. 재현 기기의 탭 구성도 모르고, "무거운 탭 5개 × 95KB"라는 산수도 가정이다. 추론을 더 쌓는 대신, <strong>측정 도구</strong>를 만들기로 했다.</p>
+
+<p>아이디어는 단순하다. 시스템이 크래시 때 찍어 준 Bundle stats 트리를, <strong>크래시가 나기 전에</strong> 우리 손으로 재현하는 것. <code>onSaveInstanceState</code>가 채운 <code>outState</code>를 재귀 순회하며 각 노드를 <code>Parcel</code>에 써서 실제 직렬화 크기를 잰다.</p>
+
+<pre><code><span class="kw">object</span> <span class="typ">SavedStateSizeLogger</span> {
+    <span class="kw">fun</span> <span class="fn">sizeOf</span>(value: <span class="typ">Any</span>?): <span class="typ">Int</span> {
+        <span class="kw">val</span> parcel = <span class="typ">Parcel</span>.<span class="fn">obtain</span>()
+        <span class="kw">return try</span> {
+            parcel.<span class="fn">writeValue</span>(value)
+            parcel.dataSize        <span class="cmt">// 실제 parcel 바이트</span>
+        } <span class="kw">finally</span> { parcel.<span class="fn">recycle</span>() }
+    }
+    <span class="cmt">// Bundle 은 재귀, SparseArray(viewState)도 재귀,</span>
+    <span class="cmt">// fragment_&lt;uuid&gt; 키엔 FragmentManager 트리에서 찾은 클래스명 병기</span>
+}</code></pre>
+
+<p>여기에 작은 디테일 하나를 더했다. Bundle 트리의 <code>fragment_&lt;uuid&gt;</code> 키는 UUID라 어떤 화면인지 알 수 없다. 그래서 <code>FragmentManager</code> 트리를 함께 순회해 <code>uuid → 클래스명</code> 맵을 만들고 로그에 병기했다. 이제 트리를 읽으면 어느 노드가 <code>HomeCollectionGroupFragment</code>이고 어느 게 중첩 <code>ProductListFragment</code>인지 눈으로 바로 잡힌다.</p>
+
+<p>이 로거를 <code>MainActivity.onSaveInstanceState</code>의 <code>super</code> 호출 직후(디버그 빌드에서만) 한 줄 붙이고, 실기기에서 탭을 스와이프한 뒤 백그라운드로 보냈다. 크래시 로그와 같은 포맷의 트리가, 이번엔 크래시 없이 손에 들어왔다.</p>
+
+<div class="highlight-box">
+디버깅에서 가장 비싼 건 코드 수정이 아니라 <strong>"어디가 문제인지 확신하는 일"</strong>이다. 재현되는 측정값 한 번이 그럴듯한 추론 다섯 개를 이긴다.
+</div>
+
+<h2 id="s6">근본 수정 — 대용량을 Bundle에 싣지 않는다</h2>
+
+<p>돌파구는 <code>ProductListFragment</code>가 그 47KB를 <strong>실제로 어떻게 쓰는지</strong> 확인하면서 열렸다. ViewModel은 <code>init</code>에서 넘겨받은 거대 객체를 그대로 쓰지 않고, 안에서 <code>GetCurrentProductListInfoUseCase</code>로 <strong>서버에서 다시 조회</strong>하고 있었다. 그 UseCase가 요구하는 입력은 이게 전부였다.</p>
+
+<pre><code><span class="kw">data class</span> <span class="typ">Param</span>(
+    <span class="kw">val</span> type: <span class="typ">ProductListPageType</span>,   <span class="cmt">// enum</span>
+    <span class="kw">val</span> site: <span class="typ">SiteFilterType</span>,        <span class="cmt">// enum</span>
+    <span class="kw">val</span> code: <span class="typ">String</span>,
+    <span class="kw">val</span> title: <span class="typ">String</span>? = <span class="kw">null</span>,
+    <span class="kw">val</span> parentCode: <span class="typ">String</span>? = <span class="kw">null</span>,
+    <span class="cmt">// ...</span>
+)</code></pre>
+
+<p>즉 47KB 객체는 <code>type</code>·<code>code</code>·<code>title</code>·<code>parentCode</code>·<code>brandId</code> 같은 <strong>primitive 몇 개를 추출하는 용도로만</strong> 소비됐고, 실제 목록 데이터(필터·배너·섹션)는 어차피 <code>code</code>로 서버에서 다시 만들어졌다. Bundle을 건너온 47KB의 99%는 도착하자마자 버려지고 있었던 것이다.</p>
+
+<p>그렇다면 답은 자명하다. <strong>47KB 객체 대신 primitive만 넘긴다.</strong></p>
+
+<div class="compare-grid">
+    <div class="compare-card compare-before">
+        <div class="compare-card-label">Before — 47KB Parcelable</div>
+<pre><code><span class="kw">fun</span> <span class="fn">create</span>(
+  productListInfo: <span class="typ">ProductListInfoUIModel</span>?,
+  site: <span class="typ">SiteFilterType</span>,
+) = <span class="typ">ProductListFragment</span>().<span class="fn">apply</span> {
+  arguments = <span class="fn">Bundle</span>().<span class="fn">apply</span> {
+    <span class="fn">putParcelable</span>(
+      KEY, productListInfo)  <span class="cmt">// 47KB</span>
+  }
+}</code></pre>
+    </div>
+    <div class="compare-card compare-after">
+        <div class="compare-card-label">After — primitive만</div>
+<pre><code><span class="kw">fun</span> <span class="fn">create</span>(
+  type: <span class="typ">ProductListPageType</span>,
+  site: <span class="typ">SiteFilterType</span>,
+  code: <span class="typ">String</span>,
+  groupCode: <span class="typ">String</span>? = <span class="kw">null</span>,
+  <span class="cmt">/* title, brandId ... */</span>
+) = <span class="typ">ProductListFragment</span>().<span class="fn">apply</span> {
+  arguments = <span class="fn">bundleOf</span>(...)  <span class="cmt">// 수백 B</span>
+}</code></pre>
+    </div>
+</div>
+
+<p>기존 동작을 지키기 위해, ViewModel의 실제 로직은 primitive를 받는 <code>init</code>으로 옮기고, 기존 <code>init(uiModel)</code>은 그 uiModel에서 primitive만 뽑아 위임하는 얇은 오버로드로 남겼다. 기존 단위 테스트는 이 위임 경로를 그대로 타므로 손대지 않고 통과했다 — 위임 자체가 "uiModel에서 실제로 쓰이던 건 primitive뿐"이라는 동치성의 증거이기도 하다.</p>
+
+<p>중요한 부수 효과 하나. <code>arguments</code>에서 47KB를 빼면, 거기서 자동 시딩되던 <strong>SavedStateHandle 사본도 함께 사라진다.</strong> 두 사본(arguments · SavedStateHandle)이 한 번에 제거된다.</p>
+
+<h2 id="s7">536KB → 49KB, 그리고 남는 것</h2>
+
+<p>같은 내비게이션을 두 빌드에서 반복하고 계층 로거로 총량을 찍었다. 판정은 명료했다.</p>
+
+<table class="metrics-table">
+    <thead>
+        <tr><th>항목</th><th>수정 전</th><th>primitive 수정 후</th><th>변화</th></tr>
+    </thead>
+    <tbody>
+        <tr><td class="metric-label">onSaveInstanceState 총량</td><td class="metric-bad">522,620 B (크래시)</td><td class="metric-good">50,176 B</td><td><span class="delta delta-good">-90%</span></td></tr>
+        <tr><td class="metric-label">viewPager 누적 blob</td><td>308 KB</td><td>15.5 KB</td><td><span class="delta delta-good">-95%</span></td></tr>
+        <tr><td class="metric-label">childFragmentManager (살아있는 3탭)</td><td>200 KB</td><td>19 KB</td><td><span class="delta delta-good">-90%</span></td></tr>
+        <tr><td class="metric-label">ProductListFragment / 탭</td><td>95 KB</td><td>2.9 KB</td><td><span class="delta delta-good">-97%</span></td></tr>
+        <tr><td class="metric-label">arguments / SavedStateHandle의 productListInfo</td><td>47 KB × 2</td><td class="metric-good">사라짐</td><td><span class="delta delta-good">제거</span></td></tr>
+    </tbody>
+</table>
+
+<p>로그의 두 <code>productListInfo</code> 항목은 흔적도 없이 사라졌고, 각 탭은 95KB에서 2.9KB로 내려앉았다. 한도(약 512KB)의 <strong>10% 미만</strong>을 쓰며, 이제 탭을 아무리 스와이프해도 저장 위치가 아니라 저장량 자체가 작아졌으니 내비게이션과 무관하게 안전하다.</p>
+
+<p>돌아보면 이 문제는 세 겹이었다. <strong>표면</strong>은 Binder 한도 초과, <strong>중간</strong>은 마이그레이션이 탭을 무겁게 만든 회귀, <strong>바닥</strong>은 "서버에서 다시 받을 수 있는 데이터를 Bundle에 실어 나른" 설계였다. 저장 위치를 바꾸거나 저장을 막는 수정은 표면·중간만 건드릴 뿐, 바닥을 그대로 두면 문제는 다시 자란다.</p>
+
+<div class="summary-box">
+    <div class="summary-box-title">남는 것</div>
+    <ul style="margin:0; padding-left:20px;">
+        <li><strong>저장 위치가 아니라 저장 여부.</strong> <code>TransactionTooLargeException</code>은 "무엇을 어디에 두느냐"가 아니라 "Bundle에 대용량을 싣느냐"의 문제다. 재조회 가능한 데이터는 키만 넘기고 다시 받는다.</li>
+        <li><strong>arguments는 곧 SavedStateHandle이다.</strong> Fragment arguments에 넣은 값은 Hilt ViewModel의 <code>SavedStateHandle</code>로 자동 시딩되어 한 번 더 저장된다. 대용량 Parcelable을 arguments에 넣는 순간 비용은 두 배가 된다.</li>
+        <li><strong>추론 대신 측정.</strong> 크래시 Bundle 트리를 크래시 전에 재현하는 로거 한 개가, 그럴듯한 수정안들을 말이 아니라 로그로 빠르게 판정하게 해 줬다.</li>
+    </ul>
+</div>
+
+<p>마지막으로, 같은 함정을 팀 코드에서 미리 잡고 싶다면 확인할 지점은 좁다. <strong>Fragment <code>arguments</code>에 들어가는 Parcelable이 서버 응답에서 다시 만들 수 있는 것인지</strong>만 물으면 된다. 답이 "그렇다"면, 그건 arguments가 아니라 code 한 줄로 충분하다.</p>
+
+<hr>
+
+<div class="footnotes">
+    <ol>
+        <li id="fn1">Android는 Binder 트랜잭션 버퍼(프로세스당 약 1MB 공유)를 초과하면 <code>TransactionTooLargeException</code>을 던진다. <code>onSaveInstanceState</code> Bundle은 액티비티 정지 시 이 트랜잭션으로 전달된다. <a href="https://developer.android.com/reference/android/os/TransactionTooLargeException">developer.android.com — TransactionTooLargeException</a> <a href="#ref-1" class="fn-back">↩</a></li>
+        <li id="fn2"><code>SavedStateHandle</code>은 소유자의 기본 인자(Fragment의 <code>arguments</code>)로 초기화되며, 저장 시 보유한 키를 <code>Bundle</code>로 다시 직렬화한다. 본문의 47KB×2는 이 동작을 실기기 로그로 직접 확인한 결과다. <a href="https://developer.android.com/topic/libraries/architecture/viewmodel/viewmodel-savedstate">developer.android.com — Saved state module for ViewModel</a> <a href="#ref-2" class="fn-back">↩</a></li>
+        <li id="fn3"><code>FragmentStatePagerAdapter</code>는 오프스크린 Fragment를 파괴하되 그 저장 상태는 보관·직렬화한다. 현재 deprecated이며 <code>ViewPager2</code>의 <code>FragmentStateAdapter</code>가 후속이다. <a href="https://developer.android.com/reference/androidx/fragment/app/FragmentStatePagerAdapter">developer.android.com — FragmentStatePagerAdapter</a> <a href="#ref-3" class="fn-back">↩</a></li>
+    </ol>
+</div>
+
+</article>
+
+<footer class="article-footer">
+    <div class="share-buttons">
+        <button class="share-btn" onclick="navigator.clipboard.writeText(location.href)">링크 복사</button>
+    </div>
+</footer>
+
+</body>
+</html>
