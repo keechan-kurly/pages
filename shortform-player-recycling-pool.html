@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>숏폼 ExoPlayer 재활용 풀 — diff 시각화</title>
+<style>
+/* ===== glass theme (embedded) ===== */
+:root {
+  --cv-add: #60a5fa;
+  --cv-del: #fb923c;
+  --cv-mod: #fbbf24;
+  --cv-mov: #38bdf8;
+  --cv-bg: #0c0a1a;
+  --cv-text: #f1f5f9;
+  --cv-text-secondary: #c1c7d0;
+  --cv-muted: #8892a4;
+  --cv-border: rgba(255,255,255,0.10);
+  --cv-surface: rgba(255,255,255,0.04);
+  --cv-card-bg: rgba(255,255,255,0.06);
+  --cv-code-bg: rgba(0,0,0,0.35);
+  --cv-add-surface: rgba(96,165,250,0.08);
+  --cv-del-surface: rgba(251,146,60,0.08);
+  --cv-mod-surface: rgba(251,191,36,0.06);
+  --cv-mov-surface: rgba(56,189,248,0.08);
+  --glass-blur: 16px;
+  --glass-saturation: 180%;
+  --glass-border: rgba(255,255,255,0.12);
+  --glass-border-hover: rgba(255,255,255,0.20);
+  --glass-radius: 16px;
+  --glass-radius-lg: 24px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  color: var(--cv-text);
+  background: var(--cv-bg);
+  line-height: 1.7;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 48px 32px;
+  -webkit-font-smoothing: antialiased;
+  position: relative;
+}
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background:
+    radial-gradient(ellipse 50% 40% at 20% 20%, rgba(99,102,241,0.15) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 50% at 80% 30%, rgba(236,72,153,0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 50% 80%, rgba(56,189,248,0.08) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+body > * { position: relative; z-index: 1; }
+
+/* HERO */
+.cv-hero {
+  position: relative;
+  padding: 64px 40px 56px;
+  margin-bottom: 32px;
+  border-radius: var(--glass-radius-lg);
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(24px) saturate(var(--glass-saturation));
+  -webkit-backdrop-filter: blur(24px) saturate(var(--glass-saturation));
+  border: 1px solid var(--glass-border);
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06);
+}
+.cv-hero::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%);
+}
+.cv-hero__eyebrow {
+  font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--cv-mov); margin: 0 0 16px; position: relative;
+}
+.cv-hero__title {
+  font-size: 34px; font-weight: 700; color: #ffffff; margin: 0 0 18px;
+  letter-spacing: -0.02em; line-height: 1.2; position: relative;
+}
+.cv-hero__subtitle {
+  font-size: 16px; color: var(--cv-text-secondary); margin: 0; line-height: 1.65;
+  position: relative; max-width: 680px;
+}
+.cv-hero__pills { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 22px; position: relative; }
+.cv-hero__pill {
+  font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 20px;
+  background: rgba(255,255,255,0.06); border: 1px solid var(--cv-border); color: var(--cv-text-secondary);
+}
+.cv-hero__glow { position: absolute; border-radius: 50%; pointer-events: none; }
+.cv-hero__glow--tr { top: -80px; right: -60px; width: 260px; height: 260px; background: radial-gradient(circle, rgba(99,102,241,0.20) 0%, transparent 60%); }
+.cv-hero__glow--bl { bottom: -60px; left: -40px; width: 200px; height: 200px; background: radial-gradient(circle, rgba(56,189,248,0.14) 0%, transparent 60%); }
+
+/* Legend */
+.cv-legend {
+  display: flex; gap: 20px; flex-wrap: wrap; padding: 14px 20px;
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  border: 1px solid var(--cv-border); border-radius: var(--glass-radius);
+  margin-bottom: 40px; font-size: 13px; color: var(--cv-muted);
+}
+.cv-legend__item { display: flex; align-items: center; gap: 8px; }
+.cv-legend__dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; box-shadow: 0 0 10px currentColor, 0 0 20px currentColor; }
+
+/* Section */
+.cv-section { margin-bottom: 44px; animation: cv-fade-in 500ms ease-out both; }
+.cv-section:nth-child(4) { animation-delay: 60ms; }
+.cv-section:nth-child(5) { animation-delay: 120ms; }
+.cv-section:nth-child(6) { animation-delay: 180ms; }
+
+/* Card */
+.cv-card {
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  border: 1px solid var(--glass-border); border-radius: var(--glass-radius);
+  padding: 20px 24px; margin-bottom: 16px;
+  transition: border-color 250ms ease, box-shadow 250ms ease, transform 250ms ease;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.04);
+}
+.cv-card:hover { border-color: var(--glass-border-hover); box-shadow: 0 8px 32px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06); transform: translateY(-1px); }
+.cv-card--add { border-color: rgba(96,165,250,0.20); background: rgba(96,165,250,0.06); box-shadow: 0 4px 16px rgba(0,0,0,0.15), 0 0 24px rgba(96,165,250,0.06), inset 0 1px 0 rgba(96,165,250,0.08); }
+.cv-card--del { border-color: rgba(251,146,60,0.20); background: rgba(251,146,60,0.06); }
+.cv-card--mod { border-color: rgba(251,191,36,0.15); background: rgba(251,191,36,0.04); }
+.cv-card--mov { border-color: rgba(56,189,248,0.20); background: rgba(56,189,248,0.06); }
+.cv-card--why {
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  border: 1px solid var(--cv-border); border-left: 3px solid var(--cv-mod);
+  border-radius: 0 var(--glass-radius) var(--glass-radius) 0;
+}
+.cv-card__header { font-size: 15px; font-weight: 600; color: var(--cv-text); margin-bottom: 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.cv-card__body { font-size: 14px; color: var(--cv-text-secondary); line-height: 1.7; }
+
+/* Columns / Module */
+.cv-columns { display: flex; gap: 20px; align-items: stretch; flex-wrap: wrap; margin-bottom: 8px; }
+.cv-column { flex: 1; min-width: 280px; }
+.cv-column__label { font-size: 12px; font-weight: 700; color: var(--cv-muted); letter-spacing: 0.5px; margin-bottom: 10px; }
+.cv-module { border: 1px solid var(--cv-border); border-radius: var(--glass-radius); padding: 16px; background: rgba(255,255,255,0.03); margin-bottom: 12px; }
+.cv-arrow { display: inline-flex; align-items: center; justify-content: center; font-size: 16px; color: var(--cv-muted); font-weight: 400; padding: 0 2px; }
+
+/* Badge */
+.cv-badge { display: inline-flex; align-items: center; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 8px; background: rgba(255,255,255,0.06); color: var(--cv-muted); border: 1px solid var(--cv-border); }
+.cv-badge--add { background: rgba(96,165,250,0.12); color: var(--cv-add); border-color: rgba(96,165,250,0.20); }
+.cv-badge--del { background: rgba(251,146,60,0.12); color: var(--cv-del); border-color: rgba(251,146,60,0.20); }
+.cv-badge--mod { background: rgba(251,191,36,0.12); color: var(--cv-mod); border-color: rgba(251,191,36,0.20); }
+.cv-badge--new { background: var(--cv-add); color: #0c0a1a; font-weight: 700; border-color: transparent; }
+.cv-badge--module { background: rgba(255,255,255,0.06); color: var(--cv-text-secondary); border-color: var(--cv-border); }
+
+/* Typography */
+.cv-h2 {
+  font-size: 21px; font-weight: 700; color: #ffffff; letter-spacing: -0.01em;
+  margin-bottom: 18px; padding-left: 14px; border-left: 3px solid var(--cv-add); line-height: 1.3;
+}
+.cv-h3 { font-size: 15px; font-weight: 700; color: var(--cv-text); margin-bottom: 4px; }
+.cv-body { font-size: 14px; color: var(--cv-text-secondary); line-height: 1.7; }
+.cv-muted { font-size: 12.5px; color: var(--cv-muted); line-height: 1.6; }
+.cv-text-add { color: var(--cv-add); }
+.cv-text-del { color: var(--cv-del); }
+.cv-text-mod { color: var(--cv-mod); }
+.cv-text-mov { color: var(--cv-mov); }
+
+/* Inline code (override block .cv-code for inline <code>) */
+code.cv-code, code {
+  display: inline; margin: 0; padding: 1px 6px; border-radius: 6px;
+  background: var(--cv-code-bg); border: 1px solid var(--cv-border);
+  font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.86em; color: var(--cv-add); overflow: visible; white-space: normal;
+  line-height: 1.4;
+}
+.cv-h2 code, .cv-card__header code { color: var(--cv-mov); }
+
+/* Citations */
+.cv-citations { margin-top: 44px; padding-top: 24px; border-top: 1px solid var(--cv-border); }
+.cv-citations__toggle { background: none; border: none; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--cv-muted); padding: 0; display: flex; align-items: center; gap: 8px; transition: color 200ms ease; }
+.cv-citations__toggle:hover { color: var(--cv-text-secondary); }
+.cv-citations__content { overflow: hidden; max-height: 0; transition: max-height 320ms ease; }
+.cv-citations__content.open { max-height: 900px; }
+.cv-citations__content ul { margin: 16px 0 0; padding-left: 18px; }
+.cv-citations__content li { font-size: 13px; color: var(--cv-text-secondary); margin-bottom: 8px; line-height: 1.6; }
+
+/* Footer */
+.cv-footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--cv-border); font-size: 12px; color: var(--cv-muted); }
+
+@keyframes cv-fade-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ===== shortform mock + step-sync (single 12s clock) ===== */
+.sf-track { animation: sf-swipe 12s ease-in-out infinite; }
+@keyframes sf-swipe {
+  0%, 35%   { transform: translateY(0); }
+  48%, 85%  { transform: translateY(-340px); }
+  100%      { transform: translateY(-340px); }
+}
+.sf-step-1, .sf-step-2, .sf-step-3, .sf-step-4 { animation: sf-step-pulse 12s steps(1, end) infinite; }
+.sf-step-1 { animation-delay: 0s; }
+.sf-step-2 { animation-delay: -9s; }
+.sf-step-3 { animation-delay: -6s; }
+.sf-step-4 { animation-delay: -3s; }
+@keyframes sf-step-pulse {
+  0%   { border-left-color: var(--cv-add); background: rgba(96,165,250,0.14); box-shadow: 0 0 24px rgba(96,165,250,0.10); }
+  25%  { border-left-color: var(--cv-border); background: transparent; box-shadow: none; }
+  100% { border-left-color: var(--cv-border); background: transparent; box-shadow: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sf-track { animation: none; transform: translateY(0); }
+  .sf-step-1, .sf-step-2, .sf-step-3, .sf-step-4 { animation: none; }
+  .cv-section { animation: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="cv-hero">
+  <div class="cv-hero__glow cv-hero__glow--tr"></div>
+  <div class="cv-hero__glow cv-hero__glow--bl"></div>
+  <p class="cv-hero__eyebrow">Working Tree · Prototype · :features</p>
+  <h1 class="cv-hero__title">숏폼 세로 피드 프로토타입 —<br><span class="cv-text-add">ExoPlayer 재활용 풀</span></h1>
+  <p class="cv-hero__subtitle">
+    세로 풀스크린 short-form 피드를 검증하는 프로토타입. 핵심은 스와이프마다 플레이어를 만들고 버리는 대신,
+    최대 <strong style="color:#fff;">3개</strong>의 ExoPlayer 인스턴스를 슬라이딩 윈도우로 <strong style="color:#fff;">재활용</strong>하는 것.
+    생성 비용(&gt;200ms)과 디코더 초기화(~80ms)를 세션당 최대 poolSize회로 묶는다.
+  </p>
+  <div class="cv-hero__pills">
+    <span class="cv-hero__pill">15 files · +907</span>
+    <span class="cv-hero__pill">Jetpack Compose</span>
+    <span class="cv-hero__pill">Media3 ExoPlayer · HLS</span>
+    <span class="cv-hero__pill">PlayerWindow 단위테스트 8</span>
+  </div>
+</div>
+
+<div class="cv-legend">
+  <div class="cv-legend__item"><span class="cv-legend__dot" style="color:var(--cv-add);"></span> <span>+ 신규 / 재생·preload 활성</span></div>
+  <div class="cv-legend__item"><span class="cv-legend__dot" style="color:var(--cv-mod);"></span> <span>~ 상태·재생 반영</span></div>
+  <div class="cv-legend__item"><span class="cv-legend__dot" style="color:var(--cv-mov);"></span> <span>→ 재활용·보존 (idle 재배정)</span></div>
+</div>
+
+<section class="cv-section">
+  <h2 class="cv-h2">스와이프 한 번에 일어나는 일 — <code>setActivePage(index)</code> 4단계</h2>
+
+  <p class="cv-body" style="margin:-6px 0 20px;">
+    예로 <strong style="color:var(--cv-text);">2번 영상을 보다가 3번 영상으로 스와이프</strong>한 순간을 따라가 봅니다.
+    준비해둘 페이지 범위가 <span class="cv-text-mov" style="font-weight:600;">{1·2·3} → {2·3·4}</span> 로 한 칸 밀리면서 아래 4단계가 실행됩니다.
+  </p>
+
+  <div style="display:flex; gap:24px; flex-wrap:wrap; align-items:flex-start;">
+
+    <!-- LEFT: pipeline -->
+    <div style="flex:1 1 440px; min-width:320px;">
+
+      <!-- STEP 1 -->
+      <div style="display:flex; gap:14px; align-items:stretch; margin-bottom:14px;">
+        <div style="flex:0 0 30px; position:relative;">
+          <div style="width:30px; height:30px; border-radius:50%; border:2px solid var(--cv-add); color:var(--cv-add); background:var(--cv-bg); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; position:relative; z-index:1;">1</div>
+          <div style="position:absolute; left:14px; top:32px; bottom:-14px; width:2px; background:var(--cv-border);"></div>
+        </div>
+        <div class="cv-card sf-step-1" style="flex:1; margin-bottom:0; border-left:3px solid var(--cv-border);">
+          <div class="cv-h3" style="margin-bottom:6px;">유지할 페이지 계산</div>
+          <div class="cv-body">스와이프가 멈춘 <strong style="color:var(--cv-text);">3번 영상을 활성</strong>으로 처리하고, 그 앞뒤로 <strong style="color:var(--cv-text);">미리 준비해둘 페이지</strong>를 정한다. poolSize 3 이면 현재±1 → <span class="cv-text-add" style="font-weight:600;">{2·3·4}</span>.</div>
+          <div style="margin:10px 0 8px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+            <span class="cv-badge cv-badge--module">3번 영상으로 스와이프</span>
+            <span class="cv-arrow">→</span>
+            <span class="cv-badge cv-badge--add">준비 범위 {2·3·4}</span>
+          </div>
+          <div class="cv-muted">범위 계산은 순수 함수라 단위테스트로 검증 · <code>PlayerWindow.keepIndices()</code></div>
+        </div>
+      </div>
+
+      <!-- STEP 2 -->
+      <div style="display:flex; gap:14px; align-items:stretch; margin-bottom:14px;">
+        <div style="flex:0 0 30px; position:relative;">
+          <div style="width:30px; height:30px; border-radius:50%; border:2px solid var(--cv-add); color:var(--cv-add); background:var(--cv-bg); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; position:relative; z-index:1;">2</div>
+          <div style="position:absolute; left:14px; top:32px; bottom:-14px; width:2px; background:var(--cv-border);"></div>
+        </div>
+        <div class="cv-card sf-step-2" style="flex:1; margin-bottom:0; border-left:3px solid var(--cv-border);">
+          <div class="cv-h3" style="margin-bottom:6px;">창 밖 페이지 배정 해제</div>
+          <div class="cv-body">범위에서 <strong style="color:var(--cv-text);">빠진 1번 영상</strong>의 플레이어는 <strong class="cv-text-mov">버리지 않고</strong> 재생만 멈춰 그대로 둔다. 곧 다른 페이지에 다시 쓰려고 남겨두는 것.</div>
+          <div style="margin:10px 0 8px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+            <span class="cv-badge cv-badge--module">범위 밖으로 밀린 1번 영상</span>
+            <span class="cv-arrow">→</span>
+            <span class="cv-badge" style="background:rgba(56,189,248,0.15); color:var(--cv-mov); border-color:rgba(56,189,248,0.25);">플레이어 보관 (재생만 정지)</span>
+          </div>
+          <div class="cv-muted"><code>release()</code> 를 호출하지 않는 게 핵심 · <code>playWhenReady=false</code></div>
+        </div>
+      </div>
+
+      <!-- STEP 3 -->
+      <div style="display:flex; gap:14px; align-items:stretch; margin-bottom:14px;">
+        <div style="flex:0 0 30px; position:relative;">
+          <div style="width:30px; height:30px; border-radius:50%; border:2px solid var(--cv-add); color:var(--cv-add); background:var(--cv-bg); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; position:relative; z-index:1;">3</div>
+          <div style="position:absolute; left:14px; top:32px; bottom:-14px; width:2px; background:var(--cv-border);"></div>
+        </div>
+        <div class="cv-card sf-step-3" style="flex:1; margin-bottom:0; border-left:3px solid var(--cv-border);">
+          <div class="cv-h3" style="margin-bottom:6px;">idle 인스턴스 재활용 배정</div>
+          <div class="cv-body">새로 들어온 <strong style="color:var(--cv-text);">4번 영상</strong>에는 방금 <strong style="color:var(--cv-text);">1번 영상이 놓아둔 그 플레이어</strong>를 붙여 미리 로딩한다. <strong class="cv-text-add">새로 만들지 않는다.</strong> 같은 영상이면 로딩도 생략.</div>
+          <div style="margin:10px 0 8px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+            <span class="cv-badge cv-badge--module">새로 들어온 4번 영상</span>
+            <span class="cv-arrow">→</span>
+            <span class="cv-badge cv-badge--add">남는 플레이어 재사용 · 미리 로딩</span>
+          </div>
+          <div class="cv-muted">남는 게 없을 때만 새로 생성(최대 poolSize회) · <code>obtainIdlePlayer()</code> → <code>prepare()</code></div>
+        </div>
+      </div>
+
+      <!-- STEP 4 (no connector) -->
+      <div style="display:flex; gap:14px; align-items:stretch;">
+        <div style="flex:0 0 30px; position:relative;">
+          <div style="width:30px; height:30px; border-radius:50%; border:2px solid var(--cv-add); color:var(--cv-add); background:var(--cv-bg); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; position:relative; z-index:1;">4</div>
+        </div>
+        <div class="cv-card sf-step-4" style="flex:1; margin-bottom:0; border-left:3px solid var(--cv-border);">
+          <div class="cv-h3" style="margin-bottom:6px;">재생 상태 반영</div>
+          <div class="cv-body">활성화된 <strong style="color:var(--cv-text);">3번 영상만 실제로 재생</strong>하고, 이웃 2·4번 영상은 미리 로딩된 채 대기시킨다. 덕분에 다음 스와이프에 <strong class="cv-text-add">곧바로 재생</strong>된다.</div>
+          <div style="margin:10px 0 8px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+            <span class="cv-badge cv-badge--module">활성 3번 영상</span>
+            <span class="cv-arrow">→</span>
+            <span class="cv-badge cv-badge--mod">3번 영상 재생 · 2·4번 대기</span>
+          </div>
+          <div class="cv-muted">스와이프한 3번 영상이 이미 로딩돼 있으면 <span class="cv-text-add">PRELOAD HIT ✅</span> · 아직이면 <span class="cv-text-mod">잠깐 버퍼링 ⏳</span></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT: phone mock -->
+    <div style="flex:0 0 220px; display:flex; flex-direction:column; align-items:center; gap:10px; position:sticky; top:24px;">
+      <div style="width:220px; border-radius:24px; padding:8px; background:#111; box-shadow:0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.08);">
+        <div style="width:70px; height:6px; border-radius:4px; background:#000; margin:2px auto 6px;"></div>
+        <div style="position:relative; height:340px; border-radius:14px; overflow:hidden; background:#000;">
+          <div class="sf-track" style="position:absolute; inset:0; width:100%;">
+            <div style="height:340px; display:flex; align-items:center; justify-content:center; background:linear-gradient(160deg,#1b2735,#000);">
+              <span style="font-size:40px; opacity:0.85;">▶</span>
+            </div>
+            <div style="height:340px; display:flex; align-items:center; justify-content:center; background:linear-gradient(160deg,#2b1b35,#000);">
+              <span style="font-size:40px; opacity:0.85;">▶</span>
+            </div>
+          </div>
+          <span style="position:absolute; top:10px; right:10px; font-size:11px; font-weight:700; padding:3px 8px; border-radius:10px; background:var(--cv-add); color:#04121f;">▶ ACTIVE</span>
+          <span style="position:absolute; bottom:10px; left:10px; font-size:11px; font-weight:600; padding:3px 8px; border-radius:10px; background:var(--cv-mov); color:#0a1a24; opacity:0.6;">⏳ preload 이웃</span>
+        </div>
+      </div>
+      <div class="cv-muted" style="text-align:center; max-width:220px;">
+        VerticalPager + <code>snapshotFlow{ settledPage }</code> → settle 시 <code>setActivePage</code>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="cv-section">
+  <h2 class="cv-h2">ExoPlayer 재활용 풀 = 슬라이딩 윈도우</h2>
+
+  <div class="cv-card cv-card--why" style="margin-bottom:18px;">
+    <div class="cv-card__body">
+      <div class="cv-body">ExoPlayer 생성은 <strong style="color:#fff;">&gt;200ms + 디코더 init ~80ms</strong>. 페이지마다 생성/release 하면 스와이프 때 jank.
+      그래서 창 밖 인스턴스는 <strong class="cv-text-mov">release 하지 않고 idle 로 두었다가 새 페이지에 재할당</strong>한다.</div>
+    </div>
+  </div>
+
+  <!-- POOL: the invariant (hero of this section) -->
+  <div class="cv-card cv-card--add" style="margin-bottom:24px; display:flex; align-items:center; gap:18px; flex-wrap:wrap;">
+    <div style="flex:1 1 260px;">
+      <div class="cv-h3 cv-text-add" style="margin-bottom:3px;">인스턴스 풀 — 3개 고정</div>
+      <div class="cv-muted">영상이 10개든 100개든 이 <strong style="color:var(--cv-text);">3개가 전부</strong>. 스와이프해도 개수는 그대로 — 생성 ≤ 3회 · release 없음.</div>
+    </div>
+    <div style="display:flex; gap:8px;">
+      <span style="width:54px; height:46px; border-radius:8px; background:var(--cv-add); color:#04121f; font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center;">P0</span>
+      <span style="width:54px; height:46px; border-radius:8px; background:var(--cv-add); color:#04121f; font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center;">P1</span>
+      <span style="width:54px; height:46px; border-radius:8px; background:var(--cv-add); color:#04121f; font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center;">P2</span>
+    </div>
+  </div>
+
+  <!-- FIGURE: window slides one step; only P0 hops from #1 to #4, P1·P2 hold their column -->
+  <div style="overflow-x:auto; padding-bottom:4px;">
+    <div style="width:420px; position:relative; margin:0 auto;">
+
+      <div class="cv-column__label" style="margin-bottom:8px;">1. 스와이프 전 · window <span class="cv-text-add">{1 · 2 · 3}</span> · 활성 #2</div>
+      <div style="display:flex; gap:8px;">
+        <div style="width:56px; height:56px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:12px; border:1px dashed var(--cv-border); color:var(--cv-muted);">0</div>
+        <div style="width:56px; height:56px; border-radius:8px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:11px; background:var(--cv-add); color:#04121f;">#1<b style="font-size:11px;">P0</b></div>
+        <div style="width:56px; height:56px; border-radius:8px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:11px; background:var(--cv-add); color:#04121f; outline:2px solid var(--cv-mod); outline-offset:1px;">#2 ▶<b style="font-size:11px;">P1</b></div>
+        <div style="width:56px; height:56px; border-radius:8px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:11px; background:var(--cv-add); color:#04121f;">#3<b style="font-size:11px;">P2</b></div>
+        <div style="width:56px; height:56px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:12px; border:1px dashed var(--cv-border); color:var(--cv-muted);">4</div>
+        <div style="width:100px; height:56px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:11px; border:1px dashed var(--cv-border); color:var(--cv-muted);">5 … 9</div>
+      </div>
+
+      <div style="position:relative; height:74px; margin:2px 0;">
+        <svg width="420" height="74" viewBox="0 0 420 74" style="position:absolute; inset:0; overflow:visible;">
+          <defs>
+            <marker id="sf-arrow" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
+              <path d="M1,1 L9,5 L1,9 Z" fill="var(--cv-mov)"></path>
+            </marker>
+          </defs>
+          <path d="M92 2 C 92 52, 284 22, 284 68" fill="none" stroke="var(--cv-mov)" stroke-width="2.5" stroke-dasharray="6 5" marker-end="url(#sf-arrow)"></path>
+        </svg>
+        <div style="position:absolute; left:118px; top:24px; background:var(--cv-mov); color:#0a1a24; font-weight:700; font-size:12px; padding:3px 11px; border-radius:20px;">P0 재활용 ↺</div>
+      </div>
+
+      <div class="cv-column__label" style="margin-bottom:8px;">2. 스와이프 후 · window <span class="cv-text-add">{2 · 3 · 4}</span> · 활성 #3</div>
+      <div style="display:flex; gap:8px;">
+        <div style="width:56px; height:56px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:12px; border:1px dashed var(--cv-border); color:var(--cv-muted);">0</div>
+        <div style="width:56px; height:56px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:12px; border:1px dashed var(--cv-border); color:var(--cv-muted);">1</div>
+        <div style="width:56px; height:56px; border-radius:8px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:11px; background:var(--cv-add); color:#04121f;">#2<b style="font-size:11px;">P1</b></div>
+        <div style="width:56px; height:56px; border-radius:8px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:11px; background:var(--cv-add); color:#04121f; outline:2px solid var(--cv-mod); outline-offset:1px;">#3 ▶<b style="font-size:11px;">P2</b></div>
+        <div style="width:56px; height:56px; border-radius:8px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:11px; background:var(--cv-add); color:#04121f; outline:2px dashed var(--cv-mov); outline-offset:1px;">#4<b style="font-size:11px;">P0 ↺</b></div>
+        <div style="width:100px; height:56px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:11px; border:1px dashed var(--cv-border); color:var(--cv-muted);">5 … 9</div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="cv-card" style="margin-top:16px; border-left:3px solid var(--cv-mov);">
+    <div class="cv-body" style="font-size:15px; line-height:1.6;">
+      <strong class="cv-text-add">P1 · P2 는 원래 자리에 그대로.</strong> 창에서 빠진 <strong class="cv-text-mov">P0 하나만 #1 → #4 로 옮겨 붙는다.</strong>
+    </div>
+    <div class="cv-muted" style="margin-top:10px;">
+      재배정은 <code>stop → setMediaItem → prepare</code> 세 단계뿐 — 인스턴스를 <strong style="color:var(--cv-text-secondary);">새로 만들지도, release 하지도 않는다.</strong>
+    </div>
+  </div>
+
+  <div class="cv-card cv-card--mod" style="margin-top:20px; margin-bottom:0;">
+    <div class="cv-card__body">
+      <div class="cv-h3">poolSize = 1 · 저사양 대응</div>
+      <div class="cv-muted" style="margin-top:4px;">저사양 단말에선 풀 크기를 1로 낮출 수 있다. window 가 <strong style="color:var(--cv-text-secondary);">현재 영상 1개</strong>로 좁아져(radius=0) 이웃 preload 없이 <strong style="color:var(--cv-text-secondary);">ExoPlayer 1개만</strong> 사용 — 메모리는 최소, 대신 스와이프마다 잠깐 버퍼링.</div>
+    </div>
+  </div>
+</section>
+
+<section class="cv-section">
+  <h2 class="cv-h2">preload &amp; 캐시</h2>
+
+  <div style="display:flex; flex-direction:column;">
+    <!-- PRELOAD: buffer-state stack. active plays, neighbors pre-buffered → instant swap -->
+    <div class="cv-card cv-card--add">
+      <div class="cv-card__body">
+        <div class="cv-card__header"><span class="cv-badge cv-badge--add">+ preload</span> <span class="cv-muted" style="font-weight:400;">활성만 재생 · 이웃은 미리 버퍼</span></div>
+
+        <div class="cv-muted" style="margin-top:6px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <span style="display:inline-flex; gap:2px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--cv-add);"></span><span style="width:10px;height:10px;border-radius:2px;background:var(--cv-add);"></span><span style="width:10px;height:10px;border-radius:2px;background:var(--cv-border);"></span></span>
+          <span>채워진 칸 = 미리 받아둔 HLS 세그먼트 <strong style="color:var(--cv-text-secondary);">(재생 위치 아님)</strong></span>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:8px; margin-top:12px;">
+          <div style="display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:8px; border:1px solid var(--cv-border);">
+            <span style="width:48px; font-size:11px; color:var(--cv-muted); flex:0 0 auto;">이웃 ↑</span>
+            <div style="flex:1; display:flex; gap:2px;"><span style="flex:1;height:11px;border-radius:2px;background:var(--cv-add);opacity:.7;"></span><span style="flex:1;height:11px;border-radius:2px;background:var(--cv-add);opacity:.7;"></span><span style="flex:1;height:11px;border-radius:2px;background:var(--cv-add);opacity:.7;"></span><span style="flex:1;height:11px;border-radius:2px;background:var(--cv-border);"></span><span style="flex:1;height:11px;border-radius:2px;background:var(--cv-border);"></span><span style="flex:1;height:11px;border-radius:2px;background:var(--cv-border);"></span><span style="flex:1;height:11px;border-radius:2px;background:var(--cv-border);"></span><span style="flex:1;height:11px;border-radius:2px;background:var(--cv-border);"></span><span style="flex:1;height:11px;border-radius:2px;background:var(--cv-border);"></span><span style="flex:1;height:11px;border-radius:2px;background:var(--cv-border);"></span><span style="flex:1;height:11px;border-radius:2px;background:var(--cv-border);"></span><span style="flex:1;height:11px;border-radius:2px;background:var(--cv-border);"></span></div>
+            <span class="cv-badge cv-badge--add" style="font-size:10px; flex:0 0 auto;">앞 세그먼트만</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:8px; border:1px solid rgba(96,165,250,0.40); background:rgba(96,165,250,0.10);">
+            <span style="width:48px; font-size:11px; color:var(--cv-text); font-weight:700; flex:0 0 auto;">활성 ▶</span>
+            <div style="flex:1; display:flex; gap:2px;"><span style="flex:1;height:11px;border-radius:2px;background:var(--cv-add);"></span><span style="flex:1;height:11px;border-radius:2px;background:var(--cv-add);"></span><span style="flex:1;height:11px;border-radius:2px;background:var(--cv-add);"></span><span style="flex:1;height:11px;border-radius:2px;background:var(--cv-add);"></span><span style="flex:1;height:11px;border-radius:2px;background:var(--cv-add);"></span><span style="flex:1;height:11px;border-radius:2px;background:var(--cv-add);"></span><span style="flex:1;height:11px;border-radius:2px;background:var(--cv-add);"></span><span style="flex:1;height:11px;border-radius:2px;background:var(--cv-add);"></span><span style="flex:1;height:11px;border-radius:2px;background:var(--cv-add);"></span><span style="flex:1;height:11px;border-radius:2px;background:var(--cv-border);"></span><span style="flex:1;height:11px;border-radius:2px;background:var(--cv-border);"></span><span style="flex:1;height:11px;border-radius:2px;background:var(--cv-border);"></span></div>
+            <span class="cv-badge cv-badge--add" style="font-size:10px; flex:0 0 auto;">재생 + 버퍼</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:8px; border:1px solid var(--cv-border);">
+            <span style="width:48px; font-size:11px; color:var(--cv-muted); flex:0 0 auto;">이웃 ↓</span>
+            <div style="flex:1; display:flex; gap:2px;"><span style="flex:1;height:11px;border-radius:2px;background:var(--cv-add);opacity:.7;"></span><span style="flex:1;height:11px;border-radius:2px;background:var(--cv-add);opacity:.7;"></span><span style="flex:1;height:11px;border-radius:2px;background:var(--cv-add);opacity:.7;"></span><span style="flex:1;height:11px;border-radius:2px;background:var(--cv-border);"></span><span style="flex:1;height:11px;border-radius:2px;background:var(--cv-border);"></span><span style="flex:1;height:11px;border-radius:2px;background:var(--cv-border);"></span><span style="flex:1;height:11px;border-radius:2px;background:var(--cv-border);"></span><span style="flex:1;height:11px;border-radius:2px;background:var(--cv-border);"></span><span style="flex:1;height:11px;border-radius:2px;background:var(--cv-border);"></span><span style="flex:1;height:11px;border-radius:2px;background:var(--cv-border);"></span><span style="flex:1;height:11px;border-radius:2px;background:var(--cv-border);"></span><span style="flex:1;height:11px;border-radius:2px;background:var(--cv-border);"></span></div>
+            <span class="cv-badge cv-badge--add" style="font-size:10px; flex:0 0 auto;">앞 세그먼트만</span>
+          </div>
+        </div>
+
+        <div class="cv-muted" style="margin-top:12px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <span class="cv-badge" style="background:var(--cv-mov); color:#0a1a24; border-color:transparent; font-size:10px;">스와이프 ↓</span>
+          <span>이웃이 앞 세그먼트를 이미 받아둬 <strong class="cv-text-add">즉시 재생</strong> — 콜드 대기 없음</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- CACHE: two lanes with cache & network columns vertically aligned to expose the cut -->
+    <div class="cv-card cv-card--mod">
+      <div class="cv-card__body">
+        <div class="cv-card__header"><span class="cv-badge cv-badge--mod">~ 100MB LRU 캐시</span> <span class="cv-muted" style="font-weight:400;">같은 세그먼트는 두 번째 재생부터 네트워크 없이</span></div>
+
+        <div style="overflow-x:auto; margin-top:14px; padding-bottom:2px;">
+          <div style="min-width:560px; display:grid; grid-template-columns:60px 108px 22px 116px 22px 148px 22px 1fr; gap:14px 6px; align-items:center;">
+
+            <!-- header -->
+            <span></span>
+            <span class="cv-column__label" style="margin:0; text-align:center;">요청</span>
+            <span></span>
+            <span class="cv-column__label" style="margin:0; text-align:center;">캐시</span>
+            <span></span>
+            <span class="cv-column__label" style="margin:0; text-align:center;">네트워크</span>
+            <span></span>
+            <span class="cv-column__label" style="margin:0;">결과</span>
+
+            <!-- row 1: first view -->
+            <span style="font-size:12px; font-weight:700; color:var(--cv-muted);">최초</span>
+            <span style="padding:7px 0; border-radius:8px; font-size:12px; text-align:center; border:1px solid var(--cv-border); background:var(--cv-surface); color:var(--cv-text-secondary);">ExoPlayer</span>
+            <span style="text-align:center; color:var(--cv-muted);">→</span>
+            <span style="padding:7px 0; border-radius:8px; font-size:12px; text-align:center; border:1px solid var(--cv-border); background:var(--cv-surface); color:var(--cv-muted);">miss</span>
+            <span style="text-align:center; color:var(--cv-muted);">→</span>
+            <span style="padding:7px 0; border-radius:8px; font-size:12px; text-align:center; border:1px solid var(--cv-border); background:var(--cv-surface); color:var(--cv-text-secondary);">🌐 왕복</span>
+            <span style="text-align:center; color:var(--cv-muted);">→</span>
+            <span style="padding:7px 12px; border-radius:8px; font-size:12px; font-weight:700; border:1px solid rgba(248,113,113,0.35); background:rgba(248,113,113,0.15); color:#f87171; display:inline-block; justify-self:start; white-space:nowrap;">⏳ 최초 지연 · 네트워크 1회</span>
+
+            <!-- row 2: re-watch -->
+            <span style="font-size:12px; font-weight:700; color:var(--cv-mod);">재시청</span>
+            <span style="padding:7px 0; border-radius:8px; font-size:12px; text-align:center; border:1px solid var(--cv-border); background:var(--cv-surface); color:var(--cv-text-secondary);">ExoPlayer</span>
+            <span style="text-align:center; color:var(--cv-muted);">→</span>
+            <span style="padding:7px 0; border-radius:8px; font-size:12px; font-weight:700; text-align:center; border:1px solid rgba(251,191,36,0.35); background:rgba(251,191,36,0.15); color:var(--cv-mod); box-shadow:0 0 14px rgba(251,191,36,0.14);">HIT ✓</span>
+            <span style="text-align:center; color:var(--cv-del); font-weight:800; font-size:15px;">✕</span>
+            <span style="padding:7px 0; border-radius:8px; font-size:12px; text-align:center; border:1px dashed var(--cv-border); background:transparent; color:var(--cv-muted); opacity:0.55; text-decoration:line-through;">🌐 왕복</span>
+            <span></span>
+            <span style="padding:7px 12px; border-radius:8px; font-size:12px; font-weight:700; border:1px solid rgba(74,222,128,0.35); background:rgba(74,222,128,0.15); color:#4ade80; display:inline-block; justify-self:start; white-space:nowrap;">⚡ 즉시 · 네트워크 0회</span>
+
+          </div>
+        </div>
+
+        <div class="cv-muted" style="margin-top:16px;">무한 루프(<code>REPEAT_MODE_ONE</code>)·재시청에 특히 이득. 100MB 초과 시 오래된 세그먼트부터 evict(LRU). <code>get()</code> 은 pool 이전 <code>Dispatchers.IO</code> 워밍업 — 첫 disk touch ANR 회피.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="cv-citations">
+  <button class="cv-citations__toggle" onclick="var c=document.getElementById('cv-cite');c.classList.toggle('open');this.querySelector('span').textContent=c.classList.contains('open')?'▲':'▼';">
+    적용된 설계 근거 · 범위 <span>▼</span>
+  </button>
+  <div class="cv-citations__content" id="cv-cite">
+    <ul>
+      <li><strong>COM-16/17</strong> — 사용자 인터랙션(세로 스와이프) 트리거 FLOW 이므로 파이프라인 옆에 모바일 Mock 애니메이션 배치, 4단계 스텝을 단일 CSS clock(12s)에 동기화.</li>
+      <li><strong>COM-18</strong> — 각 스텝을 "한글 요약 → 보충 설명 → 코드 레퍼런스" 순으로 구성.</li>
+      <li><strong>COM-25</strong> — 파이프라인을 cv-card 기반으로, 데이터 변환을 input → output 뱃지로 표기.</li>
+      <li><strong>COM-01/30</strong> — 다이어그램당 요소 4개 이하로 그룹화(리스트 타일 축약), 세 섹션(파이프라인 / 윈도우 / 캐시)이 서로 다른 정보를 담당.</li>
+      <li><strong>범위</strong> — 프로토타입. 커머스 오버레이(상품 태그·좋아요) 실연동과 MVP 도메인 모델(ShortFormVideo)은 범위 밖. <code>ShortFormSampleActivity</code>(adb 기동, 공개 HLS 테스트 스트림 3개)를 홈 툴바 로고에 임시 연결.</li>
+      <li><strong>부수 변경</strong> — media3-exoplayer-hls 의존성 추가, VerticalPager(beyondViewportPageCount=1), 탭 재생/일시정지·mute·에러 retry·라이프사이클 pause/resume/release, DefaultLoadControl 버퍼 튜닝(20s/20s/1s, REPEAT_MODE_ONE, ABR 화면해상도 상한).</li>
+    </ul>
+  </div>
+</div>
+
+<div class="cv-footer">
+  로컬 working-tree diff 시각화 · <code>com.kurly.features.shortform</code> · 15 files, +907 / −3 · generated by diff-visualization
+</div>
+
+</body>
+</html>
