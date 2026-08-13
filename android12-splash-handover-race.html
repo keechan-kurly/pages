@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>두 번째 왕복, 구간 분포</title>
+<style>
+:root{
+  --bg:#0c0a1a; --text:#f1f5f9; --text-secondary:#c1c7d0; --text-muted:#8892a4;
+  --border:rgba(255,255,255,.10); --glass:rgba(255,255,255,.05);
+  --glass-border:rgba(255,255,255,.12); --radius:16px;
+  --good:#34d399; --bad:#f87171; --warn:#fbbf24;
+  --app:#818cf8;      /* app boot */
+  --sys:#fbbf24;      /* system */
+  --win:#2dd4bf;      /* window */
+  --des:#f87171;      /* onDestroy */
+}
+*{box-sizing:border-box}
+body{
+  margin:0;padding:0 20px 80px;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,'Pretendard','Inter','Segoe UI',sans-serif;
+  line-height:1.6;-webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1080px;margin:0 auto}
+header{padding:64px 0 40px;border-bottom:1px solid var(--border)}
+h1{font-size:clamp(28px,4.4vw,42px);margin:0 0 14px;letter-spacing:-.02em;line-height:1.25;text-wrap:balance}
+.sub{color:var(--text-secondary);font-size:17px;margin:0;max-width:62ch}
+.eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin:0 0 16px}
+h2{font-size:23px;margin:56px 0 8px;letter-spacing:-.01em}
+h3{font-size:16px;margin:28px 0 10px;color:var(--text-secondary);font-weight:600}
+p{color:var(--text-secondary);font-size:15px;margin:0 0 14px;max-width:70ch}
+strong{color:var(--text)}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em;background:rgba(255,255,255,.07);padding:1px 5px;border-radius:5px;color:#e2e8f0}
+
+.card{background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius);padding:24px;margin:22px 0}
+
+/* 정의 목록 */
+.deflist{display:grid;grid-template-columns:132px 1fr;gap:14px 18px;align-items:start}
+.deflist .d{display:flex;align-items:center;gap:8px;font-size:13px;padding-top:1px}
+.deflist .d i{display:inline-block;width:20px;height:9px;border-radius:3px;flex:none}
+.deflist .d code{background:none;padding:0;font-size:12.5px;color:var(--text)}
+.deflist .dd{font-size:13.5px;color:var(--text-secondary);line-height:1.62}
+@media(max-width:600px){.deflist{grid-template-columns:1fr;gap:4px 0}.deflist .dd{margin-bottom:12px}}
+
+/* 범례 */
+.legend{display:flex;flex-wrap:wrap;gap:16px;margin:0 0 22px;font-size:13px;color:var(--text-secondary)}
+.legend i{display:inline-block;width:22px;height:9px;border-radius:3px;margin-right:7px;vertical-align:middle}
+
+/* 타임라인 */
+.axis{position:relative;height:22px;margin:0 0 4px 76px;border-bottom:1px solid var(--border)}
+.axis span{position:absolute;top:0;transform:translateX(-50%);font-size:11px;color:var(--text-muted);font-variant-numeric:tabular-nums}
+.run{margin:0 0 22px}
+.run-name{font-size:13px;font-weight:600;margin:0 0 7px;display:flex;flex-wrap:wrap;gap:10px;align-items:baseline}
+.run-name .tag{font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;letter-spacing:.02em}
+.tag.miss{background:rgba(248,113,113,.13);color:#fca5a5;border:1px solid rgba(248,113,113,.3)}
+.tag.crash{background:rgba(52,211,153,.14);color:#6ee7b7;border:1px solid rgba(52,211,153,.35)}
+.run-name .note{font-size:12px;color:var(--text-muted);font-weight:400;font-variant-numeric:tabular-nums}
+.track{position:relative;height:13px;margin:0 0 3px}
+.track .lbl{position:absolute;left:-76px;width:68px;top:0;height:13px;display:flex;align-items:center;justify-content:flex-end;font-size:10px;color:var(--text-muted);z-index:3;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.bar{position:absolute;top:2px;height:9px;border-radius:3px}
+.bar.app{background:var(--app)}
+.bar.sys{background:var(--sys)}
+.bar.win{background:var(--win)}
+.bar.des{background:var(--des)}
+.bar.open{background:repeating-linear-gradient(90deg,rgba(255,255,255,.32) 0 6px,transparent 6px 12px);border:1px dashed rgba(255,255,255,.28);border-radius:3px;height:9px}
+.guide{position:absolute;top:-4px;bottom:-4px;width:1px;z-index:2}
+.guide.attach{background:rgba(251,191,36,.75)}
+.guide.verdict{background:rgba(129,140,248,.85)}
+.frame{position:relative;padding:8px 0 2px;margin-left:76px}
+
+/* 분포 스트립 */
+.strip{position:relative;height:74px;margin:6px 0 2px}
+.strip .lane{position:absolute;left:0;right:0;height:1px;background:var(--border);top:48px}
+.dot{position:absolute;top:40px;width:17px;height:17px;border-radius:50%;transform:translateX(-50%);border:2px solid var(--bg)}
+.dot.base{background:#818cf8}
+.dot.prev{background:rgba(129,140,248,.42)}
+.dot.load{background:var(--warn)}
+.dot.crash{background:var(--good);width:21px;height:21px;top:38px}
+.zero{position:absolute;top:0;bottom:0;width:2px;background:rgba(255,255,255,.55);transform:translateX(-50%)}
+.zone{position:absolute;top:6px;bottom:6px;border-radius:6px}
+.zone.a{background:rgba(52,211,153,.09);border:1px solid rgba(52,211,153,.22)}
+.zone.b{background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.18)}
+.zone span{position:absolute;top:4px;font-size:11px;letter-spacing:.02em;color:var(--text-muted);padding:0 8px}
+.sc{position:relative;height:20px}
+.sc span{position:absolute;transform:translateX(-50%);font-size:11px;color:var(--text-muted);font-variant-numeric:tabular-nums}
+
+table{width:100%;border-collapse:collapse;font-size:13.5px;margin:8px 0 0}
+th,td{padding:9px 10px;text-align:right;border-bottom:1px solid var(--border);font-variant-numeric:tabular-nums}
+th{color:var(--text-muted);font-weight:600;font-size:12px;letter-spacing:.03em;text-align:right}
+th:first-child,td:first-child{text-align:left}
+tbody tr:hover{background:rgba(255,255,255,.03)}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.num-bad{color:#fca5a5}
+.num-good{color:#6ee7b7}
+
+.key{border-left:3px solid var(--good);padding:14px 18px;background:rgba(52,211,153,.07);border-radius:0 10px 10px 0;margin:20px 0}
+.key p{margin:0;color:var(--text)}
+footer{margin-top:64px;padding-top:24px;border-top:1px solid var(--border);font-size:13px;color:var(--text-muted)}
+footer p{font-size:13px;color:var(--text-muted);max-width:none}
+a{color:#a5b4fc}
+@media(max-width:560px){
+  /* 좁은 화면에서는 라벨을 지우지 않고 거터만 줄인다 */
+  .axis{margin-left:52px}
+  .frame{margin-left:52px}
+  .track .lbl{left:-52px;width:46px;font-size:9px}
+  .legend{gap:10px;font-size:12px}
+  .deflist{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Android 12 스플래시 인계 레이스 · 구간 실측</p>
+  <h1>window 는 충분히 넓었다</h1>
+  <p class="sub">SM-G973N에서 같은 크래시 경로를 조건별로 측정했다. 부하를 걸면 레이스 창이 프로덕션 급인 1,282ms까지 벌어지는데도 크래시하지 않는다. 막고 있는 것은 폭이 아니라 <strong>순서</strong>다. 크래시는 붉은 <code>onDestroy</code> 막대가 청록 <code>window</code> 막대보다 먼저 끝날 때만 일어난다.</p>
+</header>
+
+<h2>읽는 법</h2>
+<p>모든 시각은 <code>AppStarterActivity.onResume</code>을 0으로 맞췄다. 네 막대의 정의는 이렇다.</p>
+
+<div class="card">
+  <div class="deflist">
+    <div class="d"><i style="background:var(--app)"></i><code>app boot</code></div>
+    <div class="dd"><strong>앱구간.</strong> <code>onResume</code>에서 앱의 첫 HTTP 요청이 인터셉터에 닿기까지다. Hilt 그래프 구성과 토큰 로드, OkHttp 클라이언트 준비가 여기 들어간다. <strong>이 막대의 끝이 곧 점검 판정 시각</strong>이다. 앱이 그보다 이른 시각에 점검을 알 방법은 없다. 네트워크 왕복을 0으로 만들어도 이 길이는 줄지 않는다.</div>
+
+    <div class="d"><i style="background:var(--sys)"></i><code>system</code></div>
+    <div class="dd"><strong>시스템구간.</strong> 앱의 첫 <code>preDraw</code>에서 <code>ATTACH_TO</code>가 도착하기까지다. 그 사이에 <code>requestCopySplashScreen()</code>이 shell에 복사를 요청하고 shell이 스플래시 비트맵을 돌려준다. <strong>system_server와 SystemUI의 왕복이고 앱 코드가 아니다.</strong></div>
+
+    <div class="d"><i style="background:var(--win)"></i><code>window</code></div>
+    <div class="dd"><strong>레이스 창.</strong> <code>ATTACH_TO</code> 도착에서 <code>HANDOVER_TO</code> 도착까지다. 두 번째 디스패치가 이 창의 끝에 온다. 액티비티 제거가 이 안에서 끝나면 도착한 <code>HANDOVER_TO</code>가 죽은 레코드를 만나 크래시한다.</div>
+
+    <div class="d"><i style="background:var(--des)"></i><code>onDestroy</code></div>
+    <div class="dd"><strong>액티비티 제거.</strong> 점검 판정에서 <code>AppStarterActivity</code>의 <code>onDestroy</code> 완료까지다. 공지 웹뷰를 <code>CLEAR_TASK</code>로 띄우고 그 웹뷰가 뜨는 동안 이전 액티비티가 제거되므로 <strong>약 1초가 걸린다.</strong> 이 1초가 창보다 짧아야 한다.</div>
+  </div>
+  <p style="margin:18px 0 0">세로 선 두 개는 <span style="color:#fbbf24">ATTACH</span>와 <span style="color:#a5b4fc">판정</span>이다. 판정이 ATTACH보다 왼쪽에 서면 공지 웹뷰가 전송 도중에 로딩되며 메인 스레드를 점유해 <code>window</code>를 스스로 벌린다. 오른쪽에 서면 벌어질 일이 없다.</p>
+</div>
+
+<h2>1. 기준선과 재현 성공 회차</h2>
+<p>같은 축(0에서 2,400ms)이라 직접 비교된다. 앞의 세 회차는 앱이 스스로 낸 타이밍이고, 마지막 회차만 판정을 주입했다.</p>
+
+<div class="card">
+  <div class="axis">
+    <span style="left:0%">0</span><span style="left:16.67%">400</span><span style="left:33.33%">800</span>
+    <span style="left:50%">1,200</span><span style="left:66.67%">1,600</span><span style="left:83.33%">2,000</span><span style="left:100%">2,400ms</span>
+  </div>
+
+  <div class="run">
+    <div class="run-name">기준선 1 <span class="tag miss">미스</span>
+      <span class="note">판정 − ATTACH = +478ms · window 227ms · onDestroy 964ms</span></div>
+    <div class="frame">
+      <div class="guide attach" style="left:35.00%;top:0;bottom:0"></div>
+      <div class="guide verdict" style="left:54.92%;top:0;bottom:0"></div>
+      <div class="track"><span class="lbl">app boot</span><div class="bar app" style="left:0%;width:54.92%"></div></div>
+      <div class="track"><span class="lbl">system</span><div class="bar sys" style="left:3.21%;width:31.79%"></div></div>
+      <div class="track"><span class="lbl">window</span><div class="bar win" style="left:35.00%;width:9.46%"></div></div>
+      <div class="track"><span class="lbl">onDestroy</span><div class="bar des" style="left:54.92%;width:40.17%"></div></div>
+    </div>
+  </div>
+
+  <div class="run">
+    <div class="run-name">기준선 2 <span class="tag miss">미스</span>
+      <span class="note">판정 − ATTACH = +171ms · window 151ms · onDestroy 1,037ms</span></div>
+    <div class="frame">
+      <div class="guide attach" style="left:36.08%;top:0;bottom:0"></div>
+      <div class="guide verdict" style="left:43.21%;top:0;bottom:0"></div>
+      <div class="track"><span class="lbl">app boot</span><div class="bar app" style="left:0%;width:43.21%"></div></div>
+      <div class="track"><span class="lbl">system</span><div class="bar sys" style="left:3.50%;width:32.58%"></div></div>
+      <div class="track"><span class="lbl">window</span><div class="bar win" style="left:36.08%;width:6.29%"></div></div>
+      <div class="track"><span class="lbl">onDestroy</span><div class="bar des" style="left:43.21%;width:43.21%"></div></div>
+    </div>
+  </div>
+
+  <div class="run">
+    <div class="run-name">기준선 3 <span class="tag miss">미스</span>
+      <span class="note">판정 − ATTACH = +191ms · window 169ms · onDestroy 999ms</span></div>
+    <div class="frame">
+      <div class="guide attach" style="left:37.71%;top:0;bottom:0"></div>
+      <div class="guide verdict" style="left:45.67%;top:0;bottom:0"></div>
+      <div class="track"><span class="lbl">app boot</span><div class="bar app" style="left:0%;width:45.67%"></div></div>
+      <div class="track"><span class="lbl">system</span><div class="bar sys" style="left:3.33%;width:34.38%"></div></div>
+      <div class="track"><span class="lbl">window</span><div class="bar win" style="left:37.71%;width:7.04%"></div></div>
+      <div class="track"><span class="lbl">onDestroy</span><div class="bar des" style="left:45.67%;width:41.63%"></div></div>
+    </div>
+  </div>
+
+  <div class="run">
+    <div class="run-name">주입 재현 <span class="tag crash">크래시</span>
+      <span class="note">판정 − ATTACH = −465ms · 인계 미도달 · onDestroy 1,495ms</span></div>
+    <div class="frame">
+      <div class="guide verdict" style="left:14.33%;top:0;bottom:0"></div>
+      <div class="guide attach" style="left:33.71%;top:0;bottom:0"></div>
+      <div class="track"><span class="lbl">app boot</span><div class="bar app" style="left:0%;width:14.33%"></div></div>
+      <div class="track"><span class="lbl">system</span><div class="bar sys" style="left:3.54%;width:30.17%"></div></div>
+      <div class="track"><span class="lbl">window</span><div class="bar open" style="left:33.71%;width:66.29%"></div></div>
+      <div class="track"><span class="lbl">onDestroy</span><div class="bar des" style="left:14.33%;width:62.29%"></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="key">
+  <p>네 회차에서 앱구간(보라)과 시스템구간(노랑)의 길이는 비슷하다. 다른 것은 <strong><code>app boot</code>가 <code>system</code>보다 짧은지</strong>다. 마지막 회차에서만 짧고, 그 회차만 터졌다. <code>onDestroy</code> 막대가 점선 구간 안에서 끝나기 때문이다.</p>
+</div>
+
+<h2>2. 외부 부하를 걸면 어떻게 되는가</h2>
+<p>바쁜 루프 8개와 앱 4개를 띄운 뒤 같은 측정을 했다. 축이 0에서 7,000ms로 <strong>거의 세 배 늘어난 것</strong>에 주의한다. 위 그림과 축이 다르다.</p>
+
+<div class="card">
+  <div class="axis">
+    <span style="left:0%">0</span><span style="left:14.29%">1,000</span><span style="left:28.57%">2,000</span>
+    <span style="left:42.86%">3,000</span><span style="left:57.14%">4,000</span><span style="left:71.43%">5,000</span>
+    <span style="left:85.71%">6,000</span><span style="left:100%">7,000ms</span>
+  </div>
+
+  <div class="run">
+    <div class="run-name">부하 1 <span class="tag miss">미스</span>
+      <span class="note">판정 − ATTACH = +1,661ms · window 951ms</span></div>
+    <div class="frame">
+      <div class="guide attach" style="left:70.26%;top:0;bottom:0"></div>
+      <div class="guide verdict" style="left:93.99%;top:0;bottom:0"></div>
+      <div class="track"><span class="lbl">app boot</span><div class="bar app" style="left:0%;width:93.99%"></div></div>
+      <div class="track"><span class="lbl">system</span><div class="bar sys" style="left:4.76%;width:65.50%"></div></div>
+      <div class="track"><span class="lbl">window</span><div class="bar win" style="left:70.26%;width:13.59%"></div></div>
+      <div class="track"><span class="lbl">onDestroy</span><div class="bar open" style="left:93.99%;width:6.01%"></div></div>
+    </div>
+  </div>
+
+  <div class="run">
+    <div class="run-name">부하 2 <span class="tag miss">미스</span>
+      <span class="note">판정 − ATTACH = +2,144ms · window 1,282ms</span></div>
+    <div class="frame">
+      <div class="guide attach" style="left:54.94%;top:0;bottom:0"></div>
+      <div class="guide verdict" style="left:85.57%;top:0;bottom:0"></div>
+      <div class="track"><span class="lbl">app boot</span><div class="bar app" style="left:0%;width:85.57%"></div></div>
+      <div class="track"><span class="lbl">system</span><div class="bar sys" style="left:2.51%;width:52.43%"></div></div>
+      <div class="track"><span class="lbl">window</span><div class="bar win" style="left:54.94%;width:18.31%"></div></div>
+      <div class="track"><span class="lbl">onDestroy</span><div class="bar open" style="left:85.57%;width:14.43%"></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="key">
+  <p><strong><code>window</code>는 951ms와 1,282ms까지 벌어졌다.</strong> 프로덕션 추정치와 같은 급이다. 그런데도 안 터졌다. <code>app boot</code>가 <code>system</code>보다 여전히 더 길기 때문이다. 부하는 두 구간을 5.5배와 5.2배로 <strong>함께</strong> 늘렸을 뿐 순서를 바꾸지 못했다.</p>
+</div>
+
+<h2>3. 판정과 ATTACH의 간격, 전 회차 분포</h2>
+<p>이 값 하나가 결과를 정한다. 0보다 왼쪽이면 국면 A로 들어가고, 오른쪽이면 <code>window</code>가 아무리 넓어도 파괴가 경쟁에 참여하지 못한다.</p>
+
+<div class="card">
+  <div class="strip">
+    <div class="zone a" style="left:0%;width:20.69%"><span style="left:0">국면 A · 크래시 가능</span></div>
+    <div class="zone b" style="left:20.69%;width:79.31%"><span style="left:0">국면 B · 파괴가 원리적으로 못 이김</span></div>
+    <div class="lane"></div>
+    <div class="zero" style="left:20.69%"></div>
+    <div class="dot crash" style="left:4.66%" title="주입 재현, 크래시, -465ms"></div>
+    <div class="dot prev" style="left:26.21%"></div><div class="dot prev" style="left:26.55%"></div>
+    <div class="dot prev" style="left:26.66%"></div><div class="dot prev" style="left:26.72%"></div>
+    <div class="dot prev" style="left:27.55%"></div><div class="dot prev" style="left:27.62%"></div>
+    <div class="dot prev" style="left:27.72%"></div><div class="dot prev" style="left:27.76%"></div>
+    <div class="dot prev" style="left:27.90%"></div><div class="dot prev" style="left:28.14%"></div>
+    <div class="dot prev" style="left:29.31%"></div><div class="dot prev" style="left:29.90%"></div>
+    <div class="dot prev" style="left:30.72%"></div><div class="dot prev" style="left:31.03%"></div>
+    <div class="dot prev" style="left:31.59%"></div><div class="dot prev" style="left:34.62%"></div>
+    <div class="dot base" style="left:26.59%"></div><div class="dot base" style="left:27.28%"></div>
+    <div class="dot base" style="left:37.17%"></div>
+    <div class="dot load" style="left:78.00%"></div><div class="dot load" style="left:94.62%"></div>
+  </div>
+  <div class="sc">
+    <span style="left:0%">−600</span><span style="left:20.69%">0</span><span style="left:37.93%">+500</span>
+    <span style="left:55.17%">+1,000</span><span style="left:72.41%">+1,500</span><span style="left:89.66%">+2,000ms</span>
+  </div>
+  <div class="legend" style="margin:18px 0 0">
+    <span><i style="background:var(--good);border-radius:50%;width:13px;height:13px"></i>주입 재현 1회 (크래시)</span>
+    <span><i style="background:rgba(129,140,248,.42);border-radius:50%;width:13px;height:13px"></i>이전 무부하 16회</span>
+    <span><i style="background:#818cf8;border-radius:50%;width:13px;height:13px"></i>이번 기준선 3회</span>
+    <span><i style="background:var(--warn);border-radius:50%;width:13px;height:13px"></i>외부 부하 2회</span>
+  </div>
+</div>
+
+<p>앱이 스스로 낸 21개 회차 전부가 0의 오른쪽에 있다. 평균 <strong>+234ms</strong>, 표준편차 <strong>67ms</strong>이므로 0까지 3.5 표준편차다. 200회를 돌려도 기대 발생이 0.05회다. 왼쪽에 있는 유일한 점은 판정을 주입한 회차이고, 그 값 <strong>−465ms</strong>는 이 기기의 앱이 물리적으로 낼 수 없는 시각이다.</p>
+
+<h2>4. 왜 부하가 듣지 않는가</h2>
+<p>두 구간의 <strong>비율</strong>을 보면 답이 나온다. 크래시 조건을 비율로 다시 쓰면 이렇다.</p>
+
+<div class="card">
+  <p style="margin:0 0 18px"><code>앱구간 ÷ 시스템구간 &lt; 1 + 80ms ÷ 시스템구간</code> &nbsp;즉 기준선에서는 <strong>1.10 미만</strong>, 부하에서는 <strong>1.02 미만</strong>이어야 한다.</p>
+  <div class="strip">
+    <div class="zone a" style="left:0%;width:50%"><span style="left:0">필요 구간</span></div>
+    <div class="zone b" style="left:50%;width:50%"><span style="left:0">관측 구간</span></div>
+    <div class="lane"></div>
+    <div class="zero" style="left:50%"></div>
+    <div class="dot crash" style="left:5.71%" title="주입 재현 0.48"></div>
+    <div class="dot base" style="left:66.43%" title="기준선 1.33"></div>
+    <div class="dot base" style="left:66.79%" title="기준선 1.33"></div>
+    <div class="dot base" style="left:95.00%" title="기준선 1.73"></div>
+    <div class="dot load" style="left:74.29%" title="부하 1.44"></div>
+    <div class="dot load" style="left:87.86%" title="부하 1.63"></div>
+  </div>
+  <div class="sc">
+    <span style="left:0%">0.4</span><span style="left:21.43%">0.7</span><span style="left:42.86%">1.0</span>
+    <span style="left:50%">1.10</span><span style="left:64.29%">1.3</span><span style="left:85.71%">1.6</span><span style="left:100%">1.8</span>
+  </div>
+</div>
+
+<p>부하를 5배로 걸어도 비율은 1.44와 1.63으로 관측 구간에 그대로 남는다. <strong>균일한 부하는 분자와 분모를 같이 키우므로 비율을 바꾸지 못한다.</strong> 첫 프레임을 300ms 보류한 실험이 실패한 것도 같은 이유다. 앱 메인 스레드를 늦추면 ATTACH와 첫 요청이 함께 밀린다.</p>
+
+<h2>5. 프로덕션은 어디에 있었는가</h2>
+<p>Crashlytics breadcrumb으로 역산하면 프로덕션의 앱구간은 <strong>약 1,152ms</strong>다. 우리 기준선 1,150ms와 사실상 같다. 그러면 위 부등식에서 프로덕션의 시스템구간이 <strong>1,072ms 이상</strong>이어야 국면 A에 들어간다.</p>
+
+<div class="tw">
+<table>
+<thead><tr><th>조건</th><th>앱구간</th><th>시스템구간</th><th>비율</th><th>판정 − ATTACH</th><th>window</th><th>결과</th></tr></thead>
+<tbody>
+<tr><td>기준선 (무부하)</td><td>1,037 ~ 1,318</td><td>763 ~ 825</td><td>1.33 ~ 1.73</td><td class="num-bad">+171 ~ +478</td><td>151 ~ 227</td><td>미스 3/3</td></tr>
+<tr><td>외부 부하 5배</td><td>5,990 ~ 6,579</td><td>3,670 ~ 4,585</td><td>1.44 ~ 1.63</td><td class="num-bad">+1,661 ~ +2,144</td><td>951 ~ 1,282</td><td>미스 2/2</td></tr>
+<tr><td>주입 재현</td><td>344 (주입)</td><td>724</td><td>0.48</td><td class="num-good">−465</td><td>인계 미도달</td><td>크래시</td></tr>
+<tr><td><strong>프로덕션</strong><br><span style="font-size:11.5px;color:var(--text-muted)">측정 아님, 부등식 역산</span></td><td>약 1,152<br><span style="font-size:11px;color:var(--text-muted)">breadcrumb 역산</span></td><td><strong>1,072 이상</strong><br><span style="font-size:11px;color:var(--text-muted)">하한</span></td><td>1.07 이하<br><span style="font-size:11px;color:var(--text-muted)">상한</span></td><td class="num-good">음수<br><span style="font-size:11px;color:var(--text-muted)">크래시 성립에서 도출</span></td><td>관측 불가</td><td>크래시 171건</td></tr>
+</tbody>
+</table>
+</div>
+
+<p style="margin:14px 0 0;font-size:13.5px"><strong>프로덕션 행은 측정값이 아니다.</strong> 직접 관측된 것은 breadcrumb 델타 하나뿐이고, 나머지는 크래시가 실제로 발생했다는 사실과 위 부등식에서 역산한 하한과 상한이다. 프로덕션의 ATTACH 시각은 관측할 수 없으므로 판정과 ATTACH 의 간격도 부호만 알 수 있다.</p>
+
+<div class="key">
+  <p>프로덕션은 <strong>앱은 우리와 같은 속도였고 시스템 쪽만 30% 정도 느렸다.</strong> 우리 부하 시험은 5배를 균일하게 걸었으니 조준이 틀렸다. 필요한 것은 시스템구간만 1.3배 늘리는 것이었다.</p>
+</div>
+
+<footer>
+  <p>측정 기기 SM-G973N (Android 12, SDK 31, One UI 4.1, <code>SP1A.210812.016.G973NKSU7HWD3</code>), <code>betaDebug</code> 빌드, 실제 런처 아이콘 탭. 시각 기준은 <code>AppStarterActivity.onResume</code> = 0.</p>
+  <p>판정은 첫 HTTP 요청 진입보다 1에서 15ms 늦으므로 같은 값으로 취급했다. 부하 회차의 <code>onDestroy</code>는 15초 캡처 창을 넘어 미포착이라 <code>onDestroy</code> 막대를 점선으로 표시했다. 부하 3회차는 ATTACH 미포착으로 제외했다. 주입 재현 회차의 <code>window</code>는 인계가 도달하지 않아 점선이다.</p>
+  <p>이 페이지는 <a href="blog-android12-splash-handover-race.html">Android 12 스플래시 인계의 두 번째 왕복</a>의 구간 실측 부록이다.</p>
+</footer>
+
+</div>
+</body>
+</html>
