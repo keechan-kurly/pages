@@ -1,0 +1,1592 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>세 지면이 공유하는 재생 계층</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════
+   Toss Tech Light Theme — Blog Template
+   Reference: toss.tech/article/will-ai-replace-developers
+   ═══════════════════════════════════════════════ */
+:root {
+    /* Adaptive Grays (Toss Design System) */
+    --grey-50: #f9fafb;
+    --grey-100: #f2f4f6;
+    --grey-200: #e5e8eb;
+    --grey-300: #d1d6db;
+    --grey-400: #b0b8c1;
+    --grey-500: #8b95a1;
+    --grey-600: #6b7684;
+    --grey-700: #4e5968;
+    --grey-800: #333d4b;
+    --grey-900: #191f28;
+
+    /* Brand */
+    --toss-blue: #0064FF;
+    --toss-blue-light: rgba(0, 100, 255, 0.08);
+    --toss-blue-border: rgba(0, 100, 255, 0.2);
+
+    /* Semantic */
+    --bg: #ffffff;
+    --bg-elevated: var(--grey-50);
+    --bg-highlight: #ffc34236;
+    --bg-code: var(--grey-100);
+    --bg-blockquote: transparent;
+    --text-primary: var(--grey-900);
+    --text-secondary: var(--grey-700);
+    --text-tertiary: var(--grey-500);
+    --border-light: var(--grey-200);
+    --border-blockquote: var(--grey-800);
+
+    /* Layout */
+    --content-width: 680px;
+    --wide-width: 780px;
+    --radius: 16px;
+    --radius-sm: 10px;
+
+    /* Typography */
+    --font-body: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --font-code: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+}
+
+/* Reset */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text-primary);
+    line-height: 1.8;
+    font-size: 16.5px;
+    -webkit-font-smoothing: antialiased;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+}
+
+::selection {
+    background: rgba(0, 100, 255, 0.15);
+    color: var(--grey-900);
+}
+
+a { color: var(--toss-blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ═══════════════════════════════════════════════
+   Layout
+   ═══════════════════════════════════════════════ */
+.article {
+    max-width: var(--content-width);
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+.article-wide {
+    max-width: var(--wide-width);
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+/* ═══════════════════════════════════════════════
+   Hero Header
+   ═══════════════════════════════════════════════ */
+.hero {
+    padding: 80px 24px 48px;
+    max-width: var(--content-width);
+    margin: 0 auto;
+}
+
+.hero-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 24px;
+    font-size: 0.875rem;
+    color: var(--text-tertiary);
+}
+
+.hero-meta .author {
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.hero-meta .dot {
+    color: var(--grey-300);
+}
+
+.hero-title {
+    font-size: 2.2rem;
+    font-weight: 800;
+    line-height: 1.3;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+    letter-spacing: -0.02em;
+}
+
+.hero-subtitle {
+    font-size: 1.1rem;
+    line-height: 1.7;
+    color: var(--text-secondary);
+    max-width: 580px;
+}
+
+.hero-tags {
+    display: flex;
+    gap: 8px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+}
+
+.hero-tag {
+    padding: 4px 12px;
+    border-radius: var(--radius-sm);
+    background: var(--toss-blue-light);
+    border: 1px solid var(--toss-blue-border);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--toss-blue);
+}
+
+/* ═══════════════════════════════════════════════
+   Table of Contents
+   ═══════════════════════════════════════════════ */
+.toc {
+    margin: 0 0 48px 0;
+    padding: 24px 28px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+}
+
+.toc-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+}
+
+.toc-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.toc-list a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    font-size: 0.92rem;
+    color: var(--text-secondary);
+    transition: color 0.2s;
+}
+
+.toc-list a:hover {
+    color: var(--toss-blue);
+    text-decoration: none;
+}
+
+.toc-num {
+    width: 24px;
+    height: 24px;
+    border-radius: 7px;
+    background: var(--grey-200);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════
+   Typography
+   ═══════════════════════════════════════════════ */
+.article h2 {
+    font-size: 1.55rem;
+    font-weight: 800;
+    line-height: 1.35;
+    color: var(--text-primary);
+    margin: 56px 0 20px 0;
+    letter-spacing: -0.01em;
+}
+
+.article h2:first-child {
+    margin-top: 0;
+}
+
+.article h3 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    line-height: 1.4;
+    color: var(--text-primary);
+    margin: 40px 0 14px 0;
+}
+
+.article p {
+    margin: 0 0 20px 0;
+    color: var(--text-primary);
+}
+
+.article strong {
+    font-weight: 700;
+    color: var(--grey-900);
+}
+
+/* ═══════════════════════════════════════════════
+   Blockquote (Left border style — Toss)
+   ═══════════════════════════════════════════════ */
+.article blockquote {
+    margin: 28px 0;
+    padding: 0 0 0 20px;
+    border-left: 2.5px solid var(--border-blockquote);
+    font-size: 1.05rem;
+    font-weight: 600;
+    line-height: 1.7;
+    color: var(--text-primary);
+}
+
+.article blockquote p {
+    margin: 0;
+}
+
+/* ═══════════════════════════════════════════════
+   Highlight Box (Yellow — Toss)
+   ═══════════════════════════════════════════════ */
+.highlight-box {
+    margin: 28px 0;
+    padding: 20px 24px;
+    background: var(--bg-highlight);
+    border-radius: var(--radius);
+    font-weight: 600;
+    line-height: 1.7;
+    color: var(--text-primary);
+}
+
+/* ═══════════════════════════════════════════════
+   Content Box (Gray rounded — Toss)
+   ═══════════════════════════════════════════════ */
+.content-box {
+    margin: 28px 0;
+    padding: 24px 28px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+}
+
+.content-box-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+}
+
+/* ═══════════════════════════════════════════════
+   Code Blocks
+   ═══════════════════════════════════════════════ */
+.article code {
+    font-family: var(--font-code);
+    font-size: 0.88em;
+    padding: 2px 6px;
+    background: var(--bg-code);
+    border-radius: 5px;
+    color: var(--grey-800);
+}
+
+.article pre {
+    margin: 24px 0;
+    padding: 24px;
+    background: var(--grey-900);
+    border-radius: var(--radius);
+    overflow-x: auto;
+    line-height: 1.6;
+}
+
+.article pre code {
+    font-family: var(--font-code);
+    font-size: 0.85rem;
+    background: none;
+    padding: 0;
+    color: #abb2bf;
+    border-radius: 0;
+}
+
+/* Syntax highlighting (One Dark) */
+.kw { color: #c678dd; }       /* keyword */
+.str { color: #98c379; }      /* string */
+.cmt { color: #5c6370; font-style: italic; } /* comment */
+.typ { color: #e5c07b; }      /* type/class */
+.fn { color: #61afef; }       /* function */
+.ann { color: #d19a66; }      /* annotation/number */
+.op { color: #56b6c2; }       /* operator */
+
+/* ═══════════════════════════════════════════════
+   Lists
+   ═══════════════════════════════════════════════ */
+.article ul, .article ol {
+    margin: 0 0 20px 0;
+    padding-left: 24px;
+}
+
+.article li {
+    margin-bottom: 10px;
+    line-height: 1.7;
+}
+
+.article li::marker {
+    color: var(--text-tertiary);
+}
+
+/* Checklist style */
+.checklist {
+    list-style: none;
+    padding: 0;
+    counter-reset: check;
+}
+
+.checklist li {
+    counter-increment: check;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.checklist li:last-child {
+    border-bottom: none;
+}
+
+.checklist-num {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: var(--toss-blue);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: white;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+/* ═══════════════════════════════════════════════
+   Images
+   ═══════════════════════════════════════════════ */
+.article img, .article-wide img {
+    max-width: 100%;
+    border-radius: var(--radius);
+    margin: 28px 0;
+    display: block;
+}
+
+.img-caption {
+    text-align: center;
+    font-size: 0.82rem;
+    color: var(--text-tertiary);
+    margin-top: -16px;
+    margin-bottom: 28px;
+}
+
+/* SVG 뒤 캡션은 위로 당기지 않는다 (img 전용 음수 margin 상쇄) */
+svg + .img-caption {
+    margin-top: 14px;
+}
+
+/* ═══════════════════════════════════════════════
+   Metrics Table
+   ═══════════════════════════════════════════════ */
+.metrics-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0;
+    font-size: 0.9rem;
+}
+
+.metrics-table th {
+    text-align: left;
+    padding: 12px 16px;
+    background: var(--bg-elevated);
+    border-bottom: 2px solid var(--border-light);
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.metrics-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-light);
+    color: var(--text-secondary);
+}
+
+.metrics-table .metric-label {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.metrics-table .metric-good {
+    color: #16a34a;
+    font-weight: 700;
+}
+
+.metrics-table .metric-bad {
+    color: #dc2626;
+    font-weight: 600;
+}
+
+.metrics-table .metric-neutral {
+    color: var(--text-tertiary);
+}
+
+/* Delta badges */
+.delta {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.delta-good {
+    background: rgba(22, 163, 74, 0.1);
+    color: #16a34a;
+}
+
+.delta-bad {
+    background: rgba(220, 38, 38, 0.1);
+    color: #dc2626;
+}
+
+.delta-neutral {
+    background: var(--grey-100);
+    color: var(--text-tertiary);
+}
+
+/* ═══════════════════════════════════════════════
+   Summary / Key Takeaway Box
+   ═══════════════════════════════════════════════ */
+.summary-box {
+    margin: 36px 0;
+    padding: 24px 28px;
+    background: var(--toss-blue-light);
+    border: 1px solid var(--toss-blue-border);
+    border-radius: var(--radius);
+}
+
+.summary-box-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--toss-blue);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.summary-box p, .summary-box li {
+    color: var(--text-primary);
+    font-size: 0.95rem;
+}
+
+/* ═══════════════════════════════════════════════
+   Comparison Cards (Inline)
+   — 이중 박스 구조 제거: 카드 배경/보더 없음, 라벨 + 코드 블록만으로 비교 단위
+   — Grid 1fr 의 자식 폭 초과 방지: minmax(0, 1fr) + child min-width: 0
+   ═══════════════════════════════════════════════ */
+.compare-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 16px;
+    margin: 28px 0;
+}
+
+.compare-card {
+    padding: 0;
+    background: transparent;
+    border: none;
+    min-width: 0;  /* Grid 자식의 폭 초과 방지 */
+}
+
+.compare-card-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 10px;
+}
+.compare-card-label::before {
+    content: "";
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+.compare-before .compare-card-label { color: var(--text-tertiary); }
+.compare-before .compare-card-label::before { background: var(--grey-400); }
+.compare-after .compare-card-label { color: var(--toss-blue); }
+.compare-after .compare-card-label::before { background: var(--toss-blue); }
+
+.compare-card pre {
+    margin: 0;
+    padding: 14px;
+    font-size: 0.72rem;
+    border-radius: 12px;
+    overflow-x: auto;
+}
+.compare-card pre code { font-size: 0.72rem; }
+
+/* ═══════════════════════════════════════════════
+   User Quote (사용자 피드백 인용 — accessibility_face)
+   ═══════════════════════════════════════════════ */
+.user-quote {
+    margin: 28px 0;
+    padding: 20px 24px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+    border-left: 3px solid var(--toss-blue);
+}
+
+.user-quote-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--toss-blue);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 8px;
+}
+
+.user-quote p {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.7;
+    color: var(--text-primary);
+    font-style: italic;
+}
+
+/* ═══════════════════════════════════════════════
+   Media (비디오/오디오 — accessibility_face)
+   ═══════════════════════════════════════════════ */
+.media-wrap {
+    margin: 28px 0;
+}
+
+.media-wrap video, .media-wrap audio {
+    width: 100%;
+    border-radius: var(--radius);
+    display: block;
+}
+
+.media-wrap audio {
+    margin-top: 8px;
+}
+
+/* ═══════════════════════════════════════════════
+   Author Credits (복수 저자 — accessibility_face)
+   ═══════════════════════════════════════════════ */
+.credits {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-light);
+    font-size: 0.85rem;
+    color: var(--text-tertiary);
+}
+
+.credits-role {
+    font-weight: 700;
+    color: var(--text-secondary);
+    margin-right: 4px;
+}
+
+.credits-sep {
+    margin: 0 12px;
+    color: var(--grey-300);
+}
+
+/* ═══════════════════════════════════════════════
+   Separator
+   ═══════════════════════════════════════════════ */
+.article hr {
+    border: none;
+    height: 1px;
+    background: var(--border-light);
+    margin: 48px 0;
+}
+
+/* ═══════════════════════════════════════════════
+   Footnotes
+   ═══════════════════════════════════════════════ */
+.footnotes {
+    margin-top: 56px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border-light);
+    font-size: 0.82rem;
+    color: var(--text-tertiary);
+    line-height: 1.8;
+}
+
+.footnotes a {
+    color: var(--text-tertiary);
+    text-decoration: underline;
+}
+
+.footnotes ol { padding-left: 20px; }
+.footnotes li { margin-bottom: 6px; scroll-margin-top: 24px; }
+
+.footnote-ref {
+    font-size: 0.75em;
+    vertical-align: super;
+    font-weight: 600;
+}
+
+.footnote-ref a {
+    color: var(--toss-blue);
+    text-decoration: none;
+}
+
+.footnote-ref a:hover { text-decoration: underline; }
+
+.fn-back {
+    color: var(--text-tertiary);
+    text-decoration: none;
+    margin-left: 6px;
+    font-size: 0.9em;
+}
+
+.fn-back:hover { color: var(--toss-blue); }
+
+/* ═══════════════════════════════════════════════
+   Footer
+   ═══════════════════════════════════════════════ */
+.article-footer {
+    margin-top: 56px;
+    padding: 32px 0;
+    text-align: center;
+    color: var(--text-tertiary);
+    font-size: 0.82rem;
+}
+
+.share-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.share-btn {
+    padding: 8px 20px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-light);
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.share-btn:hover {
+    background: var(--grey-200);
+    color: var(--text-primary);
+}
+
+/* ═══════════════════════════════════════════════
+   Responsive
+   ═══════════════════════════════════════════════ */
+@media (max-width: 768px) {
+    .hero { padding: 48px 20px 32px; }
+    .hero-title { font-size: 1.7rem; }
+    .article, .article-wide { padding: 0 20px; }
+    .article h2 { font-size: 1.35rem; margin-top: 40px; }
+    .article h3 { font-size: 1.1rem; }
+    .compare-grid { grid-template-columns: 1fr; }
+    .article pre { padding: 16px; margin-left: -8px; margin-right: -8px; border-radius: 12px; }
+}
+
+/* ═══════════════════════════════════════════════
+   Print
+   ═══════════════════════════════════════════════ */
+@media print {
+    body { font-size: 11pt; }
+    .hero { padding: 24px 0; }
+    .article pre { white-space: pre-wrap; }
+    .toc, .share-buttons, .article-footer { display: none; }
+}
+
+/* ── API 표면 표: 대표 이름 + 하위 불렛 ── */
+.api-surface td { vertical-align: top; }
+.api-surface .api-name { font-family: var(--font-code); font-weight: 700;
+    font-size: 0.9rem; color: var(--text-primary); display: block; }
+.api-surface ul { list-style: none; margin: 8px 0 0; padding: 0; }
+.api-surface li { position: relative; padding-left: 14px; font-family: var(--font-code);
+    font-size: 0.78rem; color: var(--text-secondary); line-height: 1.7; }
+.api-surface li::before { content: "\2022"; position: absolute; left: 2px;
+    color: var(--grey-400); font-size: 0.7rem; }
+.api-surface .api-role { color: var(--text-secondary); font-size: 0.9rem; }
+.api-surface .api-name.cat { font-family: var(--font-body); letter-spacing: -0.01em; }
+@media (max-width: 640px) {
+    .api-surface li { font-size: 0.72rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     Hero Header
+     ═══════════════════════════════════════════ -->
+<header class="hero">
+    <div class="hero-meta">
+        <span class="author">홍기찬</span>
+        <span class="dot">&middot;</span>
+        <span>프로덕트앱개발</span>
+        <span class="dot">&middot;</span>
+        <time>2026. 09. 11.</time>
+    </div>
+    <h1 class="hero-title">세 지면이 공유하는 재생 계층</h1>
+    <p class="hero-subtitle">홈 캐러셀, 상품상세, 전체화면 숏폼을 하나의 :video 모듈로 묶은 설계</p>
+    <div class="hero-tags">
+        <span class="hero-tag">Android</span>
+        <span class="hero-tag">media3</span>
+        <span class="hero-tag">ExoPlayer</span>
+        <span class="hero-tag">Compose</span>
+        <span class="hero-tag">아키텍처</span>
+    </div>
+</header>
+
+<!-- ═══════════════════════════════════════════
+     Table of Contents
+     ═══════════════════════════════════════════ -->
+<nav class="article">
+    <div class="toc">
+        <div class="toc-label">목차</div>
+        <ol class="toc-list">
+            <li><a href="#section-1"><span class="toc-num">1</span> 지면은 셋인데 플레이어는 몇 개여야 하는가</a></li>
+            <li><a href="#section-2"><span class="toc-num">2</span> :video 의 경계, 무엇을 안 넣었나</a></li>
+            <li><a href="#section-3"><span class="toc-num">3</span> 인스턴스 풀과 슬라이딩 창</a></li>
+            <li><a href="#section-4"><span class="toc-num">4</span> 상태는 플레이어에 매달지 않는다</a></li>
+            <li><a href="#section-5"><span class="toc-num">5</span> 실패를 어떻게 분류했나</a></li>
+            <li><a href="#section-6"><span class="toc-num">6</span> 소리는 한 화면만 낸다</a></li>
+            <li><a href="#section-7"><span class="toc-num">7</span> 밟으면 아픈 것 넷 <span style="color:var(--text-tertiary);font-size:0.85em">좌표계, 가드, 스레드, 헤더</span></a></li>
+            <li><a href="#section-8"><span class="toc-num">8</span> 한계와 다음</a></li>
+        </ol>
+    </div>
+</nav>
+
+<!-- ═══════════════════════════════════════════
+     Article Body
+     ═══════════════════════════════════════════ -->
+<article class="article">
+
+    <p>세로로 스와이프하며 영상 스무 개를 넘기는 화면을 만든다고 해봅시다. 그 화면에서 <strong>동시에 살아 있어야 하는 <code>ExoPlayer</code> 인스턴스는 몇 개</strong>일까요? 답을 정하고 읽어주세요.</p>
+
+<p>양 극단은 각각 다른 곳에서 무너집니다. 하나만 두면 스와이프할 때마다 같은 인스턴스에 새 미디어를 붙이고 <code>prepare()</code> 를 다시 돌려야 하니, 사용자는 매번 첫 프레임을 기다립니다. 반대로 화면 수만큼 만들면 디코더가 버팁니다. media3 가 <code>ERROR_CODE_DECODING_RESOURCES_RECLAIMED</code> 라는 에러 코드를 따로 두고 그 뜻을 <em>"higher priority task reclaiming resources needed for decoding"</em> 이라고 적어 둔 것 자체가<sup class="footnote-ref" id="ref-1"><a href="#fn1">[1]</a></sup>, 디코더 자원이 뺏길 수 있는 공유 자원이라는 뜻입니다. 버퍼 메모리도 인스턴스 수에 비례해서 늘어납니다.</p>
+
+<p>컬리 앱에 동영상 커머스를 넣으면서 이 질문에 답해야 했습니다. 그것도 한 번이 아니라 세 번, 서로 요구가 다른 세 지면에서요. 이 글은 그 답을 <code>:video</code> 라는 모듈 하나로 모은 과정을 다룹니다.</p>
+
+<div class="summary-box">
+    <div class="summary-box-title">이 변경의 규모</div>
+    <p>198개 파일, 12,692줄 추가. 신규 모듈 두 개(<code>:video</code> 3,308줄, <code>:features:shortform</code> 5,072줄)와 <code>@Test</code> 329개(PR diff 추가분 기준)가 함께 들어갔습니다. 아직 사용자에게 나가지 않은 상태(QA 진행 중)라, 이 글에는 운영 지표가 없습니다.</p>
+</div>
+
+<h2 id="section-1">1. 지면은 셋인데 플레이어는 몇 개여야 하는가</h2>
+
+<p>영상이 붙는 자리는 세 곳입니다. 홈 추천탭의 가로 캐러셀, 상품상세의 연관 콘텐츠 줄, 그리고 세로 전체화면 플레이어입니다. 셋 다 "영상을 튼다"는 점만 같고 나머지는 전부 다릅니다.</p>
+
+<table class="metrics-table">
+    <thead>
+        <tr><th>지면</th><th>홈 추천 캐러셀</th><th>상품상세 연관 콘텐츠</th><th>전체화면 숏폼</th></tr>
+    </thead>
+    <tbody>
+        <tr><td class="metric-label">카드 크기</td><td>110 &times; 165 dp</td><td>124 &times; 220 dp</td><td>화면 전체</td></tr>
+        <tr><td class="metric-label">재생 대상</td><td>첫 카드 하나</td><td>좌측 정렬된 카드 하나</td><td>정착한 페이지</td></tr>
+        <tr><td class="metric-label">재생 조건</td><td>섹션이 붙어 있는 동안</td><td>섹션이 50% 이상 보일 때</td><td>진입 즉시 자동 재생</td></tr>
+        <tr><td class="metric-label">길이</td><td><code>clipEndMs</code> 5초</td><td><code>clipEndMs</code> 5초</td><td>영상 전체</td></tr>
+        <tr><td class="metric-label">반복</td><td><code>loop = true</code></td><td><code>loop = false</code></td><td><code>loop = true</code></td></tr>
+        <tr><td class="metric-label">풀 크기</td><td>1</td><td>1</td><td>3 (기기에 따라 1)</td></tr>
+    </tbody>
+</table>
+
+<p>재생 조건이 지면마다 다른 건 회수 방식이 다르기 때문입니다. 홈 캐러셀은 <code>ComposeView</code> 가 <code>DisposeOnDetachedFromWindow</code> 라, 화면 밖으로 리사이클되는 순간 컨트롤러가 통째로 폐기됩니다. 반면 상품상세 연관 콘텐츠는 같은 화면 안에서 스크롤만 되므로 아무것도 폐기되지 않아요. 그래서 이쪽에만 가시성 게이트(<code>onVisibleFractionChanged</code>)를 따로 달았습니다.</p>
+
+<p>세 지면의 차이를 각 화면이 알아서 처리하게 두면, ExoPlayer 를 다루는 코드가 세 벌 생깁니다. 그래서 공통으로 묶을 수 있는 것을 아래로 내렸습니다. 인스턴스를 몇 개 만들지, 어떤 슬롯에 어떤 영상을 붙일지, 지금 이 슬롯의 상태가 무엇인지는 <code>:video</code> 가 혼자 결정합니다. 각 지면은 "지금 활성 항목은 이것" 이라고 알려주기만 해요.</p>
+
+<div class="content-box">
+    <div class="content-box-title">멘탈 모델</div>
+<svg id="fig-arch" viewBox="0 0 680 476" style="width:100%;height:auto;display:block;margin:6px 0 16px;" role="img"
+     aria-label="세 지면이 위젯 계층과 VideoController 를 거쳐 internal 인 VideoPool 과 ExoPlayer 인스턴스로 이어지는 계층도">
+  <defs>
+    <marker id="fig-arch-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0 1 L9 5 L0 9 z" fill="var(--grey-400)"/>
+    </marker>
+  </defs>
+  <style>
+    #fig-arch .card   { fill:#fff; stroke:var(--grey-300); stroke-width:1.4; }
+    #fig-arch .box    { fill:#fff; stroke:var(--grey-300); stroke-width:1.4; }
+    #fig-arch .chip   { fill:#fff; stroke:var(--grey-200); stroke-width:1.2; }
+    #fig-arch .pub    { fill:var(--toss-blue-light); stroke:var(--toss-blue); stroke-width:1.8; }
+    #fig-arch .dash   { fill:none; stroke:var(--grey-300); stroke-width:1.4; stroke-dasharray:5 4; }
+    #fig-arch .zone   { fill:var(--grey-50); stroke:var(--grey-300); stroke-width:1.4; stroke-dasharray:6 5; }
+    #fig-arch .nm     { font:700 13px var(--font-body); fill:var(--grey-900); }
+    #fig-arch .nmb    { font:700 14px var(--font-body); fill:var(--toss-blue); }
+    #fig-arch .lbl    { font:600 12px var(--font-body); fill:var(--grey-800); }
+    #fig-arch .sub    { font:500 11px var(--font-body); fill:var(--grey-500); }
+    #fig-arch .mono   { font:600 11.5px var(--font-code); fill:var(--grey-700); }
+    #fig-arch .eyebrow{ font:700 10px var(--font-body); fill:var(--grey-500); letter-spacing:.06em; }
+    #fig-arch .flow   { fill:none; stroke:var(--grey-400); stroke-width:1.4; marker-end:url(#fig-arch-ar); }
+  </style>
+
+  <text x="24" y="26" class="eyebrow">지면 (카드 종횡비 실제값)</text>
+  <rect x="115" y="76"  width="30" height="45" rx="4" class="card"/>
+  <rect x="313" y="62"  width="34" height="59" rx="4" class="card"/>
+  <rect x="510" y="48"  width="41" height="73" rx="4" class="card"/>
+  <text x="130" y="141" class="lbl" text-anchor="middle">홈 캐러셀</text>
+  <text x="130" y="157" class="sub" text-anchor="middle">110 × 165</text>
+  <text x="330" y="141" class="lbl" text-anchor="middle">상품상세</text>
+  <text x="330" y="157" class="sub" text-anchor="middle">124 × 220</text>
+  <text x="530" y="141" class="lbl" text-anchor="middle">전체화면</text>
+  <text x="530" y="157" class="sub" text-anchor="middle">화면 전체</text>
+
+  <path d="M130 170 V192" class="flow"/>
+  <path d="M330 170 V192" class="flow"/>
+  <path d="M530 170 V192" class="flow"/>
+
+  <rect x="60" y="196" width="560" height="40" rx="10" class="dash"/>
+  <text x="340" y="215" class="lbl" text-anchor="middle">위젯 계층</text>
+  <text x="340" y="230" class="mono" text-anchor="middle">KurlyVideo, VideoPlaybackEffects</text>
+
+  <path d="M340 236 V260" class="flow"/>
+
+  <rect x="60" y="264" width="560" height="46" rx="10" class="pub"/>
+  <text x="340" y="293" class="nmb" text-anchor="middle">VideoController</text>
+  <rect x="504" y="276" width="102" height="22" rx="11" fill="#fff" stroke="var(--toss-blue-border)" stroke-width="1"/>
+  <text x="555" y="291" class="sub" text-anchor="middle" fill="var(--toss-blue)">공개 표면</text>
+
+  <rect x="40" y="330" width="600" height="130" rx="14" class="zone"/>
+  <rect x="58" y="320" width="62" height="20" rx="10" fill="var(--grey-200)"/>
+  <text x="89" y="334" class="eyebrow" text-anchor="middle" fill="var(--grey-700)">internal</text>
+  <path d="M160 312 V344" class="flow"/>
+
+  <rect x="76" y="348" width="168" height="40" rx="9" class="box"/>
+  <text x="160" y="373" class="nm" text-anchor="middle">VideoPool</text>
+  <path d="M160 388 V406" class="flow"/>
+  <rect x="98" y="414" width="146" height="30" rx="7" class="card" opacity=".3"/>
+  <rect x="87" y="410" width="146" height="30" rx="7" class="card" opacity=".6"/>
+  <rect x="76" y="406" width="146" height="30" rx="7" class="card"/>
+  <text x="149" y="425" class="mono" text-anchor="middle">ExoPlayer × N</text>
+
+  <rect x="290" y="346" width="228" height="26" rx="7" class="chip"/>
+  <text x="404" y="363" class="mono" text-anchor="middle">VideoDeviceProfile</text>
+  <rect x="290" y="376" width="228" height="26" rx="7" class="chip"/>
+  <text x="404" y="393" class="mono" text-anchor="middle">VideoStateStore</text>
+  <rect x="290" y="406" width="228" height="26" rx="7" class="chip"/>
+  <text x="404" y="423" class="mono" text-anchor="middle">VideoTickHandler</text>
+
+  <rect x="536" y="346" width="88" height="86" rx="9" class="chip"/>
+  <text x="580" y="368" class="sub" text-anchor="middle">미디어 공급</text>
+  <text x="580" y="388" class="mono" text-anchor="middle" font-size="10">SimpleCache</text>
+  <text x="580" y="404" class="mono" text-anchor="middle" font-size="10">200MB</text>
+  <text x="580" y="420" class="sub" text-anchor="middle" font-size="10">LRU</text>
+</svg>
+    <p style="margin-bottom:0; color:var(--text-secondary); font-size:0.9rem;">실선 파란 상자만 지면이 직접 부릅니다. 점선은 이 글에서 깊이 다루지 않는 계층이고, <code>internal</code> 묶음 안쪽은 모듈 밖에서 이름조차 볼 수 없습니다. 겹쳐 그린 <code>ExoPlayer</code> 는 개수가 고정이 아니라는 뜻이에요.</p>
+</div>
+
+<h2 id="section-2">2. <code>:video</code> 의 경계, 무엇을 안 넣었나</h2>
+
+<p>모듈을 새로 만들 때 제일 중요한 결정은 무엇을 넣을지가 아니라 무엇을 안 넣을지입니다. 의존성 선언이 그 결정을 그대로 보여줍니다.</p>
+
+<pre><code><span class="cmt">// video/build.gradle.kts</span>
+dependencies {
+    implementation(project(Modules.kotlinCore))
+
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.kotlinx.coroutines.core)
+
+    implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.exoplayer.hls)
+    implementation(libs.androidx.media3.ui)
+    implementation(libs.androidx.media3.common)
+}</code></pre>
+
+<p><code>:domain</code> 이 없습니다. 이게 핵심입니다. 숏폼 도메인 모델인 <code>ShortformRatio</code> 를 <code>:video</code> 가 직접 받으면, 재생 계층이 숏폼이라는 특정 기능에 묶입니다. 그래서 <code>:video</code> 는 자기만의 <code>VideoRatio</code> 를 갖고, 변환은 한 층 위에서 합니다.</p>
+
+<pre><code><span class="cmt">// features/core/ui/widget/.../video/VideoRatioMapper.kt</span>
+<span class="kw">fun</span> <span class="typ">ShortformRatio</span>.<span class="fn">toVideoRatio</span>(): <span class="typ">VideoRatio</span> {
+    <span class="kw">return when</span> (<span class="kw">this</span>) {
+        <span class="kw">is</span> <span class="typ">ShortformRatio</span>.Landscape -&gt; <span class="typ">VideoRatio</span>.Landscape(value)
+        <span class="kw">is</span> <span class="typ">ShortformRatio</span>.Portrait -&gt; <span class="typ">VideoRatio</span>.Portrait(value)
+        <span class="kw">is</span> <span class="typ">ShortformRatio</span>.Square -&gt; <span class="typ">VideoRatio</span>.Square(value)
+    }
+}</code></pre>
+
+<p>같은 파일에 <code>videoRatioOf(videoType: String?, videoAspect: Double?)</code> 도 있습니다. 상품상세 연관 콘텐츠는 전용 도메인 타입을 거치지 않고 서버 문자열을 그대로 들고 오기 때문에, 문자열에서 바로 변환하는 경로가 따로 필요했어요. 이 중 <code>videoRatioOf</code> 는 알 수 없는 문자열을 세로형으로 봅니다. 숏폼 쪽 <code>ShortformRatio.from</code> 과 같은 규칙이에요. <code>toVideoRatio</code> 에는 그런 분기가 아예 없습니다. sealed 인터페이스를 받는 exhaustive <code>when</code> 이라 "알 수 없는 값" 이라는 경우가 존재할 수 없고, 폴백은 한 단계 위 도메인 변환에 있으니까요.</p>
+
+<p>경계는 가시성으로도 한 번 더 잠급니다. <code>VideoPool</code>, <code>VideoStateStore</code>, <code>VideoTickHandler</code>, <code>PageBinding</code>, <code>PlayerOwner</code>, <code>VideoDeviceProfile</code> 은 전부 <code>internal</code> 입니다. 모듈 밖으로 나가는 것은 아래로 한정됩니다. <code>VideoHandle</code> 은 공개 클래스지만 생성자가 <code>internal</code> 이고, <code>videoIndex</code> 와 <code>owner</code>, <code>generation</code> 프로퍼티도 <code>internal</code> 입니다. 바깥에서는 만들 수도, 내부 좌표를 읽을 수도 없습니다 (<code>itemId</code> 만 공개입니다).</p>
+
+<table class="metrics-table api-surface">
+    <thead>
+        <tr><th>나가는 것</th><th>역할</th></tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+                <span class="api-name">VideoController</span>
+                <ul>
+                    <li>rememberVideoController</li>
+                    <li>rememberSingleVideoController</li>
+                    <li>rememberSparseVideoController</li>
+                </ul>
+            </td>
+            <td class="api-role">재생 제어와 생성</td>
+        </tr>
+        <tr>
+            <td>
+                <span class="api-name">SparseVideoController</span>
+                <ul><li>SparseVideoPlaylist</li></ul>
+            </td>
+            <td class="api-role">영상이 드문드문 섞인 지면의 좌표계</td>
+        </tr>
+        <tr>
+            <td><span class="api-name">VideoSurface</span></td>
+            <td class="api-role">표면 부착</td>
+        </tr>
+        <tr>
+            <td>
+                <span class="api-name cat">Compose 연동</span>
+                <ul>
+                    <li>VideoPlaybackEffects</li>
+                    <li>rememberVideoProgress</li>
+                    <li>VideoFrameFit</li>
+                </ul>
+            </td>
+            <td class="api-role">생명주기 연동, 진행률, 프레임 맞춤</td>
+        </tr>
+        <tr>
+            <td>
+                <span class="api-name cat">값 타입</span>
+                <ul>
+                    <li>VideoItem / VideoRatio</li>
+                    <li>VideoState / VideoTick</li>
+                    <li>VideoHandle</li>
+                </ul>
+            </td>
+            <td class="api-role">지면과 주고받는 데이터</td>
+        </tr>
+    </tbody>
+</table>
+
+<p>공개된 것이 적지는 않지만, 목록의 성격이 한쪽으로 쏠려 있습니다. 제어 표면과 값 타입과 Compose 연동뿐이고 <strong>재생 자원 자체는 하나도 없습니다.</strong> <code>ExoPlayer</code> 도, 풀도, 상태 저장소도 나가지 않아요.</p>
+
+<div class="highlight-box">호출자가 <code>ExoPlayer</code> 를 직접 만질 수 있으면 풀의 계약이 깨집니다. <code>:video</code> 가 <code>ExoPlayer</code> 를 반환하는 유일한 지점은 <code>PlayerOwner.playerFor(handle)</code> 이고, 이건 <code>internal</code> 입니다. 그래서 실제로 플레이어를 받아 쓰는 곳은 같은 모듈 안의 <code>VideoSurface</code> 하나뿐입니다.</div>
+
+<h2 id="section-3">3. 인스턴스 풀과 슬라이딩 창</h2>
+
+<p>풀의 규칙은 한 문장입니다. <strong>활성 인덱스 주변만 붙들고, 나머지는 놓는다.</strong> 그 "주변" 을 계산하는 코드가 <code>VideoPoolWindow</code> 인데, 파일 전체가 스무 줄 남짓입니다.</p>
+
+<pre><code><span class="kw">internal object</span> <span class="typ">VideoPoolWindow</span> {
+
+    <span class="kw">fun</span> <span class="fn">keepIndices</span>(active: <span class="typ">Int</span>, size: <span class="typ">Int</span>, poolSize: <span class="typ">Int</span>): <span class="typ">Set</span>&lt;<span class="typ">Int</span>&gt; {
+        <span class="kw">if</span> (size &lt;= 0 || poolSize &lt;= 0) <span class="kw">return</span> emptySet()
+        <span class="kw">val</span> clampedActive = active.coerceIn(0, size - 1)
+        <span class="kw">val</span> backward = (poolSize - 1) / 2
+        <span class="kw">val</span> forward = poolSize / 2
+        <span class="kw">return</span> (clampedActive - backward..clampedActive + forward)
+            .filter { it <span class="kw">in</span> 0 <span class="kw">until</span> size }
+            .toSet()
+    }
+}</code></pre>
+
+<p><code>backward</code> 와 <code>forward</code> 를 다르게 나눈 게 이 함수의 전부입니다. 풀 크기가 짝수면 앞뒤로 똑같이 나눌 수 없는데, 이때 <strong>뒤쪽(다음 영상)을 한 칸 더</strong> 가져갑니다. 사용자가 주로 아래로 넘기니까 다음 영상을 미리 버퍼링해 두는 가치가 더 크거든요.</p>
+
+<svg id="fig-window" viewBox="0 0 700 300" style="width:100%;height:auto;display:block;margin:10px 0 6px;" role="img"
+     aria-label="영상 8개 목록에서 활성 인덱스가 0, 3, 7일 때 유지되는 창. 풀 크기 4의 비대칭도 함께 표시">
+  <style>
+    #fig-window .cO  { fill:var(--grey-100); stroke:var(--grey-200); stroke-width:1; }
+    #fig-window .cK  { fill:var(--toss-blue-light); stroke:var(--toss-blue-border); stroke-width:1.4; }
+    #fig-window .cA  { fill:var(--toss-blue); stroke:var(--toss-blue); stroke-width:1.4; }
+    #fig-window .lb  { font:600 13px var(--font-body); fill:var(--grey-600); }
+    #fig-window .lbA { font:700 13px var(--font-body); fill:#fff; }
+    #fig-window .rl  { font:700 11.5px var(--font-code); fill:var(--grey-800); }
+    #fig-window .kp  { font:600 11.5px var(--font-code); fill:var(--grey-600); }
+    #fig-window .hd  { font:600 11px var(--font-body); fill:var(--grey-500); }
+    #fig-window .an  { font:600 10.5px var(--font-body); fill:var(--toss-blue); }
+    #fig-window .br  { fill:none; stroke:var(--toss-blue); stroke-width:1.4; }
+  </style>
+
+  <text x="14" y="18" class="hd">영상 인덱스 (목록 길이 8). 진한 칸이 활성, 연한 칸이 창에 남는 슬롯</text>
+
+  <g>
+    <text x="14" y="56" class="rl">active 0</text>
+    <rect x="104" y="32" width="52" height="36" rx="6" class="cA"/>
+    <text x="130" y="56" class="lbA" text-anchor="middle">0</text>
+    <rect x="162" y="32" width="52" height="36" rx="6" class="cK"/>
+    <text x="188" y="56" class="lb" text-anchor="middle">1</text>
+    <rect x="220" y="32" width="52" height="36" rx="6" class="cO"/>
+    <text x="246" y="56" class="lb" text-anchor="middle">2</text>
+    <rect x="278" y="32" width="52" height="36" rx="6" class="cO"/>
+    <text x="304" y="56" class="lb" text-anchor="middle">3</text>
+    <rect x="336" y="32" width="52" height="36" rx="6" class="cO"/>
+    <text x="362" y="56" class="lb" text-anchor="middle">4</text>
+    <rect x="394" y="32" width="52" height="36" rx="6" class="cO"/>
+    <text x="420" y="56" class="lb" text-anchor="middle">5</text>
+    <rect x="452" y="32" width="52" height="36" rx="6" class="cO"/>
+    <text x="478" y="56" class="lb" text-anchor="middle">6</text>
+    <rect x="510" y="32" width="52" height="36" rx="6" class="cO"/>
+    <text x="536" y="56" class="lb" text-anchor="middle">7</text>
+  </g>
+  <text x="590" y="56" class="kp">{0, 1}</text>
+
+  <g>
+    <text x="14" y="116" class="rl">active 3</text>
+    <rect x="104" y="92" width="52" height="36" rx="6" class="cO"/>
+    <text x="130" y="116" class="lb" text-anchor="middle">0</text>
+    <rect x="162" y="92" width="52" height="36" rx="6" class="cO"/>
+    <text x="188" y="116" class="lb" text-anchor="middle">1</text>
+    <rect x="220" y="92" width="52" height="36" rx="6" class="cK"/>
+    <text x="246" y="116" class="lb" text-anchor="middle">2</text>
+    <rect x="278" y="92" width="52" height="36" rx="6" class="cA"/>
+    <text x="304" y="116" class="lbA" text-anchor="middle">3</text>
+    <rect x="336" y="92" width="52" height="36" rx="6" class="cK"/>
+    <text x="362" y="116" class="lb" text-anchor="middle">4</text>
+    <rect x="394" y="92" width="52" height="36" rx="6" class="cO"/>
+    <text x="420" y="116" class="lb" text-anchor="middle">5</text>
+    <rect x="452" y="92" width="52" height="36" rx="6" class="cO"/>
+    <text x="478" y="116" class="lb" text-anchor="middle">6</text>
+    <rect x="510" y="92" width="52" height="36" rx="6" class="cO"/>
+    <text x="536" y="116" class="lb" text-anchor="middle">7</text>
+  </g>
+  <text x="590" y="116" class="kp">{2, 3, 4}</text>
+  <path d="M220 134 V142 H246" class="br"/>
+  <path d="M336 134 V142 H310" class="br"/>
+  <text x="186" y="160" class="an" text-anchor="middle">뒤로 1</text>
+  <text x="372" y="160" class="an" text-anchor="middle">앞으로 1</text>
+
+  <g>
+    <text x="14" y="200" class="rl">active 7</text>
+    <rect x="104" y="176" width="52" height="36" rx="6" class="cO"/>
+    <text x="130" y="200" class="lb" text-anchor="middle">0</text>
+    <rect x="162" y="176" width="52" height="36" rx="6" class="cO"/>
+    <text x="188" y="200" class="lb" text-anchor="middle">1</text>
+    <rect x="220" y="176" width="52" height="36" rx="6" class="cO"/>
+    <text x="246" y="200" class="lb" text-anchor="middle">2</text>
+    <rect x="278" y="176" width="52" height="36" rx="6" class="cO"/>
+    <text x="304" y="200" class="lb" text-anchor="middle">3</text>
+    <rect x="336" y="176" width="52" height="36" rx="6" class="cO"/>
+    <text x="362" y="200" class="lb" text-anchor="middle">4</text>
+    <rect x="394" y="176" width="52" height="36" rx="6" class="cO"/>
+    <text x="420" y="200" class="lb" text-anchor="middle">5</text>
+    <rect x="452" y="176" width="52" height="36" rx="6" class="cK"/>
+    <text x="478" y="200" class="lb" text-anchor="middle">6</text>
+    <rect x="510" y="176" width="52" height="36" rx="6" class="cA"/>
+    <text x="536" y="200" class="lbA" text-anchor="middle">7</text>
+  </g>
+  <text x="590" y="200" class="kp">{6, 7}</text>
+
+  <line x1="14" y1="228" x2="686" y2="228" stroke="var(--grey-200)" stroke-width="1"/>
+  <text x="14" y="248" class="hd">풀 크기 4: 같은 자리에서 뒤가 하나 더 붙는다</text>
+
+  <g opacity="0.5">
+    <text x="14" y="282" class="rl">poolSize 4</text>
+    <rect x="104" y="258" width="52" height="36" rx="6" class="cO"/>
+    <text x="130" y="282" class="lb" text-anchor="middle">0</text>
+    <rect x="162" y="258" width="52" height="36" rx="6" class="cO"/>
+    <text x="188" y="282" class="lb" text-anchor="middle">1</text>
+    <rect x="220" y="258" width="52" height="36" rx="6" class="cK"/>
+    <text x="246" y="282" class="lb" text-anchor="middle">2</text>
+    <rect x="278" y="258" width="52" height="36" rx="6" class="cA"/>
+    <text x="304" y="282" class="lbA" text-anchor="middle">3</text>
+    <rect x="336" y="258" width="52" height="36" rx="6" class="cK"/>
+    <text x="362" y="282" class="lb" text-anchor="middle">4</text>
+    <rect x="394" y="258" width="52" height="36" rx="6" class="cK"/>
+    <text x="420" y="282" class="lb" text-anchor="middle">5</text>
+    <rect x="452" y="258" width="52" height="36" rx="6" class="cO"/>
+    <text x="478" y="282" class="lb" text-anchor="middle">6</text>
+    <rect x="510" y="258" width="52" height="36" rx="6" class="cO"/>
+    <text x="536" y="282" class="lb" text-anchor="middle">7</text>
+  </g>
+  <text x="590" y="282" class="kp">{2, 3, 4, 5}</text>
+</svg>
+<div class="img-caption">풀 크기 3일 때 활성 인덱스별로 유지되는 창. 양 끝에서는 범위를 벗어난 칸이 잘려 나갈 뿐, 반대쪽으로 넓어지지 않는다.</div>
+
+
+<table class="metrics-table">
+    <thead>
+        <tr><th>poolSize</th><th>목록 중간에서 유지하는 인덱스</th><th>의미</th></tr>
+    </thead>
+    <tbody>
+        <tr><td class="metric-label">1</td><td><code>{active}</code></td><td>저사양 기기. 현재만</td></tr>
+        <tr><td class="metric-label">2</td><td><code>{active, active+1}</code></td><td>앞을 버리고 뒤를 택함</td></tr>
+        <tr><td class="metric-label">3</td><td><code>{active-1, active, active+1}</code></td><td>기본값</td></tr>
+        <tr><td class="metric-label">4</td><td><code>{active-1, active, active+1, active+2}</code></td><td>뒤가 하나 더</td></tr>
+    </tbody>
+</table>
+
+<p>목록 양 끝에서는 범위를 벗어난 인덱스를 <strong>버리기만 하고 창을 안쪽으로 밀지 않습니다</strong>. 첫 페이지에서 <code>{-1, 0, 1}</code> 이 나오면 <code>{0, 1}</code> 로 줄어들 뿐, <code>{0, 1, 2}</code> 로 넓히지 않아요. 끝에는 미리 받아 둘 영상이 애초에 없으니, 반대쪽으로 넓히면 쓰지도 않을 인스턴스를 하나 더 만드는 셈입니다.</p>
+
+<h3 id="h3-1">상한은 기기가 정한다</h3>
+
+<p>화면이 요청한 풀 크기는 상한이 아니라 희망값입니다. 실제 값은 기기 프로파일과 비교해서 작은 쪽으로 정해집니다.</p>
+
+<pre><code><span class="kw">private val</span> poolSize: <span class="typ">Int</span> = requestedPoolSize.coerceAtMost(profile.poolSize)
+
+<span class="cmt">// VideoDeviceProfile.forDevice()</span>
+<span class="kw">val</span> lowRam = am?.isLowRamDevice ?: <span class="kw">false</span>
+<span class="kw">val</span> memoryClassMb = am?.memoryClass ?: <span class="typ">Int</span>.MAX_VALUE
+<span class="kw">return if</span> (lowRam || memoryClassMb &lt;= 128) LOW <span class="kw">else</span> NORMAL</code></pre>
+
+<p>프로파일은 풀 크기만 정하는 게 아니라 버퍼 예산과 화질 상한까지 함께 정합니다. 여기서 눈여겨볼 건 <strong>media3 기본값보다 낮춰 잡았다</strong>는 점이에요. <code>DefaultLoadControl</code> 의 기본 버퍼는 50초/50초/1초/2초인데(이 글의 media3 수치는 모두 <strong>1.10.1</strong> 기준입니다. 1.4.1 만 해도 뒤 두 값이 2.5초/5초였습니다)<sup class="footnote-ref" id="ref-2"><a href="#fn2">[2]</a></sup>, 50초를 그대로 두면 창 안의 세 인스턴스가 각자 50초를 선행 적재합니다. 대역폭과 최악 버퍼 길이를 함께 줄이려고 20초로 낮춘 것입니다.</p>
+
+<p>다만 정확히 해 둘 것이 있어요. 여기서 손댄 건 <strong>시간 축뿐</strong>입니다. media3 에서 실제 메모리 상한은 <code>targetBufferBytes</code> 인데 <code>toLoadControl()</code> 은 그걸 부르지 않아 기본값(<code>C.LENGTH_UNSET</code>, 트랙별 계산 폴백)으로 남아 있습니다. 시간을 줄이면 선행 적재량이 줄어 메모리 피크도 따라 낮아지지만, 바이트 상한 자체는 아직 조정하지 않았습니다. 실측 후 손볼 후보입니다.</p>
+
+<table class="metrics-table">
+    <thead>
+        <tr><th>항목</th><th>media3 1.10.1 기본</th><th>NORMAL</th><th>LOW</th></tr>
+    </thead>
+    <tbody>
+        <tr><td class="metric-label">poolSize</td><td>해당 없음</td><td>3</td><td><span class="delta delta-neutral">1</span></td></tr>
+        <tr><td class="metric-label">minBufferMs</td><td>50,000</td><td><span class="delta delta-good">20,000</span></td><td><span class="delta delta-good">10,000</span></td></tr>
+        <tr><td class="metric-label">maxBufferMs</td><td>50,000</td><td><span class="delta delta-good">20,000</span></td><td><span class="delta delta-good">10,000</span></td></tr>
+        <tr><td class="metric-label">bufferForPlaybackMs</td><td>1,000</td><td>1,000</td><td>1,000</td></tr>
+        <tr><td class="metric-label">재버퍼 후 재개</td><td>2,000</td><td><span class="delta delta-good">1,000</span></td><td><span class="delta delta-good">1,500</span></td></tr>
+        <tr><td class="metric-label">화질 배율</td><td>제한 없음</td><td>1.0</td><td>0.5</td></tr>
+        <tr><td class="metric-label">긴 변 상한</td><td>제한 없음</td><td>1,920 px</td><td>1,024 px</td></tr>
+        <tr><td class="metric-label">비트레이트 상한</td><td>제한 없음</td><td>제한 없음</td><td>2.5 Mbps</td></tr>
+    </tbody>
+</table>
+
+<p>표에서 한 칸만 방향이 반대입니다. <code>재버퍼 후 재개</code> 는 LOW가 NORMAL보다 <em>깁니다</em>(1,500 대 1,000). 저사양 기기에서 재버퍼 직후 너무 빨리 재개하면 곧바로 다시 끊기기 때문에, 조금 더 받아 두고 시작합니다. 기본값 2,000보다는 여전히 짧고요.</p>
+
+<p>화질 상한은 고정 숫자가 아니라 <strong>실제로 그릴 크기에서 계산</strong>합니다. 이게 <code>renderSize</code> 를 생성자 필수 인자로 올린 이유예요. 110 &times; 165 dp 카드에 1080p 트랙을 받아 놓고 축소해 그리는 건 대역폭과 디코딩 비용을 그냥 버리는 일입니다.</p>
+
+<pre><code><span class="kw">internal fun</span> <span class="typ">TrackSelectionParameters</span>.<span class="fn">withProfileCaps</span>(
+    profile: <span class="typ">VideoDeviceProfile</span>,
+    baseWidthPx: <span class="typ">Int</span>,
+    baseHeightPx: <span class="typ">Int</span>,
+): <span class="typ">TrackSelectionParameters</span> {
+    <span class="kw">val</span> maxWidth = (baseWidthPx * profile.videoSizeFraction).roundToInt()
+        .coerceIn(1, profile.maxVideoLongSidePx)
+    <span class="kw">val</span> maxHeight = (baseHeightPx * profile.videoSizeFraction).roundToInt()
+        .coerceIn(1, profile.maxVideoLongSidePx)
+    <span class="kw">return</span> buildUpon()
+        .setMaxVideoSize(maxWidth, maxHeight)
+        .setMaxVideoBitrate(profile.maxVideoBitrate)
+        .build()
+}</code></pre>
+
+<h3 id="h3-2">창 밖으로 나가면 <code>stop()</code> 까지</h3>
+
+<p>바인딩을 푸는 코드는 세 줄인데, 그 세 줄이 각각 다른 일을 합니다.</p>
+
+<pre><code><span class="kw">private fun</span> <span class="fn">unbind</span>(videoIndex: <span class="typ">Int</span>) {
+    bindings.remove(videoIndex)?.let {
+        it.player.playWhenReady = <span class="kw">false</span>
+        stateStore.onUnbound(it.player, videoIndex)
+        it.player.stop()
+    }
+}</code></pre>
+
+<p><code>playWhenReady = false</code> 만으로는 부족합니다. 일시정지된 플레이어는 여전히 미디어를 내려받고 디코더를 잡고 있어요. <code>stop()</code> 까지 해야 창 밖으로 밀린 플레이어가 로딩과 디코더 점유를 실제로 놓습니다. 그 사이에 있는 <code>onUnbound</code> 는 상태 저장소에서 그 슬롯의 기록을 지우는데, 이게 다음 절의 주제입니다.</p>
+
+<p>인스턴스 자체는 버리지 않습니다. <code>obtainIdlePlayer()</code> 가 놀고 있는 인스턴스를 먼저 찾고, 없을 때만 새로 만들되 <code>poolSize</code> 에 도달하면 <code>null</code> 을 돌려줍니다. 재사용 쪽 계약은 <code>탭 대상을 계속 바꿔도 플레이어는 하나만 만든다</code> 가 직접 확인하고, 상한에 걸렸을 때의 동작은 <code>poolSize 1 이면 창에 슬롯이 하나만 남는다</code> 가 받습니다.</p>
+
+<h2 id="section-4">4. 상태는 플레이어에 매달지 않는다</h2>
+
+<p>인스턴스를 돌려 쓰기 시작하면 바로 따라오는 문제가 있습니다. <strong>같은 플레이어가 어제는 A 영상을, 지금은 B 영상을 틀고 있다</strong>는 것. 그래서 상태를 플레이어에 매달면 안 됩니다. 스와이프 한 번을 끝까지 따라가 보면 이 설계가 왜 필요한지 보입니다.</p>
+
+<div class="content-box">
+    <div class="content-box-title">스와이프 한 번의 경로</div>
+    <ul class="checklist">
+        <li><span class="checklist-num">1</span><span><code>VerticalPager</code> 의 <code>settledPage</code> 가 바뀐다. <code>snapshotFlow</code> 가 이를 잡아 먼저 로그용 콜백을 쏘고, 그 다음 <code>controller.setActiveVideo(page)</code> 를 호출한다</span></li>
+        <li><span class="checklist-num">2</span><span><code>VideoPool</code> 이 <code>activeIndex</code> 를 갱신하고, 바뀌었으면 <code>userPaused</code> 를 지우고 <code>ticksHandler.onEntered()</code> 로 진입 횟수를 올린다</span></li>
+        <li><span class="checklist-num">3</span><span><code>keepIndices</code> 로 새 창을 계산한다</span></li>
+        <li><span class="checklist-num">4</span><span>창 밖 슬롯을 <code>unbind</code> 하고, 창 안의 빈 슬롯에 <code>bind</code> 한다. <code>bind</code> 는 <code>stop()</code> &rarr; <code>setMediaItem()</code> &rarr; <code>prepare()</code> 순서로 돌고, 상태 저장소에는 <code>Buffering</code> 으로 먼저 적어 둔다</span></li>
+        <li><span class="checklist-num">5</span><span>활성이 아닌 슬롯은 재생 위치를 0으로 되돌리고 멈춘다. 활성 슬롯은 활성이 <em>바뀐</em> 경우에만 재생을 시작한다</span></li>
+        <li><span class="checklist-num">6</span><span>플레이어 리스너가 <code>onPlaybackStateChanged</code> 등으로 응답하면 <code>VideoStateStore.publish</code> 가 그 플레이어가 들고 있는 슬롯을 찾아 상태를 갱신한다</span></li>
+    </ul>
+</div>
+
+<p>5번의 "활성이 바뀐 경우에만" 이 은근히 중요합니다. 같은 인덱스로 <code>setActiveVideo</code> 가 다시 불릴 일이 꽤 있는데(목록이 갱신되거나 화면이 재구성될 때), 여기서 무조건 <code>playWhenReady = true</code> 로 덮으면 <strong>사용자가 탭해서 멈춰 둔 영상이 혼자 다시 재생</strong>됩니다.</p>
+
+<h3 id="h3-3">상태 저장소의 비대칭</h3>
+
+<p><code>VideoStateStore</code> 는 세 개의 맵을 들고 있는데, 키가 서로 다릅니다.</p>
+
+<pre><code><span class="kw">private val</span> loaded = mutableMapOf&lt;<span class="typ">ExoPlayer</span>, <span class="typ">Slot</span>&gt;()
+<span class="kw">private val</span> states = mutableStateMapOf&lt;<span class="typ">Int</span>, <span class="typ">VideoState</span>&gt;()
+<span class="kw">private val</span> audioAvailability = mutableStateMapOf&lt;<span class="typ">String</span>, <span class="typ">Boolean</span>&gt;()
+
+<span class="kw">private data class</span> <span class="typ">Slot</span>(<span class="kw">val</span> videoIndex: <span class="typ">Int</span>, <span class="kw">val</span> item: <span class="typ">VideoItem</span>)</code></pre>
+
+<p><code>loaded</code> 는 플레이어를 키로 씁니다. 리스너 콜백은 플레이어 단위로 오니까, 그걸 슬롯으로 되짚으려면 이 방향이 필요해요. <code>states</code> 는 슬롯 번호가 키입니다. UI가 "3번 영상의 상태" 를 묻기 때문이죠. (이 글에서 "슬롯" 은 모두 영상 순번을 가리킵니다. 카드 번호라는 다른 좌표계는 7절에서 따로 등장합니다.) 그런데 <code>audioAvailability</code> 만 <strong>영상 ID</strong> 가 키입니다.</p>
+
+<blockquote><p>오디오 유무는 슬롯이 아니라 미디어의 성질이므로 영상 ID 로 기억한다.</p></blockquote>
+
+<p>이 차이가 만드는 결과는 이렇습니다. 오디오 트랙이 없는 영상을 봤다가 다른 영상으로 넘어갔다 돌아오면, 슬롯 번호도 플레이어 인스턴스도 달라질 수 있지만 "이 영상엔 소리가 없다" 는 사실은 그대로 남습니다. 덕분에 음소거 버튼을 다시 눌렀을 때 "소리가 없는 영상입니다" 안내를 곧바로 낼 수 있어요.</p>
+
+<h3 id="h3-4"><code>VideoHandle</code> 은 좌표가 아니라 티켓이다</h3>
+
+<p>UI가 플레이어를 받아 가는 유일한 통로는 <code>VideoHandle</code> 입니다. 이름만 보면 인덱스를 감싼 것 같지만, 실제로는 네 가지를 함께 묶은 티켓입니다.</p>
+
+<pre><code><span class="kw">override fun</span> <span class="fn">playerFor</span>(handle: <span class="typ">VideoHandle</span>): <span class="typ">ExoPlayer</span>? {
+    <span class="kw">return</span> pool.bindingAt(handle.videoIndex)
+        ?.takeIf { it.itemId == handle.itemId &amp;&amp; it.generation == handle.generation }
+        ?.player
+}</code></pre>
+
+<p>인덱스로 현재 바인딩을 찾은 다음, <strong>영상 ID와 세대 번호가 둘 다 맞아야</strong> 플레이어를 내줍니다. 세대는 바인딩이 새로 생길 때마다 증가하는 값이라(<code>PageBinding(player, video.id, i, ++generation)</code>), 같은 인덱스에 같은 영상이 다시 붙어도 이전 티켓은 무효가 됩니다. 여기에 <code>owner</code> 동일성까지 <code>equals</code> 에 포함돼 있어서, 컨트롤러가 통째로 교체된 경우의 낡은 참조도 걸러집니다.</p>
+
+<div class="highlight-box">이게 없으면 어떤 일이 생길까요. 스와이프 직후 아직 컴포지션이 정리되지 않은 이전 화면이 <code>playerFor</code> 를 호출해 <strong>지금 다른 영상을 틀고 있는 플레이어</strong>를 받아 갑니다. 그 화면이 표면을 붙이거나 정지를 호출하면, 사용자 눈에는 방금 넘어온 영상이 멈추거나 엉뚱한 자리에 뜹니다.</div>
+
+<h3 id="h3-5">재생 위치는 틱으로 흘린다</h3>
+
+<p>진행률 표시와 로그는 둘 다 "지금 몇 초" 를 필요로 하는데, 이 값은 Compose 상태로 관찰할 수 없습니다. <code>VideoTickHandler</code> 가 200ms 주기로 흘려 주는 이유예요. 다만 이 틱은 위치만 담고 있지 않습니다.</p>
+
+<pre><code><span class="kw">data class</span> <span class="typ">VideoTick</span>(
+    <span class="kw">val</span> itemId: <span class="typ">String</span>,
+    <span class="kw">val</span> positionMs: <span class="typ">Long</span>,
+    <span class="kw">val</span> durationMs: <span class="typ">Long</span>,
+    <span class="kw">val</span> entry: <span class="typ">Int</span>,   <span class="cmt">// 이 영상에 몇 번째로 진입했는가</span>
+    <span class="kw">val</span> lap: <span class="typ">Int</span>,     <span class="cmt">// 그 진입 안에서 몇 번째 반복인가</span>
+    <span class="kw">val</span> videoIndex: <span class="typ">Int</span>,
+)</code></pre>
+
+<p><code>entry</code> 는 활성이 바뀌거나(<code>setActiveVideo</code>) 처음부터 다시 재생할 때(<code>replayActive</code>) 올라가고, <code>lap</code> 은 자동 반복 전환(<code>DISCONTINUITY_REASON_AUTO_TRANSITION</code>)일 때만 올라갑니다. 이 두 숫자가 있어야 <code>ShortformProgressTracker</code> 가 "25% 지점 도달" 을 <strong>반복마다 한 번씩</strong> 정확히 셀 수 있어요. 숫자 없이 위치만 보면, 영상이 한 바퀴 돌아 다시 25%를 지날 때 이게 새 시청인지 같은 시청의 되감기인지 구분할 방법이 없습니다.</p>
+
+<p>틱을 안 내는 조건도 명시적입니다. 활성 바인딩이 없거나, 라이브 스트림이거나, 길이를 아직 모르면(<code>contentDuration &lt;= 0</code>) 아무것도 내지 않아요. 길이를 모르는 채로 틱을 내보내면 퍼센트 계산이 0으로 나누기가 됩니다.</p>
+
+<h2 id="section-5">5. 실패를 어떻게 분류했나</h2>
+
+<p>재생은 생각보다 자주 실패합니다. 네트워크가 끊기고, 서버가 5xx를 주고, 다른 앱이 카메라를 켜면서 코덱을 가져갑니다. 문제는 이 실패들이 <strong>사용자에게 같은 얼굴로 보이면 안 된다</strong>는 것입니다. 다시 눌러서 될 일이면 재시도 버튼을 줘야 하고, 몇 번을 눌러도 안 될 일이면 주지 말아야 해요.</p>
+
+<pre><code><span class="kw">private fun</span> <span class="fn">isRetryable</span>(errorCode: <span class="typ">Int</span>, httpStatus: <span class="typ">Int</span>?): <span class="typ">Boolean</span> {
+    <span class="kw">if</span> (httpStatus != <span class="kw">null</span>) {
+        <span class="kw">return</span> httpStatus == HTTP_REQUEST_TIMEOUT ||   <span class="cmt">// 408</span>
+            httpStatus == HTTP_TOO_MANY_REQUESTS ||        <span class="cmt">// 429</span>
+            httpStatus &gt;= HTTP_SERVER_ERROR_MIN           <span class="cmt">// 5xx</span>
+    }
+    <span class="kw">return</span> errorCode == <span class="typ">PlaybackException</span>.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ||
+        errorCode == <span class="typ">PlaybackException</span>.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT ||
+        errorCode == <span class="typ">PlaybackException</span>.ERROR_CODE_DECODING_RESOURCES_RECLAIMED
+}</code></pre>
+
+<p>HTTP 상태가 잡히면 그걸 우선합니다. 408(요청 시간초과), 429(요청 과다), 5xx는 서버 쪽 사정이라 잠시 후 다시 하면 될 수 있고, 403이나 404는 다시 눌러도 같은 답이 옵니다. HTTP 상태는 media3 예외 체인을 따라 내려가며 <code>InvalidResponseCodeException</code> 을 찾아 꺼냅니다.</p>
+
+<h3 id="h3-6">디코더 계열에서 하나만 재시도 대상인 이유</h3>
+
+<p>흥미로운 건 디코더 쪽입니다. 디코더 관련 에러 코드가 여럿인데 <strong>단 하나만</strong> 재시도 대상입니다.</p>
+
+<table class="metrics-table">
+    <thead>
+        <tr><th>코드</th><th>media3 원문 설명<sup class="footnote-ref" id="ref-3"><a href="#fn3">[3]</a></sup></th><th>판정</th></tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td class="metric-label">4006<br><span style="font-size:0.8rem;">RESOURCES_RECLAIMED</span></td>
+            <td>Caused by higher priority task reclaiming resources needed for decoding.</td>
+            <td><span class="delta delta-good">재시도</span></td>
+        </tr>
+        <tr>
+            <td class="metric-label">4001<br><span style="font-size:0.8rem;">DECODER_INIT_FAILED</span></td>
+            <td>Caused by a decoder initialization failure.</td>
+            <td><span class="delta delta-bad">제외</span></td>
+        </tr>
+        <tr>
+            <td class="metric-label">4004<br><span style="font-size:0.8rem;">DECODING_FORMAT_EXCEEDS_CAPABILITIES</span></td>
+            <td>Caused by trying to decode content whose format exceeds the capabilities of the device.</td>
+            <td><span class="delta delta-bad">제외</span></td>
+        </tr>
+        <tr>
+            <td class="metric-label">4005<br><span style="font-size:0.8rem;">DECODING_FORMAT_UNSUPPORTED</span></td>
+            <td>Caused by trying to decode content whose format is not supported.</td>
+            <td><span class="delta delta-bad">제외</span></td>
+        </tr>
+    </tbody>
+</table>
+
+<p>표에 없는 <code>4002 DECODER_QUERY_FAILED</code> 와 <code>4003 DECODING_FAILED</code> 도 같은 이유로 제외입니다. 위 표는 전수가 아니라 판정이 갈리는 자리만 추린 것이에요.</p>
+
+<p>4006은 원문이 "higher priority task 가 디코딩에 필요한 자원을 회수했다" 라고 명시합니다. 사유가 외부에 있고, 그 사유가 사라지면 그대로 다시 재생돼요. 다른 앱이 카메라를 켜거나 전화가 오면 생기는 일이니 재시도가 성공할 여지가 충분합니다.</p>
+
+<p>반면 4001은 "디코더 초기화 실패" 라고만 말합니다. 인스턴스 상한을 넘어선 일시적 실패와, 그 포맷의 디코더가 기기에 아예 없는 영구적 실패가 <strong>같은 코드로 옵니다</strong>. 둘을 구분할 정보가 예외에 없습니다. 그래서 <strong>더 나쁜 쪽(영구 실패)을 기본으로 가정</strong>했어요. 일시적 실패를 영구로 오인하면 재시도 한 번을 잃지만, 반대로 두면 눌러도 성공할 수 없는 버튼을 계속 보여주게 되니까요. 배포 후 4001의 실제 분포를 보고 되돌릴 수 있는 결정입니다. 4004와 4005는 이름 자체가 "이 기기로는 안 된다" 라서 논의의 여지가 없고요.</p>
+
+<h3 id="h3-7">실패는 덮이지 않는다</h3>
+
+<p>또 하나의 규칙은 상태 전이에 있습니다.</p>
+
+<pre><code><span class="kw">fun</span> <span class="fn">next</span>(current: <span class="typ">VideoState</span>?, incoming: <span class="typ">VideoState</span>): <span class="typ">VideoState</span> {
+    <span class="kw">return if</span> (current <span class="kw">is</span> <span class="typ">VideoState</span>.Failed &amp;&amp; incoming !<span class="kw">is</span> <span class="typ">VideoState</span>.Failed) current <span class="kw">else</span> incoming
+}</code></pre>
+
+<p>한 번 <code>Failed</code> 가 되면 새로운 <code>Failed</code> 로만 갱신되고, <code>Idle</code> 이나 <code>Buffering</code> 으로는 덮이지 않습니다. 이게 필요한 이유는 media3 의 콜백 순서에 있습니다. 공식 문서가 <em>"When a failure occurs, this method will be called immediately before the playback state transitions to <code>Player.STATE_IDLE</code>"</em> 라고 못 박고 있습니다.<sup class="footnote-ref" id="ref-7"><a href="#fn7">[7]</a></sup> 즉 <code>onPlayerError</code> 바로 뒤에 <code>onPlaybackStateChanged(STATE_IDLE)</code> 가 반드시 따라옵니다. sticky 처리가 없으면 <strong>에러 화면이 떴다가 곧바로 아무 일 없다는 듯 사라집니다.</strong></p>
+
+<p>이 절의 규칙들은 테스트 이름으로 그대로 남아 있습니다. <code>코덱 자원 회수는 일시적 사유이므로 재시도 대상이다</code>, <code>디코더 초기화 실패는 재시도해도 같은 결과이므로 재시도 대상이 아니다</code>, <code>실패 상태는 Buffering 전이에도 덮이지 않는다</code> 처럼요. <code>VideoStateMappingTest</code> 한 파일에 22개가 들어 있습니다.</p>
+
+<h2 id="section-6">6. 소리는 한 화면만 낸다</h2>
+
+<p>영상이 세 지면에 생기면서 새로 생긴 문제가 있습니다. <strong>라이브커머스가 PiP로 떠 있는 상태에서 숏폼에 들어가면 소리가 겹칩니다.</strong> 둘 다 자기 소리를 낼 권리가 있다고 믿으니까요.</p>
+
+<p>해결은 점유자를 하나만 두는 것입니다. <code>KurlyAudioManager</code> 는 <code>@Singleton</code> 이고, 들고 있는 건 현재 점유자 하나뿐이에요.</p>
+
+<pre><code><span class="kw">fun</span> <span class="fn">claim</span>(owner: <span class="typ">AudioOwner</span>) {
+    audioOwner.value = owner
+}
+
+<span class="kw">fun</span> <span class="fn">release</span>(owner: <span class="typ">AudioOwner</span>) {
+    audioOwner.compareAndSet(owner, <span class="kw">null</span>)
+}
+
+<span class="kw">fun</span> <span class="fn">takenByOther</span>(self: <span class="typ">AudioOwnerType</span>): <span class="typ">Flow</span>&lt;<span class="typ">Boolean</span>&gt; {
+    <span class="kw">return</span> audioOwner.map { it != <span class="kw">null</span> &amp;&amp; it.type != self }
+}</code></pre>
+
+<p><code>release</code> 가 단순 대입이 아니라 <code>compareAndSet</code> 인 게 핵심입니다. 화면 전환 순서를 생각해 보면 이유가 보여요. 사라지는 화면의 <code>ON_PAUSE</code> 가 먼저 오고, 새 화면이 <code>claim</code> 을 하고, 그 다음에야 사라진 화면의 <code>onDispose</code> 가 도착합니다. 단순 대입이면 <strong>새 화면이 방금 가져간 점유를 이전 화면이 지우고 갑니다.</strong></p>
+
+<svg id="fig-audio" viewBox="0 0 680 118" style="width:100%;height:auto;display:block;margin:14px 0 6px;" role="img"
+     aria-label="이전 화면의 해제 신호가 늦게 도착해도 compareAndSet 때문에 새 화면의 점유가 유지되는 순서도">
+  <defs>
+    <marker id="fig-audio-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0 1 L9 5 L0 9 z" fill="var(--grey-400)"/>
+    </marker>
+  </defs>
+  <style>
+    #fig-audio .pl  { fill:#fff; stroke:var(--grey-300); stroke-width:1.3; }
+    #fig-audio .plA { fill:var(--toss-blue); stroke:var(--toss-blue); stroke-width:1.3; }
+    #fig-audio .pt  { font:600 11.5px var(--font-body); fill:var(--grey-800); }
+    #fig-audio .ptA { font:700 11.5px var(--font-body); fill:#fff; }
+    #fig-audio .ps  { font:500 10.5px var(--font-code); fill:var(--grey-500); }
+    #fig-audio .psA { font:600 10.5px var(--font-code); fill:rgba(255,255,255,.88); }
+    #fig-audio .own { font:700 11px var(--font-code); fill:var(--grey-700); }
+    #fig-audio .cn  { fill:none; stroke:var(--grey-400); stroke-width:1.3; marker-end:url(#fig-audio-ar); }
+    #fig-audio .hd  { font:600 10px var(--font-body); fill:var(--grey-500); letter-spacing:.05em; }
+  </style>
+  <rect x="6"   y="12" width="150" height="44" rx="10" class="pl"/>
+  <text x="81"  y="32" class="pt" text-anchor="middle">이전 화면 ON_PAUSE</text>
+  <text x="81"  y="47" class="ps" text-anchor="middle">점유는 아직 #a</text>
+  <rect x="176" y="12" width="150" height="44" rx="10" class="pl"/>
+  <text x="251" y="32" class="pt" text-anchor="middle">새 화면 진입</text>
+  <text x="251" y="47" class="ps" text-anchor="middle">claim(#b)</text>
+  <rect x="346" y="12" width="154" height="44" rx="10" class="pl"/>
+  <text x="423" y="32" class="pt" text-anchor="middle">이전 화면 onDispose</text>
+  <text x="423" y="47" class="ps" text-anchor="middle">release(#a)</text>
+  <rect x="520" y="12" width="154" height="44" rx="10" class="plA"/>
+  <text x="597" y="32" class="ptA" text-anchor="middle">compareAndSet 불일치</text>
+  <text x="597" y="47" class="psA" text-anchor="middle">아무 일도 없음</text>
+  <line x1="158" y1="34" x2="173" y2="34" class="cn"/>
+  <line x1="328" y1="34" x2="343" y2="34" class="cn"/>
+  <line x1="502" y1="34" x2="517" y2="34" class="cn"/>
+  <line x1="6" y1="76" x2="674" y2="76" stroke="var(--grey-200)" stroke-width="1" stroke-dasharray="3 3"/>
+  <text x="6"   y="94" class="hd">실제 점유자</text>
+  <text x="81"  y="110" class="own" text-anchor="middle">#a</text>
+  <text x="251" y="110" class="own" text-anchor="middle">#b</text>
+  <text x="423" y="110" class="own" text-anchor="middle">#b</text>
+  <text x="597" y="110" class="own" text-anchor="middle" fill="var(--toss-blue)">#b</text>
+</svg>
+<div class="img-caption">해제 신호가 가장 늦게 도착해도 점유자는 바뀌지 않는다. 단순 대입이었다면 마지막 칸이 null 이 된다.</div>
+
+<p>그리고 <code>AudioOwner</code> 는 종류만으로 식별하지 않습니다. <code>AudioOwner(type, id = UUID.randomUUID().toString())</code> 처럼 화면 인스턴스마다 고유한 id 를 함께 듭니다. 같은 <code>type</code> 을 쓰는 화면이 둘 이상 살아 있을 수 있기 때문입니다. 홈에서 들어간 숏폼 위에 상품상세를 열고 거기서 또 숏폼을 열면, <code>SHORTFORM</code> 화면이 두 개 겹칩니다. 종류만으로 식별하면 뒤로가기 도중 사라지는 화면의 지연된 해제 신호가 <strong>이미 점유를 가져간 다른 숏폼의 점유까지 풀어 버립니다</strong>.</p>
+
+<p>다만 <code>takenByOther</code> 는 <em>다른 종류</em> 가 점유했을 때만 <code>true</code> 를 냅니다. 같은 종류의 다른 인스턴스는 어차피 백그라운드라 소리를 내지 않거든요.</p>
+
+<h3 id="h3-8">웹뷰 쪽은 한 번 더 밀어 넣어야 한다</h3>
+
+<p>숏폼 쪽 대응은 간단합니다. <code>audioTakenByOther</code> 가 <code>true</code> 가 되면 <code>controller.setMuted(true)</code> 를 부르면 끝이에요. 라이브커머스는 Grip 웹뷰라 사정이 다릅니다.</p>
+
+<pre><code><span class="cmt">// LiveCommerceWebViewViewModel</span>
+<span class="kw">private fun</span> <span class="fn">applyMute</span>(occupied: <span class="typ">Boolean</span>) {
+    <span class="kw">if</span> (mutedByOtherAudio == occupied) <span class="kw">return</span>
+    mutedByOtherAudio = occupied
+    <span class="kw">if</span> (occupied) mediaController.setMute(<span class="kw">true</span>)
+}
+
+<span class="kw">fun</span> <span class="fn">reapplyMute</span>() {
+    <span class="kw">if</span> (!mutedByOtherAudio) <span class="kw">return</span>
+    mediaController.setMute(<span class="kw">true</span>)
+}</code></pre>
+
+<p>웹 플레이어의 재생 경로가 음소거 설정을 덮어쓰기 때문에, 재생 상태를 건드린 뒤에는 <code>reapplyMute()</code> 로 한 번 더 밀어 넣어야 합니다. 한 번 걸어 두면 유지되는 네이티브 플레이어와 다른 지점입니다.</p>
+
+<p>점유 반납도 빼먹으면 안 됩니다. <code>KurlyAudioManager</code> 가 <code>@Singleton</code> 이라, 라이브커머스가 <code>onCleared</code> 에서 반납하지 않으면 화면이 사라진 뒤에도 점유자가 <code>LIVE_COMMERCE</code> 로 남습니다. 그러면 나중에 들어온 숏폼이 <strong>겹치는 소리가 하나도 없는데 강제 음소거</strong>됩니다.</p>
+
+<h2 id="section-7">7. 밟으면 아픈 것 넷</h2>
+
+<p>여기부터는 설계의 큰 줄기에서 벗어나 있지만, 밟으면 아픈 것들입니다.</p>
+
+<h3 id="h3-9">가. <code>Int</code> 두 개가 같은 표면에 있으면 반드시 섞인다</h3>
+
+<p>영상이 드문드문 섞인 지면을 생각해 봅시다. 카드 5개 중 1번과 4번만 영상이면, <strong>카드 번호</strong>와 <strong>영상 순번</strong>이라는 두 좌표계가 생깁니다. 4번 카드의 영상 순번은 1이에요. 둘 다 <code>Int</code> 라서, 한 인터페이스에 섞여 있으면 호출자가 조용히 엉뚱한 영상을 붙입니다. 컴파일러는 아무 말도 하지 않고요.</p>
+
+<svg id="fig-coord" viewBox="0 0 620 148" style="width:100%;height:auto;display:block;margin:12px 0 6px;" role="img"
+     aria-label="카드 5칸 중 1번과 4번만 영상일 때 카드 번호와 영상 순번이 어긋나는 것을 보여주는 그림">
+  <style>
+    #fig-coord .ce { fill:var(--grey-100); stroke:var(--grey-200); stroke-width:1; }
+    #fig-coord .cv { fill:var(--toss-blue-light); stroke:var(--toss-blue-border); stroke-width:1.4; }
+    #fig-coord .ax { font:700 11px var(--font-body); fill:var(--grey-800); }
+    #fig-coord .nu { font:700 13px var(--font-code); fill:var(--grey-900); }
+    #fig-coord .nd { font:500 12px var(--font-body); fill:var(--grey-400); }
+  </style>
+  <text x="8" y="26" class="ax">카드 번호</text>
+  <text x="8" y="132" class="ax">영상 순번</text>
+  <rect x="108" y="38" width="88" height="54" rx="7" class="ce"/>
+  <text x="152" y="26" class="nu" text-anchor="middle">0</text>
+  <text x="152" y="132" class="nd" text-anchor="middle">없음</text>
+  <rect x="208" y="38" width="88" height="54" rx="7" class="cv"/>
+  <text x="252" y="26" class="nu" text-anchor="middle">1</text>
+  <path d="M246 58 l13 7 l-13 7 z" fill="var(--toss-blue)"/>
+  <path d="M252 92 V116" stroke="var(--toss-blue)" stroke-width="1.3" stroke-dasharray="3 3" fill="none"/>
+  <text x="252" y="132" class="nu" text-anchor="middle" fill="var(--toss-blue)">0</text>
+  <rect x="308" y="38" width="88" height="54" rx="7" class="ce"/>
+  <text x="352" y="26" class="nu" text-anchor="middle">2</text>
+  <text x="352" y="132" class="nd" text-anchor="middle">없음</text>
+  <rect x="408" y="38" width="88" height="54" rx="7" class="ce"/>
+  <text x="452" y="26" class="nu" text-anchor="middle">3</text>
+  <text x="452" y="132" class="nd" text-anchor="middle">없음</text>
+  <rect x="508" y="38" width="88" height="54" rx="7" class="cv"/>
+  <text x="552" y="26" class="nu" text-anchor="middle">4</text>
+  <path d="M546 58 l13 7 l-13 7 z" fill="var(--toss-blue)"/>
+  <path d="M552 92 V116" stroke="var(--toss-blue)" stroke-width="1.3" stroke-dasharray="3 3" fill="none"/>
+  <text x="552" y="132" class="nu" text-anchor="middle" fill="var(--toss-blue)">1</text>
+</svg>
+<div class="img-caption">카드 4번의 영상 순번은 1이다. 두 줄의 숫자가 어긋나는데 타입은 둘 다 Int 다.</div>
+
+<p><code>SparseVideoController</code> 는 이 문제를 <strong>위임을 노출하지 않는 것</strong>으로 풉니다. <code>VideoController</code> 를 상속하거나 <code>by delegate</code> 로 펼치지 않고, 카드 번호만 받는 함수를 새로 정의해요. 영상 순번이 필요한 호출자는 <code>videoIndexAt(cardIndex)</code> 로 명시적으로 변환한 다음 <code>videoController</code> 프로퍼티를 씁니다. 변환을 건너뛸 수 없게 만든 것입니다.</p>
+
+<div class="content-box">
+    <div class="content-box-title">아직 호출부가 없습니다</div>
+    <p><code>SparseVideoController</code> 와 <code>SparseVideoPlaylist</code> 는 구현과 테스트(<code>SparseVideoControllerTest</code>, <code>SparseVideoControllerPlaybackTest</code>, <code>SparseVideoPlaylistTest</code>)까지 들어와 있지만, 이번 변경의 프로덕션 코드에서 부르는 곳은 아직 한 군데도 없습니다. 영상과 이미지가 섞이는 지면을 염두에 두고 먼저 설계해 둔 API 이고, 그 지면이 실제로 붙을 때 계약이 맞는지 확인하게 됩니다.</p>
+</div>
+
+<h3 id="h3-10">나. 가드를 호출자에게 맡기지 않는다</h3>
+
+<p><code>SparseVideoController.setSettledCard</code> 는 같은 카드로 다시 불리면 아무것도 하지 않습니다. 이 가드가 <strong>함수 안에</strong> 있는 게 중요해요.</p>
+
+<pre><code><span class="kw">fun</span> <span class="fn">setSettledCard</span>(cardIndex: <span class="typ">Int</span>) {
+    <span class="kw">val</span> current = playlist()
+    <span class="kw">if</span> (settledCard == cardIndex &amp;&amp; settledPlaylist == current) <span class="kw">return</span>
+    settledCard = cardIndex
+    settledPlaylist = current
+    delegate.preload(current.videoIndicesNear(cardIndex, MAX_CARD_DISTANCE))
+}</code></pre>
+
+<p><code>preload</code> 는 재생을 멈추고 위치를 0으로 되돌립니다. 가드를 호출자에게 맡기면, 목록이 갱신되거나 같은 카드에 재정착하는 것만으로 <strong>재생 중이던 영상이 처음으로 돌아갑니다</strong>. 호출자가 빠뜨릴 수 있는 가드는 호출자에게 주지 않는다는 원칙인데, 이 저장소에서는 <code>NavBackStack</code> 을 pop 하는 함수에도 같은 규칙이 적용돼 있죠.</p>
+
+<p>반대로 목록이 바뀌었으면 같은 카드라도 창을 다시 잡습니다. <code>setItems</code> 가 내용이 달라진 슬롯의 바인딩을 해제하니까, 여기서까지 막으면 그 카드가 빈 채로 남거든요. 그래서 <code>SparseVideoPlaylist</code> 는 <code>equals</code> 를 직접 구현해 "카드와 영상 매핑이 같고 영상 내용도 같으면 같은 목록" 이라는 계약을 명시합니다.</p>
+
+<h3 id="h3-11">다. 컨트롤러는 IO에서 만들고, 플레이어는 메인에서 만든다</h3>
+
+<p>media3 문서는 분명히 말합니다. <em>"ExoPlayer instances must be accessed from a single application thread."</em><sup class="footnote-ref" id="ref-4"><a href="#fn4">[4]</a></sup> 그런데 컨트롤러 생성 코드는 이렇게 생겼습니다.</p>
+
+<pre><code>controller = withContext(<span class="typ">Dispatchers</span>.IO) {
+    <span class="typ">DefaultVideoController</span>(context, poolSize, renderSize, loop)
+}.apply { setItems(latestItems) }</code></pre>
+
+<p>모순처럼 보이지만 아닙니다. <code>DefaultVideoController</code> 생성자는 <code>ExoPlayer</code> 를 만들지 않아요. 만드는 건 <code>VideoDataSourceFactory</code> 이고, 이게 <code>SimpleCache</code> 를 초기화하면서 <strong>디스크 I/O를 합니다</strong>(캐시 디렉터리 생성과 인덱스 데이터베이스 열기). 200MB LRU 캐시를 메인 스레드에서 여는 걸 피하려고 IO로 보낸 것입니다.</p>
+
+<p>실제 <code>ExoPlayer</code> 인스턴스는 <code>bindMissingInWindow</code> 안의 <code>createInstance()</code> 에서 처음 만들어지고, 그 경로는 <code>setActiveVideo</code> 와 <code>preload</code> 를 타고 들어옵니다. 둘 다 <code>@MainThread</code> 계약 위에 있습니다. <code>VideoController</code> 인터페이스에는 <code>@MainThread</code> 가 붙어 있고, 호출부는 컴포지션 본문(<code>KurlyVideo</code> 의 <code>itemAt</code>, <code>stateAt</code>, <code>handleAt</code>), <code>LaunchedEffect</code>(<code>setActiveVideo</code>), <code>LifecycleEventObserver</code>(<code>pause</code>, <code>resume</code>), 클릭 콜백(<code>toggleMuted</code>, <code>retry</code>)으로 흩어져 있습니다. 공통점은 <strong>전부 메인 스레드로 디스패치되는 자리</strong>라는 것입니다.</p>
+
+<p>다만 <code>@MainThread</code> 는 린트 힌트일 뿐 런타임이 강제하지 않습니다. 호출부가 늘어날 때 이 계약을 지켜 주는 건 어노테이션이 아니라 "컨트롤러를 Composable 바깥으로 들고 나가지 않는다" 는 사용 규칙이에요. <code>rememberVideoController</code> 가 컨트롤러를 오직 컴포지션 안에서만 만들고 <code>DisposableEffect</code> 로 같이 버리는 것도 그 규칙을 코드로 굳힌 것입니다.</p>
+
+<h3 id="h3-12">라. 헤더 주입은 <code>ResolvingDataSource</code> 로</h3>
+
+<p>컬리 미디어 CDN은 정적 <code>Referer</code> 헤더를 요구합니다. 문제는 이 헤더를 <strong>미디어 요청에만</strong> 붙여야 한다는 것인데, <code>MediaItem</code> 마다 헤더를 지정하는 방식은 호출부가 늘어날수록 빠뜨리기 쉽습니다. media3 가 공식 문서에서 제시하는 관용구가 정확히 이 상황을 위한 것이었어요.<sup class="footnote-ref" id="ref-5"><a href="#fn5">[5]</a></sup></p>
+
+<pre><code><span class="kw">internal object</span> <span class="typ">KVLMediaRefererResolver</span> : <span class="typ">ResolvingDataSource</span>.<span class="typ">Resolver</span> {
+
+    <span class="kw">override fun</span> <span class="fn">resolveDataSpec</span>(dataSpec: <span class="typ">DataSpec</span>): <span class="typ">DataSpec</span> {
+        <span class="kw">val</span> host = dataSpec.uri.host ?: <span class="kw">return</span> dataSpec
+        <span class="kw">if</span> (!<span class="typ">KVLMediaHost</span>.matches(host)) <span class="kw">return</span> dataSpec
+        <span class="kw">return</span> dataSpec.withAdditionalHeaders(
+            mapOf(<span class="typ">KVLMediaRefererHeader</span>.KEY <span class="kw">to</span> <span class="typ">KVLMediaRefererHeader</span>.VALUE)
+        )
+    }
+}</code></pre>
+
+<p>데이터소스 층에 한 번 꽂아 두면 모든 미디어 요청이 이 경로를 지납니다. 호스트 판정은 대소문자를 정규화한 뒤에 합니다. 호스트명은 대소문자를 구분하지 않으니까 그렇습니다.</p>
+
+<h2 id="section-8">8. 한계와 다음</h2>
+
+<h3 id="h3-13">media3 에는 이미 프리로드 매니저가 있다</h3>
+
+<p>글을 마무리하면서 확인한 사실을 그대로 적습니다. media3 에는 <code>DefaultPreloadManager</code> 가 있고, 공식 문서는 그 첫 문단에서 <em>"an app might show a carousel of short videos"</em> 를 정면 유스케이스로 듭니다.<sup class="footnote-ref" id="ref-6"><a href="#fn6">[6]</a></sup> <strong>이 구현을 시작할 때 저희는 그 존재를 검토하지 않았습니다.</strong></p>
+
+<p>그래서 "검토 후 배제했다" 고 쓰지 않겠습니다. 대신 지금 문서를 읽고 확인한 것만 적으면, 둘은 겹치지만 같은 문제를 풀지는 않습니다. 문서가 앱의 책임으로 명시하는 항목 중 첫 번째가 이것입니다.</p>
+
+<blockquote><p>Create the app's <code>ExoPlayer</code> objects by using the same <code>DefaultPreloadManager.Builder</code> object you use to create the preload manager.</p></blockquote>
+
+<p>즉 <code>DefaultPreloadManager</code> 는 <strong>어떤 항목을 얼마나 미리 받을지</strong>를 우선순위에 따라 관리하고, <code>MediaSource</code> 를 넘겨줍니다. 인스턴스를 몇 개 둘지, 어떤 슬롯에 붙일지, 그 슬롯의 상태와 실패를 어떻게 귀속할지는 여전히 앱의 몫이에요. 이 글이 다룬 <code>VideoPool</code> 의 일이 대부분 후자입니다. 대체재라기보다 아래위로 붙는 보완재에 가깝고, <strong>적어도</strong> <code>keepIndices</code> 가 창을 정하는 로직은 겹칩니다. 우선순위 랭킹과 적재량 제어까지 겹치는지는 문서만 읽고 단정할 수 없고, 실제로 붙여 봐야 압니다.</p>
+
+<table class="metrics-table">
+    <thead>
+        <tr><th>결정</th><th>DefaultPreloadManager</th><th>이 글의 VideoPool</th></tr>
+    </thead>
+    <tbody>
+        <tr><td class="metric-label">어떤 항목을 미리 받나</td><td>우선순위 랭킹</td><td><code>keepIndices</code> (겹침)</td></tr>
+        <tr><td class="metric-label">얼마나 받나</td><td>적재 상태 단계</td><td>창 크기로 간접</td></tr>
+        <tr><td class="metric-label">인스턴스를 몇 개 두나</td><td>앱 책임</td><td><code>poolSize</code> + 기기 프로파일</td></tr>
+        <tr><td class="metric-label">슬롯과 영상의 귀속</td><td>앱 책임</td><td><code>PageBinding</code> + <code>generation</code></td></tr>
+        <tr><td class="metric-label">실패 귀속과 재시도 판정</td><td>앱 책임</td><td><code>VideoStateStore</code></td></tr>
+    </tbody>
+</table>
+
+<p>다만 겹치는 그 부분을 라이브러리에 넘길 수 있다면 <code>VideoPool</code> 은 더 작아집니다. 다음 개선 후보로 올려 두었습니다. <code>DefaultPreloadManager</code> 가 <code>@UnstableApi</code> 라는 점은 결정적인 걸림돌은 아닙니다. <code>VideoPool</code> 도 이미 <code>@UnstableApi</code> 표면 위에 서 있거든요.</p>
+
+<h3 id="h3-14">아직 사용자에게 나가지 않았다</h3>
+
+<p>이 변경은 QA 진행 중이고 아직 배포되지 않았습니다. 그래서 이 글에는 첫 프레임 시간이나 버퍼링 비율 같은 운영 수치가 없습니다. 기획에 적힌 UX 가드레일(첫 프레임 p75 1.5초, 버퍼링 3% 미만, 스크롤 FPS p75 45 이상)은 <strong>지켜야 할 목표치이지 달성한 결과가 아닙니다.</strong> 특히 <code>VideoDeviceProfile</code> 의 임계값(<code>memoryClass &lt;= 128</code>)과 LOW 프로파일 값은 실기기 측정 없이 정한 보수적 추정이라, 배포 후 실측으로 다시 조정할 자리입니다.</p>
+
+<div class="summary-box">
+    <div class="summary-box-title">가져갈 것</div>
+    <p><strong>1. 인스턴스를 돌려 쓰는 순간 상태의 주인이 바뀝니다.</strong> 플레이어에 상태를 매달면 같은 인스턴스가 다른 영상을 틀 때 조용히 어긋납니다. 슬롯 번호, 콘텐츠 ID, 세대 번호 중 무엇을 키로 쓸지는 "그 사실이 무엇에 속하는가" 로 정합니다. 오디오 유무는 미디어의 성질이니 영상 ID, 재생 상태는 화면의 성질이니 슬롯 번호입니다.</p>
+    <p><strong>2. 재사용되는 자원의 참조에는 유효기간을 붙입니다.</strong> 인덱스만으로 플레이어를 내주면 낡은 참조를 막을 수 없습니다. 세대 번호 하나를 추가하는 비용은 <code>Long</code> 필드 하나인데, 막아 주는 건 재현하기 매우 어려운 부류의 버그입니다.</p>
+    <p><strong>3. 실패는 재시도 가능 여부로 나눕니다.</strong> 그리고 그 판정의 근거는 라이브러리 문서의 원문이어야 합니다. "디코더 에러니까 재시도" 같은 뭉뚱그린 분류는 성공할 수 없는 버튼을 사용자에게 보여줍니다.</p>
+    <p style="margin-bottom:0;"><strong>4. 모듈 경계는 의존성 선언에 드러납니다.</strong> <code>:video</code> 가 <code>:domain</code> 을 의존하지 않는다는 한 줄의 부재가, 이 모듈이 숏폼 전용이 아니라는 사실을 문서보다 강하게 보장합니다.</p>
+</div>
+
+<p>영상이 붙을 지면이 앞으로 더 생긴다면, 그 화면이 새로 작성할 것은 "무엇을 보여줄지" 뿐이어야 합니다. 몇 개를 살려 둘지는 이미 정해져 있어야 하고요. 이 글의 설계가 겨눈 지점이 거기입니다.</p>
+
+</article>
+
+
+<!-- ═══════════════════════════════════════════
+     Footnotes
+     ═══════════════════════════════════════════ -->
+<div class="article">
+    <div class="footnotes">
+        <ol>
+            <li id="fn1"><code>ERROR_CODE_DECODING_RESOURCES_RECLAIMED</code> (4006) 정의. androidx/media, <code>libraries/common/src/main/java/androidx/media3/common/PlaybackException.java</code> <a href="https://github.com/androidx/media/blob/1.10.1/libraries/common/src/main/java/androidx/media3/common/PlaybackException.java">github.com/androidx/media</a> <a href="#ref-1" class="fn-back">&#8617;</a></li>
+            <li id="fn2"><code>DefaultLoadControl</code> 기본 버퍼 상수와 <code>setBufferDurationsMs</code> 파라미터 정의. androidx/media, <code>libraries/exoplayer/src/main/java/androidx/media3/exoplayer/DefaultLoadControl.java</code> <a href="https://github.com/androidx/media/blob/1.10.1/libraries/exoplayer/src/main/java/androidx/media3/exoplayer/DefaultLoadControl.java">github.com/androidx/media</a> <a href="#ref-2" class="fn-back">&#8617;</a></li>
+            <li id="fn3">디코딩 계열 에러 코드 4001, 4004, 4005, 4006 의 원문 설명. 출처는 [1]과 같음 <a href="#ref-3" class="fn-back">&#8617;</a></li>
+            <li id="fn4">"ExoPlayer instances must be accessed from a single application thread." Android Developers, Getting started with ExoPlayer <a href="https://developer.android.com/media/media3/exoplayer/hello-world">developer.android.com</a> <a href="#ref-4" class="fn-back">&#8617;</a></li>
+            <li id="fn5"><code>ResolvingDataSource.Factory</code> 로 요청 헤더를 붙이는 예제. Android Developers, ExoPlayer Customization <a href="https://developer.android.com/media/media3/exoplayer/customization">developer.android.com</a> <a href="#ref-5" class="fn-back">&#8617;</a></li>
+            <li id="fn6">"A common situation in social media is, an app shows a list or carousel of media choices to the user. For example, an app might show a carousel of short videos." Android Developers, Preload manager concepts <a href="https://developer.android.com/media/media3/exoplayer/preloading-media/preloadmanager/concepts">developer.android.com</a> <a href="#ref-6" class="fn-back">&#8617;</a></li>
+            <li id="fn7">"When a failure occurs, this method will be called immediately before the playback state transitions to <code>Player.STATE_IDLE</code>." Android Developers, Listening to playback events <a href="https://developer.android.com/media/media3/exoplayer/listening-to-player-events">developer.android.com</a> <a href="#ref-7" class="fn-back">&#8617;</a></li>
+        </ol>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     Footer
+     ═══════════════════════════════════════════ -->
+<footer class="article-footer">
+    <div class="share-buttons">
+        <button class="share-btn" onclick="navigator.clipboard.writeText(location.href)">링크 복사</button>
+    </div>
+</footer>
+
+</body>
+</html>
