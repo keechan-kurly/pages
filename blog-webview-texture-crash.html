@@ -464,6 +464,22 @@ a:hover { text-decoration: underline; }
 
 <p>결과는 명확했다. <code>maxTextureSize</code> 이하의 WebView는 전체를 한 번에 렌더링하고, 초과하면 타일 기반으로 전환한다. 하지만 기대와 달리, 이 실험에서는 크래시가 재현되지 않았다.</p>
 
+<div class="summary-box">
+    <div class="summary-box-title">2편에서 보충</div>
+    <p>이 전환을 정하는 쪽은 Chromium이 아니라 hwui다. 투명도를 주면 hwui가 WebView를 레이어로 자동 승격할지 판단하고, 그 판단에 따라 WebView가 그려지는 곳이 달라진다.</p>
+    <table class="metrics-table">
+        <thead>
+            <tr><th>WebView 높이</th><th>hwui 판단</th><th>WebView가 그려지는 곳</th><th>Chromium이 래스터화하는 범위</th></tr>
+        </thead>
+        <tbody>
+            <tr><td class="metric-label">한도 이하</td><td>레이어 생성</td><td>WebView 크기의 레이어</td><td>콘텐츠 전체 (한 번에)</td></tr>
+            <tr><td class="metric-label">한도 초과</td><td>레이어 포기</td><td>화면</td><td>보이는 영역 근처 (타일)</td></tr>
+        </tbody>
+    </table>
+    <p>Chromium은 hwui가 넘겨준 그리기 영역의 크기를 그대로 따를 뿐이다.<br>
+    <a href="blog-webview-layer-promotion.html#section-4">→ LAYER_TYPE_NONE인데 레이어가 생겼다</a></p>
+</div>
+
 <h3>실험 2: WebView 높이 고정</h3>
 
 <p>크래시가 발생한 상품들의 실제 WebView 컨텐츠 길이는 대부분 위험 구간(16321~16383)에 들어가지 않았다. 그래서 WebView 높이를 <strong>의도적으로 위험 구간에 진입</strong>시켜보았다.</p>
@@ -499,6 +515,12 @@ a:hover { text-decoration: underline; }
 </div>
 
 <p>즉, <code>LAYER_TYPE_HARDWARE</code>가 특정 조건에서 WebView의 렌더링 전략을 타일 기반에서 단일 레이어 기반으로 바꿀 수 있고, 이때 텍스처 크기 경계 문제가 발생하는 것으로 추정된다. <code>LAYER_TYPE_NONE</code>으로 바꾸면 이 경로를 우회할 수 있다.</p>
+
+<div class="summary-box">
+    <div class="summary-box-title">2편에서 정정</div>
+    <p><code>LAYER_TYPE_NONE</code>이 끄는 것은 하드웨어 레이어뿐이다. hwui는 NONE 노드라도 stretch overscroll, 투명도, RenderEffect, 복잡한 클립 아래의 functor 조건이 걸리면 스스로 레이어로 올린다. 실제로 Android 12 이상에서 확대한 WebView의 stretch가 같은 크래시를 다시 일으켰다.<br>
+    <a href="blog-webview-layer-promotion.html#section-3">→ LAYER_TYPE_NONE인데 레이어가 생겼다</a></p>
+</div>
 
 <h3>LayerTypeInspector 구현</h3>
 
