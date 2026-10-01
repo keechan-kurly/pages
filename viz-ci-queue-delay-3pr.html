@@ -1,0 +1,1838 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="CI 큐 적체를 줄인 세 개의 PR — 옮기고, 안 하고, 필요할 때만 한다. KMA-10156.">
+<title>줄 서는 시간을 줄이는 세 가지 방법</title>
+<style>
+/* diff-viz: glass theme
+ * Glassmorphism — 반투명 블러 카드, 배경 그라데이션 비침, 프리미엄 오버레이 느낌.
+ * 다크 배경 + 컬러풀 그라데이션 위에 frosted glass 카드를 올린다.
+ */
+
+:root {
+  --cv-add: #60a5fa;
+  --cv-del: #fb923c;
+  --cv-mod: #fbbf24;
+  --cv-mov: #38bdf8;
+  --cv-bg: #0c0a1a;
+  --cv-text: #f1f5f9;
+  --cv-text-secondary: #c1c7d0;
+  --cv-muted: #8892a4;
+  --cv-border: rgba(255,255,255,0.10);
+  --cv-surface: rgba(255,255,255,0.04);
+  --cv-card-bg: rgba(255,255,255,0.06);
+  --cv-code-bg: rgba(0,0,0,0.35);
+  --cv-add-surface: rgba(96,165,250,0.08);
+  --cv-del-surface: rgba(251,146,60,0.08);
+  --cv-mod-surface: rgba(251,191,36,0.06);
+  --cv-mov-surface: rgba(56,189,248,0.08);
+
+  --glass-blur: 16px;
+  --glass-saturation: 180%;
+  --glass-border: rgba(255,255,255,0.12);
+  --glass-border-hover: rgba(255,255,255,0.20);
+  --glass-radius: 16px;
+  --glass-radius-lg: 24px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  color: var(--cv-text);
+  background: var(--cv-bg);
+  line-height: 1.7;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 48px 32px;
+  -webkit-font-smoothing: antialiased;
+  position: relative;
+}
+
+/* ── Ambient Background Gradient ── */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background:
+    radial-gradient(ellipse 50% 40% at 20% 20%, rgba(99,102,241,0.15) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 50% at 80% 30%, rgba(236,72,153,0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 50% 80%, rgba(56,189,248,0.08) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+body > * { position: relative; z-index: 1; }
+
+/* ── HERO ── */
+.cv-hero {
+  position: relative;
+  padding: 64px 40px 56px;
+  margin-bottom: 48px;
+  border-radius: var(--glass-radius-lg);
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(24px) saturate(var(--glass-saturation));
+  -webkit-backdrop-filter: blur(24px) saturate(var(--glass-saturation));
+  border: 1px solid var(--glass-border);
+  overflow: hidden;
+  box-shadow:
+    0 8px 32px rgba(0,0,0,0.2),
+    inset 0 1px 0 rgba(255,255,255,0.06);
+}
+.cv-hero::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%);
+}
+.cv-hero__title {
+  font-size: 32px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 16px;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  position: relative;
+}
+.cv-hero__subtitle {
+  font-size: 16px;
+  color: var(--cv-muted);
+  margin: 0;
+  line-height: 1.6;
+  position: relative;
+  max-width: 640px;
+}
+.cv-hero__glow {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.cv-hero__glow--tr {
+  top: -80px; right: -60px;
+  width: 260px; height: 260px;
+  background: radial-gradient(circle, rgba(99,102,241,0.20) 0%, transparent 60%);
+}
+.cv-hero__glow--bl {
+  bottom: -60px; left: -40px;
+  width: 200px; height: 200px;
+  background: radial-gradient(circle, rgba(236,72,153,0.12) 0%, transparent 60%);
+}
+
+/* ── Legend ── */
+.cv-legend {
+  display: flex; gap: 20px; flex-wrap: wrap;
+  padding: 14px 20px;
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  border: 1px solid var(--cv-border);
+  border-radius: var(--glass-radius);
+  margin-bottom: 32px;
+  font-size: 13px;
+  color: var(--cv-muted);
+}
+.cv-legend__item { display: flex; align-items: center; gap: 8px; }
+.cv-legend__dot {
+  width: 10px; height: 10px; border-radius: 50%; display: inline-block;
+  box-shadow: 0 0 10px currentColor, 0 0 20px currentColor;
+}
+
+/* ── Section ── */
+.cv-section { margin-bottom: 48px; animation: cv-fade-in 500ms ease-out both; }
+.cv-section:nth-child(2) { animation-delay: 60ms; }
+.cv-section:nth-child(3) { animation-delay: 120ms; }
+.cv-section:nth-child(4) { animation-delay: 180ms; }
+
+/* ── Card (Glass) ── */
+.cv-card {
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius);
+  padding: 20px 24px;
+  margin-bottom: 16px;
+  transition: border-color 250ms ease, box-shadow 250ms ease, transform 250ms ease;
+  box-shadow:
+    0 4px 16px rgba(0,0,0,0.15),
+    inset 0 1px 0 rgba(255,255,255,0.04);
+}
+.cv-card:hover {
+  border-color: var(--glass-border-hover);
+  box-shadow:
+    0 8px 32px rgba(0,0,0,0.2),
+    inset 0 1px 0 rgba(255,255,255,0.06);
+  transform: translateY(-1px);
+}
+.cv-card--add {
+  border-color: rgba(96,165,250,0.20);
+  background: rgba(96,165,250,0.06);
+  box-shadow:
+    0 4px 16px rgba(0,0,0,0.15),
+    0 0 24px rgba(96,165,250,0.06),
+    inset 0 1px 0 rgba(96,165,250,0.08);
+}
+.cv-card--del {
+  border-color: rgba(251,146,60,0.20);
+  background: rgba(251,146,60,0.06);
+}
+.cv-card--mod {
+  border-color: rgba(251,191,36,0.15);
+  background: rgba(251,191,36,0.04);
+}
+.cv-card--why {
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  border: 1px solid var(--cv-border);
+  border-left: 3px solid var(--cv-mod);
+  border-radius: 0 var(--glass-radius) var(--glass-radius) 0;
+}
+.cv-card__header {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--cv-text);
+  margin-bottom: 10px;
+}
+.cv-card__body {
+  font-size: 14px;
+  color: var(--cv-text-secondary);
+  line-height: 1.7;
+}
+
+/* ── Columns ── */
+.cv-columns {
+  display: flex;
+  gap: 20px;
+  align-items: stretch;
+  flex-wrap: wrap;
+  margin-bottom: 32px;
+}
+.cv-column { flex: 1; min-width: 280px; }
+.cv-column__label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--cv-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+}
+
+/* ── Module ── */
+.cv-module {
+  border: 1px solid var(--cv-border);
+  border-radius: var(--glass-radius);
+  padding: 16px;
+  background: rgba(255,255,255,0.03);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  margin-bottom: 12px;
+  transition: border-color 250ms ease;
+}
+.cv-module:hover { border-color: var(--glass-border-hover); }
+.cv-module--new {
+  background: rgba(96,165,250,0.06);
+  border-color: rgba(96,165,250,0.20);
+  box-shadow: 0 0 40px rgba(96,165,250,0.06);
+  position: relative;
+}
+.cv-module--new::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: calc(var(--glass-radius) + 1px);
+  background: linear-gradient(135deg, rgba(96,165,250,0.3), rgba(236,72,153,0.15), rgba(56,189,248,0.3));
+  z-index: -1;
+  opacity: 0.5;
+}
+.cv-module__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cv-add);
+  margin-bottom: 10px;
+}
+.cv-module__items { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ── Arrow ── */
+.cv-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  flex-shrink: 0;
+  font-size: 20px;
+  color: var(--cv-muted);
+  font-weight: 400;
+}
+
+/* ── Badge ── */
+.cv-badge {
+  display: inline-flex; align-items: center;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--cv-muted);
+  border: 1px solid var(--cv-border);
+}
+.cv-badge--add { background: rgba(96,165,250,0.10); color: var(--cv-add); border-color: rgba(96,165,250,0.15); }
+.cv-badge--del { background: rgba(251,146,60,0.10); color: var(--cv-del); border-color: rgba(251,146,60,0.15); }
+.cv-badge--mod { background: rgba(251,191,36,0.08); color: var(--cv-mod); border-color: rgba(251,191,36,0.12); }
+.cv-badge--new { background: var(--cv-add); color: #0c0a1a; font-weight: 600; border-color: transparent; }
+.cv-badge--module { background: rgba(96,165,250,0.10); color: var(--cv-add); border-color: rgba(96,165,250,0.15); }
+
+/* ── Code ── */
+.cv-code { border-radius: var(--glass-radius); overflow: hidden; margin-bottom: 20px; }
+.cv-code__label { font-size: 11px; font-weight: 600; letter-spacing: 0.5px; margin-bottom: 6px; }
+.cv-code--before .cv-code__label { color: var(--cv-del); }
+.cv-code--after .cv-code__label { color: var(--cv-add); }
+
+.cv-code pre {
+  background: rgba(0,0,0,0.35);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--cv-text);
+  border-radius: var(--glass-radius);
+  padding: 16px 20px;
+  font-size: 13px;
+  font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+  line-height: 1.6;
+  margin: 0;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  border: 1px solid var(--cv-border);
+}
+
+/* ── Typography ── */
+.cv-h2 { font-size: 20px; font-weight: 600; color: var(--cv-text); letter-spacing: -0.01em; margin-bottom: 12px; }
+.cv-h3 { font-size: 15px; font-weight: 600; color: var(--cv-text); margin-bottom: 8px; }
+.cv-body { font-size: 14px; color: var(--cv-text-secondary); line-height: 1.7; }
+.cv-muted { font-size: 12px; color: var(--cv-muted); }
+
+.cv-text-add { color: var(--cv-add); }
+.cv-text-del { color: var(--cv-del); }
+.cv-text-mod { color: var(--cv-mod); }
+.cv-text-mov { color: var(--cv-mov); }
+
+/* ── Table ── */
+.cv-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.cv-table__header { background: rgba(255,255,255,0.03); font-weight: 600; text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--cv-border); color: var(--cv-text); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+.cv-table__row { border-bottom: 1px solid var(--cv-border); }
+.cv-table__row td { padding: 8px 12px; color: var(--cv-text-secondary); }
+
+/* ── Citations ── */
+.cv-citations { margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--cv-border); }
+.cv-citations__toggle { background: none; border: none; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--cv-muted); padding: 0; display: flex; align-items: center; gap: 8px; transition: color 200ms ease; }
+.cv-citations__toggle:hover { color: var(--cv-text-secondary); }
+.cv-citations__content { overflow: hidden; max-height: 0; transition: max-height 300ms ease; }
+.cv-citations__content.open { max-height: 600px; }
+
+/* ── Footer ── */
+.cv-footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--cv-border); font-size: 12px; color: var(--cv-muted); }
+
+/* ── Animation ── */
+@keyframes cv-fade-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   diff-viz orchestrator additions — CI queue initiative
+   Motion carries information: every animation encodes a fact.
+   ══════════════════════════════════════════════════════════════ */
+
+body { max-width: 1040px; }
+
+/* ── Section titles (Stage 3.5 요구사항 3) ── */
+.sec-title {
+  display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+  font-size: 22px; font-weight: 700; color: #fff;
+  letter-spacing: -0.02em; line-height: 1.3;
+  padding-left: 14px; margin-bottom: 8px;
+  border-left: 3px solid var(--accent, var(--cv-add));
+}
+.sec-lede {
+  font-size: 15px; color: var(--cv-text-secondary);
+  max-width: 68ch; margin: 0 0 24px 17px; line-height: 1.7;
+}
+
+/* ── Phase ribbon ── */
+.phase-tag {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 13px; font-weight: 700;
+  padding: 5px 14px; border-radius: 999px;
+  background: var(--tint, rgba(96,165,250,0.10));
+  border: 1px solid var(--edge, rgba(96,165,250,0.28));
+  color: var(--accent, var(--cv-add));
+}
+.phase-tag b { font-weight: 700; }
+
+/* ══ HERO ══ */
+.cv-hero { padding: 52px 40px 44px; }
+.hero-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 22px; }
+.hero-pill {
+  font-size: 12px; font-weight: 600; padding: 5px 12px;
+  border-radius: 999px; background: rgba(255,255,255,0.07);
+  border: 1px solid var(--cv-border); color: var(--cv-text-secondary);
+}
+.hero-pill em { font-style: normal; color: var(--cv-muted); }
+
+/* ── Hero queue: 들어오는 속도가 빠져나가는 속도를 앞선다 ── */
+.q-wrap {
+  margin-top: 32px; padding: 18px 20px 16px; overflow-x: auto;
+  border-radius: 14px; border: 1px solid var(--cv-border);
+  background: rgba(0,0,0,0.24);
+}
+.q-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
+.q-label { font-size: 13px; font-weight: 700; color: var(--cv-text); }
+
+/* 칩 정지점이 px 이라 레인이 좁아지면 뒤쪽 칩이 음수 left 로 잘려 사라진다.
+   "줄이 길다"는 도입부 메시지가 좁은 창에서 정반대로 읽히므로 폭을 고정한다. */
+.q-lane {
+  position: relative; height: 48px; min-width: 850px; border-radius: 10px;
+  background: rgba(255,255,255,0.03); border: 1px solid var(--cv-border);
+  overflow: hidden;
+}
+.q-lane::before {           /* 작업이 지나가는 차선 */
+  content: ''; position: absolute; left: 0; right: 0; top: 23px; height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.10) 12%, rgba(255,255,255,0.10) 88%, transparent);
+}
+.q-lane::after {            /* 실행 서버 입구 */
+  content: ''; position: absolute; right: 0; top: 0; bottom: 0; width: 84px;
+  background: linear-gradient(90deg, transparent, rgba(96,165,250,0.16));
+  border-left: 2px solid rgba(96,165,250,0.50);
+}
+.q-gate {
+  position: absolute; right: 0; top: 0; bottom: 0; width: 84px; z-index: 2;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; color: var(--cv-add); white-space: nowrap;
+}
+.q-chip {
+  position: absolute; top: 13px; height: 22px; width: 140px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 6px; font-size: 11px; font-weight: 600; white-space: nowrap;
+  background: rgba(251,146,60,0.18); border: 1px solid rgba(251,146,60,0.42);
+  color: var(--cv-del); left: -150px;
+  animation: q-run 9s cubic-bezier(.25,.6,.35,1) infinite;
+}
+@keyframes q-run { 0% { left: -150px } 40%,100% { left: var(--stop) } }
+.q-chip.is-through {
+  background: rgba(96,165,250,0.18); border-color: rgba(96,165,250,0.45); color: var(--cv-add);
+  animation: q-pass 9s cubic-bezier(.3,.5,.4,1) infinite;
+}
+/* 앞차는 줄이 차기 전에 빠져나간다 — 뒤에 쌓이는 칩과 겹치지 않도록 먼저 비운다 */
+@keyframes q-pass {
+  0%   { left: -150px; opacity: 1 }
+  22%  { left: calc(100% - 132px); opacity: 1 }
+  30%  { left: calc(100% - 40px);  opacity: 0 }
+  100% { left: calc(100% - 40px);  opacity: 0 }
+}
+
+/* 대기 시간 분포 — 전부 항상 읽히고, 강조만 순회한다 */
+.q-dist { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }
+.q-cell {
+  min-width: 0;
+  padding: 9px 10px; border-radius: 9px;
+  border: 1px solid var(--cv-border); background: rgba(255,255,255,0.03);
+}
+.q-cell b { display: block; font-size: 21px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: var(--cv-text-secondary); }
+.q-cell b i { font-style: normal; font-size: 12px; font-weight: 600; color: var(--cv-muted); margin-left: 2px; }
+.q-cell span { display: block; font-size: 11px; color: var(--cv-muted); margin-top: 1px; }
+.qc-1 { animation: qc-hl 9s ease infinite; animation-delay: 0s }
+.qc-2 { animation: qc-hl 9s ease infinite; animation-delay: 2.25s }
+.qc-3 { animation: qc-hl 9s ease infinite; animation-delay: 4.5s }
+.qc-4 { animation: qc-hl 9s ease infinite; animation-delay: 6.75s }
+@keyframes qc-hl {
+  0%, 2%   { border-color: var(--cv-border); background: rgba(255,255,255,0.03) }
+  6%, 22%  { border-color: rgba(251,146,60,0.45); background: rgba(251,146,60,0.09) }
+  27%,100% { border-color: var(--cv-border); background: rgba(255,255,255,0.03) }
+}
+.qc-2 b, .qc-3 b, .qc-4 b { color: var(--cv-del) }
+.qc-2 b { color: var(--cv-mov) }
+
+/* ══ Legend ══ */
+.cv-legend { align-items: center; }
+.cv-legend__item b { color: var(--cv-text-secondary); font-weight: 600; }
+
+/* ══ 원인 분해 막대 (문제 섹션) ══ */
+.br-rows { display: flex; flex-direction: column; gap: 12px; }
+.br-row { display: grid; grid-template-columns: minmax(130px, 168px) 1fr auto; gap: 14px; align-items: center; }
+.br-name { font-size: 13px; color: var(--cv-text); font-weight: 600; }
+.br-name small { display: block; font-size: 11px; color: var(--cv-muted); font-weight: 400; margin-top: 1px; }
+.br-track { height: 16px; border-radius: 5px; background: rgba(255,255,255,0.05); overflow: hidden; }
+.br-fill {
+  height: 100%; border-radius: 5px; width: 0;
+  animation: br-grow 1.4s cubic-bezier(.2,.75,.3,1) forwards;
+}
+@keyframes br-grow { to { width: var(--w) } }
+.br-val { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; min-width: 52px; text-align: right; }
+
+/* ══ 코드 블록 — IDE 하이라이팅 (COM-33/34/35) ══ */
+.cv-code pre, pre.cv-code, pre.code {
+  background: #0d1117 !important; border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px; padding: 14px 0; margin: 0;
+  font-family: 'JetBrains Mono','SF Mono',ui-monospace,Menlo,Consolas,monospace;
+  font-size: 12.5px; line-height: 1.75;
+  white-space: pre; overflow-x: auto; counter-reset: ln;
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+.line { display: block; counter-increment: ln; padding: 0 16px 0 0; position: relative; }
+.line::before {
+  content: counter(ln); display: inline-block; width: 34px;
+  padding-right: 12px; margin-right: 12px; text-align: right;
+  color: #4b5563; font-size: 11px; user-select: none;
+  border-right: 1px solid rgba(255,255,255,0.06);
+}
+.line--del { background: rgba(251,146,60,0.10); box-shadow: inset 3px 0 0 var(--cv-del); }
+.line--add { background: rgba(96,165,250,0.10); box-shadow: inset 3px 0 0 var(--cv-add); }
+.s-kw { color: #c084fc } .s-ty { color: #67e8f9 } .s-fn { color: #fde68a }
+.s-cm { color: #6b7280; font-style: italic } .s-op { color: #94a3b8 }
+.s-pr { color: #f1f5f9 } .s-pp { color: #c1c7d0 } .s-st { color: #86efac }
+code, .cv-code code { word-break: normal; overflow-wrap: normal; }
+code.inline {
+  font-family: 'JetBrains Mono','SF Mono',ui-monospace,monospace;
+  font-size: 12px; padding: 2px 7px; border-radius: 5px;
+  background: rgba(255,255,255,0.07); border: 1px solid var(--cv-border);
+  color: var(--cv-text); white-space: nowrap;
+}
+
+
+/* classes.md 가 약속하지만 glass.css 에 정의가 없는 유틸리티.
+   에이전트가 .cv-strong 을 32회 쓴다 — 정의가 없으면 강조가 통째로 사라진다. */
+.cv-strong { color: var(--cv-text); font-weight: 700; }
+.cv-strikethrough { text-decoration: line-through; text-decoration-color: var(--cv-del); opacity: .72; }
+.cv-dashed { border-style: dashed; }
+
+/* ══ 에이전트 마크업 보정 ══
+   glass.css 의 .cv-card 는 margin-bottom:16px 를 갖는다. gap 기반 flex/grid
+   컨테이너 안에 들어가면 gap 과 이중으로 벌어지므로 그 자리에서만 해제한다. */
+.cv-module__items > .cv-card,
+[style*="display:flex"] > .cv-card,
+[style*="display: flex"] > .cv-card,
+[style*="display:grid"] > .cv-card,
+[style*="display: grid"] > .cv-card { margin-bottom: 0; }
+
+/* pre 자체가 .cv-code 인 경우에도 라인 넘버 카운터가 초기화되도록 */
+pre.cv-code { counter-reset: ln; }
+
+/* 코드 블록 안의 inline code 잔재가 줄바꿈되지 않게 (COM-35) */
+.cv-code pre code, pre.cv-code code { white-space: pre; word-break: normal; }
+
+/* glass.css 의 .cv-badge--new 는 배경 var(--cv-add) + 텍스트 #0c0a1a 다.
+   에이전트가 인라인 color:var(--cv-add) 를 얹으면 파랑 위 파랑이 되어 글자가 사라진다.
+   배경을 surface 로 낮춰 두 경우 모두 대비를 확보한다. */
+.cv-badge--new {
+  background: var(--cv-add-surface);
+  color: var(--cv-add);
+  border: 1px solid rgba(96,165,250,0.45);
+  font-weight: 700;
+}
+
+/* ══ Phase 1 — 작업 이설 ══ */
+.ph1-move { animation: ph1-move 7s cubic-bezier(.45,0,.3,1) infinite; }
+@keyframes ph1-move {
+  0%, 18%  { transform: translateX(0);    box-shadow: 0 0 0 0 rgba(56,189,248,0) }
+  46%, 74% { transform: translateX(12px); box-shadow: -3px 0 0 0 var(--cv-mov), 0 0 20px rgba(56,189,248,0.22) }
+  100%     { transform: translateX(0);    box-shadow: 0 0 0 0 rgba(56,189,248,0) }
+}
+.ph1-pulse { animation: ph1-pulse 7s cubic-bezier(.45,0,.3,1) infinite; }
+@keyframes ph1-pulse {
+  0%, 22%  { box-shadow: 0 0 0 0 rgba(56,189,248,0) }
+  52%, 76% { box-shadow: 0 0 0 6px rgba(56,189,248,0.13) }
+  100%     { box-shadow: 0 0 0 0 rgba(56,189,248,0) }
+}
+
+/* Draft → Ready 전환 순간: 여기서 비로소 빌드가 걸린다 */
+.ph2-ready-flash { animation: ph2-ready 5.5s ease-in-out infinite; }
+@keyframes ph2-ready {
+  0%, 46%  { box-shadow: 0 0 0 0 rgba(96,165,250,0) }
+  62%      { box-shadow: 0 0 0 7px rgba(96,165,250,0.16) }
+  84%,100% { box-shadow: 0 0 0 0 rgba(96,165,250,0) }
+}
+
+/* ══ Phase 3 — 시나리오 애니메이션 (COM-23) ══ */
+.ph3-ind-a, .ph3-ind-b {
+  font-size: 13px; font-weight: 700; padding: 7px 16px; border-radius: 999px;
+  border: 1.5px solid transparent; background: transparent; color: var(--cv-muted);
+  transition: none;
+}
+.ph3-ind-a { animation: ph3-ind-a 12s ease infinite; }
+.ph3-ind-b { animation: ph3-ind-b 12s ease infinite; }
+@keyframes ph3-ind-a {
+  0%,3% { border-color: var(--cv-border); background: transparent; color: var(--cv-muted) }
+  7%,44% { border-color: rgba(251,146,60,0.55); background: var(--cv-del-surface); color: var(--cv-del) }
+  50%,100% { border-color: var(--cv-border); background: transparent; color: var(--cv-muted) }
+}
+@keyframes ph3-ind-b {
+  0%,53% { border-color: var(--cv-border); background: transparent; color: var(--cv-muted) }
+  57%,94% { border-color: rgba(96,165,250,0.55); background: var(--cv-add-surface); color: var(--cv-add) }
+  99%,100% { border-color: var(--cv-border); background: transparent; color: var(--cv-muted) }
+}
+/* 비활성 경로를 흐리게 만들면(opacity .22) 정지 상태·읽는 중에 절반이 안 읽힌다.
+   빼는 대신 더하는 강조 — 활성 경로에만 glow 를 얹는다. */
+.ph3-path-a, .ph3-path-b { border-radius: 10px; }
+.ph3-path-a { animation: ph3-hl-a 12s ease infinite; }
+.ph3-path-b { animation: ph3-hl-b 12s ease infinite; }
+@keyframes ph3-hl-a {
+  0%,4%    { box-shadow: 0 0 0 0 rgba(251,146,60,0) }
+  9%,43%   { box-shadow: 0 0 0 2px rgba(251,146,60,0.38), 0 0 28px rgba(251,146,60,0.10) }
+  49%,100% { box-shadow: 0 0 0 0 rgba(251,146,60,0) }
+}
+@keyframes ph3-hl-b {
+  0%,54%   { box-shadow: 0 0 0 0 rgba(96,165,250,0) }
+  59%,93%  { box-shadow: 0 0 0 2px rgba(96,165,250,0.38), 0 0 28px rgba(96,165,250,0.10) }
+  99%,100% { box-shadow: 0 0 0 0 rgba(96,165,250,0) }
+}
+.ph3-node, .ph3-node-pulse { animation: ph3-node 12s ease infinite; }
+@keyframes ph3-node {
+  0%,2% { box-shadow: 0 0 0 0 rgba(255,255,255,0) }
+  6% { box-shadow: 0 0 0 5px rgba(255,255,255,0.10) }
+  12%,52% { box-shadow: 0 0 0 0 rgba(255,255,255,0) }
+  56% { box-shadow: 0 0 0 5px rgba(255,255,255,0.10) }
+  62%,100% { box-shadow: 0 0 0 0 rgba(255,255,255,0) }
+}
+
+/* ── 순차 / 병렬 진행 바 (COM-24) ── */
+.pp-bar { height: 10px; border-radius: 5px; background: rgba(255,255,255,0.06); overflow: hidden; }
+.pp-fill { height: 100%; border-radius: 5px; width: 0; }
+.pp-seq .pp-fill { background: rgba(251,146,60,0.65); animation: pp-seq 6s linear infinite; }
+.pp-par .pp-fill { background: rgba(96,165,250,0.70); animation: pp-par 6s linear infinite; }
+@keyframes pp-seq { 0% { width: 0 } 80% { width: 100% } 100% { width: 100% } }
+@keyframes pp-par { 0% { width: 0 } 34% { width: 100% } 100% { width: 100% } }
+
+/* ══ 닫는 섹션 — 세 관문 퍼널 ══ */
+.fn {
+  position: relative; border-radius: 16px; padding: 26px 22px 20px;
+  border: 1px solid var(--cv-border); background: rgba(0,0,0,0.22);
+  overflow-x: auto; overflow-y: hidden;
+}
+/* 관문은 %, 칩은 px 이라 트랙 폭이 변하면 간격이 무너진다.
+   폭을 고정해 둘의 관계를 결정론적으로 만들고, 좁은 화면에서는 트랙만 가로 스크롤한다. */
+.fn-track { position: relative; height: 200px; width: 920px; margin: 0 auto; }
+.fn-lane {                 /* 관문 선이 가로지를 차선 — 고아 선을 만들지 않는다 (COM-29) */
+  position: absolute; left: 0; right: 112px; top: 140px; height: 2px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.05), rgba(255,255,255,0.16), rgba(255,255,255,0.05));
+}
+.fn-sidelane {            /* 1번 관문에서 sre-runner 로 빠지는 옆길 */
+  position: absolute; left: 15%; right: 112px; top: 31px; height: 2px;
+  background: linear-gradient(90deg, rgba(56,189,248,0.45), rgba(56,189,248,0.18));
+}
+.fn-sidelane::before {    /* 본선에서 옆길로 올라오는 구간 */
+  content: ''; position: absolute; left: 0; top: 0; width: 2px; height: 109px;
+  background: linear-gradient(180deg, rgba(56,189,248,0.45), rgba(56,189,248,0.12));
+}
+.fn-entry {
+  position: absolute; left: 0; top: 106px;
+  font-size: 13px; font-weight: 700; color: var(--cv-muted);
+}
+.fn-gate { position: absolute; top: 34px; bottom: 44px; width: 2px; border-radius: 2px; }
+.fn-gate-lbl {
+  position: absolute; bottom: 2px; transform: translateX(-50%);
+  font-size: 13px; font-weight: 700; text-align: center; white-space: nowrap; line-height: 1.45;
+}
+.fn-gate-lbl em { display: block; font-style: normal; font-weight: 500; color: var(--cv-muted); font-size: 11px; }
+.fn-sink {
+  position: absolute; right: 0; top: 6px; width: 104px; height: 50px;
+  border-radius: 10px; border: 1px dashed rgba(56,189,248,0.45);
+  background: rgba(56,189,248,0.07);
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  font-size: 12px; font-weight: 700; color: var(--cv-mov); line-height: 1.4;
+}
+.fn-out {
+  position: absolute; right: 0; top: 106px; width: 104px;
+  border-radius: 10px; border: 1px solid rgba(96,165,250,0.45);
+  background: rgba(96,165,250,0.10); padding: 8px 6px; text-align: center;
+  font-size: 12px; font-weight: 700; color: var(--cv-add); line-height: 1.4;
+}
+.fn-chip {
+  position: absolute; height: 22px; top: 130px; padding: 0 9px; border-radius: 6px;
+  width: 90px; justify-content: center;
+  display: flex; align-items: center; font-size: 11px; font-weight: 600;
+  white-space: nowrap; left: 0; opacity: 0;
+}
+.fn-c-pub { background: rgba(56,189,248,0.18); border: 1px solid rgba(56,189,248,0.45); color: var(--cv-mov); }
+.fn-c-drf { background: rgba(251,146,60,0.16); border: 1px solid rgba(251,146,60,0.42); color: var(--cv-del); }
+.fn-c-doc { background: rgba(251,191,36,0.14); border: 1px solid rgba(251,191,36,0.40); color: var(--cv-mod); }
+.fn-c-cod { background: rgba(96,165,250,0.18); border: 1px solid rgba(96,165,250,0.45); color: var(--cv-add); }
+
+/* 관문 통과 경로 — left(%) 는 920px 고정 트랙 기준, top(px) 은 차선 높이.
+   걸러진 칩은 관문 앞에 머무르지 않고 바로 사라진다 — 뒤따라오는 칩이 밟고 지나가지 않도록. */
+@keyframes fn-pub {
+  0%   { left: -10%; top: 130px; opacity: 0 }
+  6%   { left: 0%;   top: 130px; opacity: 1 }
+  26%  { left: 15%;  top: 130px; opacity: 1 }   /* 1번 관문 도착 */
+  36%  { left: 15%;  top: 20px;  opacity: 1 }   /* 본선을 벗어나 위로 */
+  54%  { left: 77%;  top: 20px;  opacity: 1 }   /* 윗차선으로 sre-runner 까지 */
+  60%  { left: 77%;  top: 20px;  opacity: 0 }
+  100% { left: 77%;  top: 20px;  opacity: 0 }
+}
+@keyframes fn-drf {
+  0%   { left: -10%; top: 130px; opacity: 0 }
+  6%   { left: 0%;   top: 130px; opacity: 1 }
+  42%  { left: 32%;  top: 130px; opacity: 1 }   /* 2번 관문 앞에서 차단 */
+  47%  { left: 32%;  top: 130px; opacity: 0 }
+  100% { left: 32%;  top: 130px; opacity: 0 }
+}
+@keyframes fn-doc {
+  0%   { left: -10%; top: 130px; opacity: 0 }
+  6%   { left: 0%;   top: 130px; opacity: 1 }
+  56%  { left: 49%;  top: 130px; opacity: 1 }   /* 3번 관문 앞에서 건너뜀 */
+  61%  { left: 49%;  top: 130px; opacity: 0 }
+  100% { left: 49%;  top: 130px; opacity: 0 }
+}
+@keyframes fn-cod {
+  0%   { left: -10%; top: 130px; opacity: 0 }
+  6%   { left: 0%;   top: 130px; opacity: 1 }
+  80%  { left: 77%;  top: 130px; opacity: 1 }   /* 세 관문 모두 통과 */
+  90%  { left: 77%;  top: 116px; opacity: 1 }
+  96%  { left: 77%;  top: 116px; opacity: 0 }
+  100% { left: 77%;  top: 116px; opacity: 0 }
+}
+
+/* ══ 요약 3열 ══ */
+.sum-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.sum-card { border-radius: 14px; padding: 18px 18px 16px; border: 1px solid var(--cv-border); background: rgba(255,255,255,0.04); }
+.sum-verb { font-size: 19px; font-weight: 700; color: #fff; letter-spacing: -0.01em; margin: 10px 0 6px; }
+.sum-body { font-size: 13px; color: var(--cv-text-secondary); line-height: 1.65; }
+
+/* ══ 상태/한계 노트 ══ */
+.note {
+  border-radius: 12px; padding: 16px 18px;
+  border: 1px solid var(--cv-border); border-left: 3px solid var(--cv-mod);
+  background: rgba(251,191,36,0.05);
+  font-size: 13.5px; color: var(--cv-text-secondary); line-height: 1.7;
+}
+.note b { color: var(--cv-text); font-weight: 700; }
+
+/* ══ Citations ══ */
+.cv-citations__toggle { font-size: 13px; }
+details.cites > summary {
+  cursor: pointer; font-size: 13px; font-weight: 600; color: var(--cv-muted);
+  list-style: none; padding: 10px 0;
+}
+details.cites > summary::-webkit-details-marker { display: none }
+details.cites > summary::before { content: '▸ '; color: var(--cv-muted) }
+details.cites[open] > summary::before { content: '▾ ' }
+details.cites > summary:hover { color: var(--cv-text-secondary) }
+
+/* ══ 반응형 ══ */
+@media (max-width: 820px) {
+  body { padding: 28px 16px; }
+  .cv-hero { padding: 34px 20px 30px; }
+  .cv-hero__title { font-size: 25px; }
+  .cv-hero__subtitle { font-size: 15px; }
+  .sec-title { font-size: 19px; }
+  .sec-lede { margin-left: 17px; font-size: 14px; }
+  .sum-grid { grid-template-columns: 1fr; }
+  .br-row { grid-template-columns: 1fr; gap: 6px; }
+  .br-val { text-align: left; }
+  .q-dist { grid-template-columns: repeat(2, 1fr); }
+  .q-cell b { font-size: 19px; }
+
+  /* 에이전트·오케스트레이터가 인라인으로 박은 2열 그리드를 1열로 되돌린다 */
+  [style*="grid-template-columns:1fr 1fr"],
+  [style*="grid-template-columns: 1fr 1fr"] { grid-template-columns: 1fr !important; }
+
+  /* 도식은 본문을 밀어내는 대신 자기 컨테이너 안에서만 가로 스크롤한다 (COM-36) */
+}
+@media (max-width: 480px) {
+  .q-dist { grid-template-columns: repeat(2, 1fr); }
+  .cv-legend { gap: 12px; font-size: 12px; }
+}
+
+/* ══ 접근성 ══ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .q-chip { left: var(--stop) !important; }
+  .br-fill { width: var(--w) !important; }
+  .fn-chip { opacity: 1 !important; animation: none !important; }
+  .fn-c-pub { left: 77% !important; top: 20px !important; }
+  .fn-c-drf { left: 32% !important; top: 130px !important; }
+  .fn-c-doc { left: 49% !important; top: 130px !important; }
+  .fn-c-cod { left: 77% !important; top: 116px !important; }
+  .q-chip.is-through { left: calc(100% - 132px) !important; opacity: 1 !important; }
+  .ph3-path-a, .ph3-path-b { box-shadow: none !important; }
+  .ph3-ind-a, .ph3-ind-b { color: var(--cv-text-secondary) !important; }
+  .ph1-move { transform: none !important; }
+  .pp-fill { width: 100% !important; }
+}
+a:focus-visible, summary:focus-visible, button:focus-visible {
+  outline: 2px solid var(--cv-add); outline-offset: 3px; border-radius: 4px;
+}
+
+</style>
+</head>
+<body>
+<div class="cv-hero">
+  <div class="cv-hero__glow cv-hero__glow--tr"></div>
+  <div class="cv-hero__glow cv-hero__glow--bl"></div>
+
+  <div class="hero-pills">
+    <span class="hero-pill">KMA-10156 <em>CI 큐 적체</em></span>
+    <span class="hero-pill">PR #8530 <em>Phase 1</em></span>
+    <span class="hero-pill">PR #8535 <em>Phase 2</em></span>
+    <span class="hero-pill">PR #8546 <em>Phase 3</em></span>
+    <span class="hero-pill"><em>2026-09-17 ~ 09-18 머지 완료</em></span>
+  </div>
+
+  <h1 class="cv-hero__title">줄 서는 시간을 줄이는 세 가지 방법</h1>
+  <p class="cv-hero__subtitle">
+    코드를 올리면 서버가 빌드하고 테스트한다. 그 앞의 줄이 길어져 최악의 경우 <strong style="color:var(--cv-del)">4시간 넘게</strong> 기다렸다. 세 PR 이 각각 다른 방법으로 줄였다 — <strong style="color:var(--cv-mov)">옮기고</strong>,
+    <strong style="color:var(--cv-del)">안 하고</strong>, <strong style="color:var(--cv-add)">필요할 때만 한다</strong>.
+  </p>
+
+  <!-- 대기열: 들어오는 속도가 빠져나가는 속도를 앞선다 -->
+  <div class="q-wrap">
+    <div class="q-head">
+      <div class="q-label">android-runner 대기열 — 안드로이드 빌드 전용 실행 서버</div>
+      <div class="cv-muted">2026-09-16 실측 · 작업 462건</div>
+    </div>
+
+    <div class="q-lane" role="img" aria-label="작업들이 실행 서버 입구 앞에 밀려 대기하는 모습. 대기 중인 작업 다섯 개 중 셋이 28초짜리 결과 발행 작업이다.">
+      <span class="q-gate">실행 서버</span>
+      <span class="q-chip is-through" style="animation-delay:0s">Unit Test</span>
+      <span class="q-chip" style="--stop:calc(100% - 238px); animation-delay:.45s">결과 발행 · 28초</span>
+      <span class="q-chip" style="--stop:calc(100% - 386px); animation-delay:1.0s">Unit Test</span>
+      <span class="q-chip" style="--stop:calc(100% - 534px); animation-delay:1.55s">결과 발행 · 28초</span>
+      <span class="q-chip" style="--stop:calc(100% - 682px); animation-delay:2.1s">Build</span>
+      <span class="q-chip" style="--stop:calc(100% - 830px); animation-delay:2.65s">Unit Test</span>
+    </div>
+
+    <div class="q-dist" aria-label="대기 시간 분포">
+      <div class="q-cell qc-1"><b>19.4<i>분</i></b><span>중앙값 · 유닛테스트</span></div>
+      <div class="q-cell qc-2"><b>116.1<i>분</i></b><span>중앙값 · 결과 발행</span></div>
+      <div class="q-cell qc-3"><b>226.4<i>분</i></b><span>상위 10%</span></div>
+      <div class="q-cell qc-4"><b>254.7<i>분</i></b><span>최악</span></div>
+    </div>
+
+    <div class="cv-muted" style="margin-top:12px">
+      줄의 1/3 은 <strong style="color:var(--cv-text-secondary)">28초면 끝난다</strong>. 앞사람이 20분짜리라 같이 기다린다.
+    </div>
+  </div>
+</div>
+
+<div class="cv-legend">
+  <span class="cv-legend__item"><span class="cv-legend__dot" style="background:var(--cv-add);color:var(--cv-add)"></span><b>+ 추가</b></span>
+  <span class="cv-legend__item"><span class="cv-legend__dot" style="background:var(--cv-del);color:var(--cv-del)"></span><b>− 삭제 · 차단</b></span>
+  <span class="cv-legend__item"><span class="cv-legend__dot" style="background:var(--cv-mod);color:var(--cv-mod)"></span><b>~ 수정</b></span>
+  <span class="cv-legend__item"><span class="cv-legend__dot" style="background:var(--cv-mov);color:var(--cv-mov)"></span><b>→ 이동</b></span>
+</div>
+
+<!-- ══════════ 문제 ══════════ -->
+<section class="cv-section" style="--accent:var(--cv-del)">
+  <h2 class="sec-title">줄이 길어진 이유는 하나가 아니었다</h2>
+  <p class="sec-lede">
+    서버 시간을 무엇이 쓰는지 재봤다. 원인이 셋으로 갈렸고, 처방도 셋이다.
+  </p>
+
+  <div class="cv-card" style="padding:22px 24px">
+    <div class="br-rows">
+      <div class="br-row">
+        <div class="br-name">유닛테스트가 오래 걸린다<small>서버 시간 점유 1위</small></div>
+        <div class="br-track"><div class="br-fill" style="--w:50.5%;background:linear-gradient(90deg,rgba(251,146,60,.85),rgba(251,146,60,.45))"></div></div>
+        <div class="br-val" style="color:var(--cv-del)">50.5%</div>
+      </div>
+      <div class="br-row">
+        <div class="br-name">취소된 작업<small>새 코드를 올리면 직전 작업 취소</small></div>
+        <div class="br-track"><div class="br-fill" style="--w:40.4%;background:linear-gradient(90deg,rgba(251,191,36,.85),rgba(251,191,36,.45));animation-delay:.15s"></div></div>
+        <div class="br-val" style="color:var(--cv-mod)">40.4%</div>
+      </div>
+      <div class="br-row">
+        <div class="br-name">결과 발행 작업<small><em style="font-style:normal;color:var(--cv-mov)">개수</em>는 1/3, 시간은 거의 0</small></div>
+        <div class="br-track"><div class="br-fill" style="--w:1.9%;min-width:6px;background:linear-gradient(90deg,rgba(56,189,248,.9),rgba(56,189,248,.5));animation-delay:.3s"></div></div>
+        <div class="br-val" style="color:var(--cv-mov)">1.9%</div>
+      </div>
+    </div>
+    <p class="cv-body" style="margin-top:18px;padding-top:16px;border-top:1px solid var(--cv-border)">
+      마지막 줄이 출발점이다. <strong style="color:var(--cv-text)">시간을 아끼는 문제가 아니라 자리를 차지하는 문제</strong>였다.
+    </p>
+  </div>
+</section>
+
+
+<section class="cv-section" style="--accent:var(--cv-mov);color:var(--cv-text);">
+<!-- strategy: Module Map (배치 맵). 이 변경의 본질은 코드 로직이 아니라 "어떤 작업이 어느 실행 서버 풀에 사는가"의 재배치이므로, 풀을 레인으로 그리고 작업 카드의 소속 이동(→)을 공간적 위치로 인코딩하는 배치 맵이 가장 직접적이다. -->
+
+  <header style="margin-bottom:28px;">
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px;">
+      <span class="cv-badge cv-badge--mod" style="font-size:11px;padding:3px 9px;border:1px solid var(--cv-border);border-radius:99px;background:var(--cv-mod-surface);color:var(--cv-mod);">PR #8530</span>
+      <span class="cv-badge cv-badge--module" style="font-size:11px;padding:3px 9px;border:1px solid var(--cv-border);border-radius:99px;color:var(--cv-text-secondary);">KMA-10196</span>
+      <span class="cv-badge" style="font-size:11px;padding:3px 9px;border:1px solid var(--cv-border);border-radius:99px;color:var(--cv-text-secondary);">Phase 1 / 3</span>
+    </div>
+    <h2 class="sec-title">Phase 1 · 남의 자리를 비켜준다</h2>
+    <p class="cv-body" style="margin:0;max-width:62ch;color:var(--cv-text-secondary);line-height:1.65;">
+      안드로이드 도구를 안 쓰는 작업이 전용 줄에 서 있었다 — <span class="cv-strong" style="color:var(--cv-text);font-weight:700;">줄을 잘못 선 것</span>.
+    </p>
+  </header>
+
+  <!-- 히어로 숫자 (COM-41) -->
+  <div class="cv-card cv-card--del" style="border:1px solid var(--cv-border);border-left:4px solid var(--cv-del);border-radius:10px;background:var(--cv-del-surface);padding:20px 22px;margin-bottom:32px;">
+    <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:14px;">
+      <div style="font-size:46px;font-weight:800;line-height:1;color:var(--cv-del);">116.1<span style="font-size:22px;font-weight:700;">분</span></div>
+      <div style="font-size:15px;line-height:1.5;color:var(--cv-text);">
+        <span class="cv-strong" style="font-weight:700;">28초 작업이 기다린 시간</span>(중앙값)<br>
+        <span class="cv-muted" style="font-size:13px;color:var(--cv-text-secondary);">대기가 실행의 약 250배</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 1. 배치 맵 -->
+  <h3 class="cv-h3" style="font-size:16px;font-weight:700;margin:0 0 6px;">작업을 어느 실행 서버 줄에 세울 것인가</h3>
+  <p class="cv-body" style="margin:0 0 16px;font-size:14px;color:var(--cv-text-secondary);line-height:1.6;">
+    풀은 <span class="cv-strong" style="color:var(--cv-text);font-weight:700;">작업이 기다리는 줄</span>이다.
+  </p>
+
+  <div class="cv-columns" style="display:flex;flex-wrap:wrap;gap:18px;align-items:stretch;margin-bottom:12px;">
+
+    <!-- BEFORE: 밀집·무거움 (COM-42) -->
+    <div class="cv-column" style="flex:1 1 300px;min-width:280px;">
+      <div class="cv-column__label" style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--cv-text-secondary);margin-bottom:8px;">Before</div>
+      <div class="cv-module" style="border:2px solid var(--cv-del);border-radius:12px;background:var(--cv-del-surface);padding:12px;">
+        <div class="cv-module__name" style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--cv-text);margin-bottom:2px;">android-runner</div>
+        <div class="cv-muted" style="font-size:12px;color:var(--cv-text-secondary);margin-bottom:10px;">안드로이드 빌드 전용 실행 서버 · 2일간 4,221 러너분</div>
+
+        <div class="cv-module__items" style="display:flex;flex-direction:column;gap:3px;">
+          <div class="cv-card" style="border:1px solid var(--cv-border);border-radius:6px;padding:7px 10px;font-size:13px;">
+            Unit Test <span class="cv-muted" style="font-size:12px;color:var(--cv-text-secondary);">— Gradle·Android SDK 사용</span>
+          </div>
+          <div class="cv-card" style="border:1px solid var(--cv-border);border-radius:6px;padding:7px 10px;font-size:13px;">
+            그 밖의 안드로이드 빌드·검사 작업
+          </div>
+          <div class="cv-card cv-card--del ph1-move" style="border:1px solid var(--cv-mov);border-radius:6px;padding:7px 10px;font-size:13px;background:var(--cv-mov-surface);">
+            <span class="cv-strikethrough" style="text-decoration:line-through;">Unit Test Results</span>
+            <span class="cv-muted" style="font-size:12px;color:var(--cv-text-secondary);">— 결과를 PR 코멘트로 발행</span>
+            <div style="margin-top:5px;font-size:11px;color:var(--cv-mov);font-weight:700;">Android 도구 0줄 · 28초</div>
+          </div>
+        </div>
+
+        <div style="margin-top:10px;padding-top:9px;border-top:1px dashed var(--cv-border);font-size:12px;line-height:1.55;color:var(--cv-text-secondary);">
+          <span class="cv-text-del" style="color:var(--cv-del);font-weight:700;">줄 전체가 정체</span> — 작업 수의 31~34%, 쓰는 시간은 1.9%(주당 208분). <span class="cv-strong" style="color:var(--cv-text);font-weight:700;">자리만 차지하고 기다린다.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="cv-arrow" style="display:flex;align-items:center;justify-content:center;flex:0 0 auto;min-width:44px;">
+      <span style="font-size:28px;font-weight:800;color:var(--cv-mov);">→</span>
+    </div>
+
+    <!-- AFTER: 분리·여유 (COM-42) -->
+    <div class="cv-column" style="flex:1 1 300px;min-width:280px;display:flex;flex-direction:column;gap:14px;">
+      <div class="cv-column__label" style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--cv-text-secondary);margin-bottom:-4px;">After</div>
+
+      <div class="cv-module" style="border:1px solid var(--cv-border);border-radius:12px;padding:16px;">
+        <div class="cv-module__name" style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px;">android-runner</div>
+        <div class="cv-muted" style="font-size:12px;color:var(--cv-text-secondary);margin-bottom:12px;">안드로이드 작업만 남았다</div>
+        <div class="cv-module__items" style="display:flex;flex-direction:column;gap:10px;">
+          <div class="cv-card" style="border:1px solid var(--cv-border);border-radius:6px;padding:9px 10px;font-size:13px;">Unit Test</div>
+          <div class="cv-card" style="border:1px solid var(--cv-border);border-radius:6px;padding:9px 10px;font-size:13px;">그 밖의 안드로이드 빌드·검사 작업</div>
+        </div>
+      </div>
+
+      <div class="cv-module cv-module--new ph1-pulse" style="border:2px solid var(--cv-add);border-radius:12px;background:var(--cv-add-surface);padding:16px;">
+        <div class="cv-module__name" style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px;">
+          sre-runner <span class="cv-badge cv-badge--new" style="font-size:11px;font-weight:600;padding:2px 7px;border-radius:99px;border:1px solid var(--cv-add);color:var(--cv-add);text-transform:none;letter-spacing:0;">+ 신규 배치</span>
+        </div>
+        <div class="cv-muted" style="font-size:12px;color:var(--cv-text-secondary);margin-bottom:12px;">인프라팀 공용 · 2일 285분 (1/15)</div>
+        <div class="cv-module__items">
+          <div class="cv-card cv-card--add ph1-move" style="border:1px solid var(--cv-add);border-radius:6px;padding:9px 10px;font-size:13px;background:var(--cv-add-surface);">
+            <span class="cv-text-mov" style="color:var(--cv-mov);font-weight:700;">→</span> Unit Test Results
+            <div style="margin-top:5px;font-size:11px;color:var(--cv-add);font-weight:700;">대기 중앙값 7초 · 208분 흡수 여력</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. 왜 sre-runner인가 (COM-27: 제약을 먼저) -->
+  <div class="cv-card cv-card--why" style="border:1px solid var(--cv-border);border-radius:12px;padding:18px;margin:28px 0;">
+    <h3 class="cv-h3" style="font-size:16px;font-weight:700;margin:0 0 4px;">한가한 줄이면 아무 데나 되는 게 아니다</h3>
+    <p class="cv-body" style="margin:0 0 14px;font-size:14px;color:var(--cv-text-secondary);line-height:1.6;">
+      옮길 곳보다 <span class="cv-strong" style="color:var(--cv-text);font-weight:700;">조건</span>이 먼저.
+    </p>
+
+    <div style="border:1px dashed var(--cv-mod);border-radius:8px;background:var(--cv-mod-surface);padding:11px 14px;font-size:13px;line-height:1.55;">
+      <span class="cv-text-mod" style="color:var(--cv-mod);font-weight:700;">제약</span> ·
+      <code style="font-size:12px;">EnricoMi/publish-unit-test-result-action@v2</code>는
+      <span class="cv-strong" style="font-weight:700;">Docker 컨테이너로 실행</span>된다 → 서버에 <span class="cv-strong" style="font-weight:700;">Docker 데몬</span>이 있어야 한다.
+    </div>
+    <div style="text-align:center;font-size:20px;color:var(--cv-text-secondary);line-height:1.2;margin:2px 0;">↓</div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:10px;">
+      <div style="flex:1 1 180px;min-width:170px;border:1px solid var(--cv-border);border-radius:8px;padding:11px 12px;">
+        <div style="font-size:13px;font-weight:700;">android-runner</div>
+        <div class="cv-muted" style="font-size:12px;color:var(--cv-text-secondary);margin:4px 0 8px;line-height:1.45;">조건 만족, 줄이 가장 길다</div>
+        <div class="cv-text-del" style="font-size:13px;font-weight:700;color:var(--cv-del);">✗ 현상 유지 불가</div>
+      </div>
+      <div style="flex:1 1 180px;min-width:170px;border:1px solid var(--cv-del);border-radius:8px;padding:11px 12px;background:var(--cv-del-surface);">
+        <div style="font-size:13px;font-weight:700;">eks-etc-runner</div>
+        <div class="cv-muted" style="font-size:12px;color:var(--cv-text-secondary);margin:4px 0 8px;line-height:1.45;">CLI 만 있고 데몬 없음</div>
+        <div class="cv-text-del" style="font-size:13px;font-weight:700;color:var(--cv-del);">✗ 탈락</div>
+      </div>
+      <div style="flex:1 1 180px;min-width:170px;border:1px solid var(--cv-add);border-radius:8px;padding:11px 12px;background:var(--cv-add-surface);">
+        <div style="font-size:13px;font-weight:700;">sre-runner</div>
+        <div class="cv-muted" style="font-size:12px;color:var(--cv-text-secondary);margin:4px 0 8px;line-height:1.45;"><code style="font-size:11px;">docker.sock</code>마운트 — 데몬 사용 가능</div>
+        <div class="cv-text-add" style="font-size:13px;font-weight:700;color:var(--cv-add);">✓ 선택 · 액션 수정 0줄</div>
+      </div>
+    </div>
+
+    <div style="margin-top:12px;border:1px solid var(--cv-border);border-radius:8px;overflow-x:auto;">
+      <details class="cites">
+        <summary>eks-etc-runner 에서 확인한 실제 출력</summary>
+        <div class="cv-code__label" style="font-size:13px;font-weight:700;padding:6px 10px;border-bottom:1px solid var(--cv-border);color:var(--cv-text-secondary);">임시 probe 워크플로로 직접 확인한 출력</div>
+      </details>
+      <pre class="cv-code" style="margin:0;padding:10px 12px;white-space:pre;overflow-x:auto;font-size:12px;line-height:1.6;"><span class="s-cm" style="opacity:.85;"># eks-etc-runner 에서 docker version 실행 결과</span>
+Client:  Version: 29.6.1          <span class="s-cm" style="opacity:.85;"># 명령어만 설치돼 있고</span>
+Server:
+failed to connect to the docker API at unix:///var/run/docker.sock  <span class="s-cm" style="opacity:.85;"># 데몬이 없다</span></pre>
+    </div>
+  </div>
+
+  <!-- 3. 취소 가드 -->
+  <h3 class="cv-h3" style="font-size:16px;font-weight:700;margin:0 0 6px;">발행할 결과가 없는데 생성되던 작업 차단</h3>
+  <div style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:12px;">
+    <div class="cv-card cv-card--del" style="flex:1 1 260px;min-width:250px;border:1px solid var(--cv-border);border-left:4px solid var(--cv-del);border-radius:10px;padding:14px 16px;">
+      <div style="font-size:30px;font-weight:800;color:var(--cv-del);line-height:1.1;">30.6%</div>
+      <div style="font-size:13px;line-height:1.55;margin-top:6px;">
+        3건 중 1건(주당 136건)이 <span class="cv-strong" style="font-weight:700;">취소</span>된다. 취소 런은 <span class="cv-strong" style="font-weight:700;">발행할 리포트가 없다</span>. 그런데도 줄에 섰다 → <span class="cv-text-add" style="color:var(--cv-add);font-weight:700;">이제 만들지 않는다</span>
+      </div>
+    </div>
+    <div class="cv-card cv-card--mod" style="flex:1 1 260px;min-width:250px;border:1px solid var(--cv-mod);border-left:4px solid var(--cv-mod);border-radius:10px;background:var(--cv-mod-surface);padding:14px 16px;">
+      <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--cv-mod);">이 변경의 가장 중요한 판단</div>
+      <div style="font-size:13px;line-height:1.6;margin-top:6px;">
+        <span class="cv-strong" style="font-weight:700;">실패(failure)는 일부러 막지 않았다.</span>
+        실패 런도 리포트는 남는다 — <span class="cv-strong" style="font-weight:700;">가장 필요한 순간</span>. “성공일 때만”이면 조용히 사라졌다.
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. YAML -->
+  <div class="cv-code" style="border:1px solid var(--cv-border);border-radius:10px;overflow:hidden;margin-bottom:28px;">
+    <div class="cv-code__label" style="font-size:13px;font-weight:700;padding:7px 12px;border-bottom:1px solid var(--cv-border);color:var(--cv-text-secondary);">.github/workflows/publish_test_results.yml — 실제 변경 2줄</div>
+    <pre style="margin:0;padding:12px;white-space:pre;overflow-x:auto;font-size:12.5px;line-height:1.75;"><span class="line"><span class="s-pr">name</span><span class="s-op">:</span> Unit Test Results       <span class="s-cm" style="opacity:.85;"># 테스트 결과를 PR 코멘트로 발행하는 작업</span></span>
+<span class="line line--del" style="display:block;background:var(--cv-del-surface);"><span style="color:var(--cv-del);font-weight:700;">- </span><span class="s-pr">runs-on</span><span class="s-op">:</span> [ android-runner ]   <span class="s-cm" style="opacity:.85;"># 안드로이드 전용 줄 — 대기 중앙값 116분</span></span>
+<span class="line line--add" style="display:block;background:var(--cv-add-surface);"><span style="color:var(--cv-add);font-weight:700;">+ </span><span class="s-pr">runs-on</span><span class="s-op">:</span> sre-runner           <span class="s-cm" style="opacity:.85;"># 인프라팀 공용 줄 — 대기 중앙값 7초</span></span>
+<span class="line line--add" style="display:block;background:var(--cv-add-surface);"><span style="color:var(--cv-add);font-weight:700;">+ </span><span class="s-kw">if</span><span class="s-op">:</span> github.event.workflow_run.conclusion <span class="s-op">!=</span> <span class="s-ty">'cancelled'</span>  <span class="s-cm" style="opacity:.85;"># 취소된 실행이면 작업 자체를 만들지 않음</span></span></pre>
+  </div>
+
+  <!-- 5. 정량 비교 (COM-31, 고정 높이 없음 COM-39) -->
+  <h3 class="cv-h3" style="font-size:16px;font-weight:700;margin:0 0 14px;">발행 작업이 순서를 기다리는 시간 (중앙값)</h3>
+  <div style="border:1px solid var(--cv-border);border-radius:10px;padding:18px;margin-bottom:26px;">
+    <div style="display:flex;align-items:flex-end;gap:36px;flex-wrap:wrap;">
+      <div style="flex:0 0 auto;text-align:center;min-width:110px;">
+        <div style="font-size:15px;font-weight:700;color:var(--cv-del);margin-bottom:6px;">116.1분</div>
+        <div style="width:78px;height:190px;background:linear-gradient(180deg,rgba(251,146,60,.72),rgba(251,146,60,.22));border:2px solid var(--cv-del);border-radius:5px 5px 0 0;margin:0 auto;"></div>
+        <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--cv-text-secondary);margin-top:8px;">Before</div>
+        <div class="cv-muted" style="font-size:12px;color:var(--cv-text-secondary);">android-runner</div>
+      </div>
+      <div style="flex:0 0 auto;text-align:center;min-width:110px;">
+        <div style="font-size:15px;font-weight:700;color:var(--cv-add);margin-bottom:6px;">7초</div>
+        <div style="width:78px;height:8px;background:var(--cv-add);border:2px solid var(--cv-add);border-radius:4px 4px 0 0;margin:0 auto;"></div>
+        <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--cv-text-secondary);margin-top:8px;">After</div>
+        <div class="cv-muted" style="font-size:12px;color:var(--cv-text-secondary);">sre-runner</div>
+      </div>
+      <div style="flex:1 1 200px;min-width:190px;padding-bottom:6px;">
+        <div style="font-size:34px;font-weight:800;color:var(--cv-add);line-height:1.1;">99.9% 감소</div>
+        <div class="cv-muted" style="font-size:12.5px;color:var(--cv-text-secondary);line-height:1.55;margin-top:6px;">
+          실제 비율(약 1,000배)대로면 After 가 안 보여 최소 높이를 줬다.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. 정직한 한계 -->
+  <div class="cv-card" style="border:1px solid var(--cv-border);border-left:4px solid var(--cv-muted);border-radius:10px;padding:14px 16px;">
+    <div class="cv-muted" style="font-size:13.5px;line-height:1.65;color:var(--cv-text-secondary);">
+      <span class="cv-strong" style="color:var(--cv-text);font-weight:700;">과장하지 않기 위해</span> — android-runner 에서 회수한 시간은 <span class="cv-strong" style="color:var(--cv-text);font-weight:700;">2.3%</span>다. 지배적 원인(테스트 길이 50.5%, 취소 40.4%)은 Phase 2·3 에서 다룬다.
+    </div>
+  </div>
+
+<!-- applied-rules: COM-01, COM-02, COM-03, COM-04, COM-05, COM-06, COM-07, COM-09, COM-10, COM-11, COM-12, COM-13, COM-14, COM-19, COM-27, COM-28, COM-29, COM-30, COM-31, COM-33, COM-34, COM-35, COM-36, COM-38, COM-39, COM-41, COM-42 -->
+</section>
+
+
+<section class="cv-section" style="--accent:var(--cv-del)">
+<!-- 전략: Draft 타임라인 Before/After 비대칭(COM-42) + 차단·보상 "짝" 다이어그램(COM-21/29) + allowlist 대비 카드. 조건 분기는 pill 라벨 + 색상 연결선으로만 표현. -->
+
+  <h2 class="sec-title">
+    <span class="cv-badge cv-badge--mod" style="font-size:11px;">PHASE 2</span>
+    <span>Draft PR 동안은 빌드를 돌리지 않는다</span>
+  </h2>
+  <p class="sec-lede">
+    <span class="cv-strong">Draft PR</span>(리뷰 요청 전)은 push 가 잦다. 그때마다 쌓인 job 을 아무도 기다리지 않았다 — <span class="cv-text-del">소비되지 않는 결과</span>가 자리를 차지했다.
+  </p>
+
+  <!-- ── 1. 타임라인 Before/After (COM-42 비대칭) ── -->
+  <h3 class="cv-h3" style="font-size:16px;font-weight:700;letter-spacing:-0.01em;margin:0 0 4px;">
+    하나의 PR 이 Ready 에 도달하기까지 · 예시 시나리오
+  </h3>
+  <p class="cv-muted" style="margin:0 0 12px;font-size:12px;">
+    측정값이 아닌 예시 흐름
+  </p>
+
+  <div class="cv-columns" style="display:flex;gap:14px;align-items:stretch;flex-wrap:wrap;">
+
+    <!-- BEFORE : 밀집·무거움 -->
+    <div class="cv-column" style="flex:1 1 300px;min-width:280px;">
+      <div class="cv-column__label" style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--cv-del);margin-bottom:8px;">
+        − Before · push 마다 큐 적재
+      </div>
+
+      <div style="border:1px solid var(--cv-del);border-radius:10px;background:var(--cv-del-surface);padding:10px;display:flex;flex-direction:column;gap:6px;">
+
+        <div style="display:flex;gap:8px;align-items:flex-start;">
+          <div style="flex:0 0 74px;font-size:11px;color:var(--cv-text-secondary);padding-top:4px;">09:12</div>
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:600;color:var(--cv-text);">Draft 로 PR 생성</div>
+            <div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap;">
+              <span class="cv-badge cv-badge--del" style="font-size:11px;">− 빌드 job</span>
+              <span class="cv-badge cv-badge--del" style="font-size:11px;">− 유닛테스트 job</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="height:1px;background:var(--cv-border);"></div>
+
+        <div style="display:flex;gap:8px;align-items:flex-start;">
+          <div style="flex:0 0 74px;font-size:11px;color:var(--cv-text-secondary);padding-top:4px;">09:41</div>
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:600;color:var(--cv-text);">작업 중 push</div>
+            <div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap;">
+              <span class="cv-badge cv-badge--del" style="font-size:11px;">− 빌드 job</span>
+              <span class="cv-badge cv-badge--del" style="font-size:11px;">− 유닛테스트 job</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="height:1px;background:var(--cv-border);"></div>
+
+        <div style="display:flex;gap:8px;align-items:flex-start;">
+          <div style="flex:0 0 74px;font-size:11px;color:var(--cv-text-secondary);padding-top:4px;">10:25</div>
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:600;color:var(--cv-text);">작업 중 push</div>
+            <div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap;">
+              <span class="cv-badge cv-badge--del" style="font-size:11px;">− 빌드 job</span>
+              <span class="cv-badge cv-badge--del" style="font-size:11px;">− 유닛테스트 job</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="height:1px;background:var(--cv-border);"></div>
+
+        <div style="display:flex;gap:8px;align-items:flex-start;opacity:.7;">
+          <div style="flex:0 0 74px;font-size:11px;color:var(--cv-text-secondary);padding-top:4px;">11:03</div>
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:600;color:var(--cv-text);">Ready for review 전환</div>
+            <div class="cv-muted" style="font-size:11px;margin-top:3px;">
+              전환 자체는 트리거가 아니었다 — 직전 push 결과를 그대로 재사용
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:8px;display:flex;align-items:baseline;gap:8px;">
+        <span style="font-size:32px;font-weight:700;line-height:1;color:var(--cv-del);">6</span>
+        <span class="cv-muted" style="font-size:12px;">개 job 이 android-runner 큐를 통과<br>— 이 중 4개는 아무도 결과를 보지 않음</span>
+      </div>
+    </div>
+
+    <!-- AFTER : 분리·깔끔 -->
+    <div class="cv-column" style="flex:1 1 300px;min-width:280px;">
+      <div class="cv-column__label" style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--cv-add);margin-bottom:8px;">
+        + After · Ready 시점에 한 번
+      </div>
+
+      <div style="border:1px solid var(--cv-border);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:14px;">
+
+        <div style="display:flex;gap:8px;align-items:center;">
+          <div style="flex:0 0 74px;font-size:11px;color:var(--cv-text-secondary);">09:12 – 10:25</div>
+          <div class="cv-dashed" style="flex:1;border:1px dashed var(--cv-border);border-radius:8px;padding:10px 12px;">
+            <div style="font-size:13px;font-weight:600;color:var(--cv-text-secondary);">Draft 구간 · 3회 push</div>
+            <div class="cv-muted" style="font-size:11px;margin-top:3px;">
+              실행 없음 — <code>draft == false</code> 로 차단
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;align-items:flex-start;">
+          <div style="flex:0 0 74px;font-size:11px;color:var(--cv-text-secondary);padding-top:4px;">11:03</div>
+          <div class="ph2-ready-flash" style="flex:1;border:2px solid var(--cv-add);border-radius:8px;background:var(--cv-add-surface);padding:10px 12px;">
+            <div style="font-size:13px;font-weight:700;color:var(--cv-text);">Ready for review 전환</div>
+            <div class="cv-muted" style="font-size:11px;margin:3px 0 6px;">
+              이 전환이 새 트리거
+            </div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap;">
+              <span class="cv-badge cv-badge--add" style="font-size:11px;">+ 빌드 job</span>
+              <span class="cv-badge cv-badge--add" style="font-size:11px;">+ 유닛테스트 job</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:8px;display:flex;align-items:baseline;gap:8px;">
+        <span style="font-size:32px;font-weight:700;line-height:1;color:var(--cv-add);">2</span>
+        <span class="cv-muted" style="font-size:12px;">개 job — 기다리는 결과만 실행</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 2. 차단과 보상은 짝이다 (핵심 통찰) ── -->
+  <h3 class="cv-h3" style="font-size:16px;font-weight:700;letter-spacing:-0.01em;margin:24px 0 4px;">
+    차단만 넣으면 구멍이 생긴다 · 이 변경의 핵심
+  </h3>
+  <p class="cv-body" style="margin:0 0 12px;">
+    한 줄은 <span class="cv-text-del">막고</span>, 한 줄은 <span class="cv-text-add">막아서 생긴 구멍을 메운다</span>.
+  </p>
+
+  <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:stretch;">
+
+    <!-- 차단만 -->
+    <div class="cv-card cv-card--del" style="flex:1 1 300px;min-width:280px;border:1px solid var(--cv-del);border-radius:10px;padding:12px;">
+      <div class="cv-card__header" style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--cv-del);margin-bottom:10px;">
+        − 차단만 적용했다면
+      </div>
+      <div class="cv-card__body" style="display:flex;flex-direction:column;align-items:stretch;gap:0;">
+
+        <div style="border:2px solid var(--cv-del);border-radius:8px;background:var(--cv-del-surface);padding:8px 10px;font-size:13px;font-weight:600;color:var(--cv-text);">
+          Draft PR · 마지막 push 이후 변경 없음
+        </div>
+
+        <div style="height:14px;width:2px;background:var(--cv-del);margin:0 auto;"></div>
+        <div style="align-self:center;border:1px solid var(--cv-del);background:var(--cv-del-surface);border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;color:var(--cv-del);">
+          Ready 로 전환해도 push 가 없으면
+        </div>
+        <div style="height:14px;width:2px;background:var(--cv-del);margin:0 auto;"></div>
+
+        <div style="border:1px solid var(--cv-del);border-left:3px solid var(--cv-del);border-radius:8px;padding:8px 10px;">
+          <div style="font-size:13px;font-weight:600;color:var(--cv-del);">트리거 없음 → 빌드가 영원히 돌지 않는다</div>
+          <div class="cv-muted" style="font-size:11px;margin-top:3px;">
+            리뷰 관문이 “대기 중”에서 멈춘다
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 차단 + 보상 -->
+    <div class="cv-card cv-card--add" style="flex:1 1 300px;min-width:280px;border:1px solid var(--cv-add);border-radius:10px;padding:12px;">
+      <div class="cv-card__header" style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--cv-add);margin-bottom:10px;">
+        + 실제 적용 · 차단 + 보상
+      </div>
+      <div class="cv-card__body" style="display:flex;flex-direction:column;align-items:stretch;">
+
+        <div style="border:2px solid var(--cv-add);border-radius:8px;background:var(--cv-add-surface);padding:8px 10px;font-size:13px;font-weight:600;color:var(--cv-text);">
+          Draft PR · 마지막 push 이후 변경 없음
+        </div>
+
+        <div style="height:14px;width:2px;background:var(--cv-add);margin:0 auto;"></div>
+        <div style="align-self:center;border:1px solid var(--cv-add);background:var(--cv-add-surface);border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;color:var(--cv-add);">
+          ready_for_review 가 트리거 목록에 있으면
+        </div>
+        <div style="height:14px;width:2px;background:var(--cv-add);margin:0 auto;"></div>
+
+        <div style="border:1px solid var(--cv-add);border-left:3px solid var(--cv-add);border-radius:8px;padding:8px 10px;">
+          <div style="font-size:13px;font-weight:600;color:var(--cv-add);">전환 이벤트 자체가 실행을 깨운다 → 정상 통과</div>
+          <div class="cv-muted" style="font-size:11px;margin-top:3px;">
+            push 가 없어도 리뷰 요청 순간 딱 한 번 실행
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 3. 코드 (Phase 2 유일 YAML 블록) ── -->
+    <div class="cv-code cv-code--after" style="margin-top:16px;border:1px solid var(--cv-border);border-radius:10px;overflow:hidden;">
+    <div class="cv-code__label" style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:8px 12px;border-bottom:1px solid var(--cv-border);">
+      build_for_develop.yml · unit_test_on_pr.yml (같은 수정을 두 자동화 스크립트에 동일 적용)
+    </div>
+    <pre style="margin:0;padding:12px;white-space:pre;overflow-x:auto;font-size:12px;line-height:1.7;"><span class="line"><span class="s-cm"># 언제 자동화를 깨울지 — 리뷰 준비 완료 순간을 목록에 추가</span></span>
+<span class="line line--del"><span class="s-op">-</span>   <span class="s-pr">types</span><span class="s-op">:</span> [ opened, synchronize, reopened ]</span>
+<span class="line line--add"><span class="s-op">+</span>   <span class="s-pr">types</span><span class="s-op">:</span> [ opened, synchronize, reopened, <span class="s-ty">ready_for_review</span> ]</span>
+<span class="line"></span>
+<span class="line"><span class="s-cm"># 실행할지 말지 — Draft 인 동안에는 이 작업을 건너뛴다</span></span>
+<span class="line line--add"><span class="s-op">+</span>   <span class="s-pr">if</span><span class="s-op">:</span> github.repository <span class="s-op">==</span> <span class="s-ty">'thefarmersfront/kurly-android'</span> <span class="s-op">&amp;&amp;</span></span>
+<span class="line line--add"><span class="s-op">+</span>       github.event.pull_request.<span class="s-fn">draft</span> <span class="s-op">==</span> <span class="s-ty">false</span></span></pre>
+  </div>
+
+  <!-- ── 4. denylist → allowlist ── -->
+  <div class="cv-card cv-card--mod" style="margin-top:16px;border:1px solid var(--cv-mod);border-left:3px solid var(--cv-mod);border-radius:10px;padding:12px;">
+    <div class="cv-card__header" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+      <span class="cv-badge cv-badge--mod" style="font-size:11px;">~ 함께 다듬은 것</span>
+      <span style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--cv-text);">결과 리포트 발행 조건 · “빼고 전부” → “만 허용”</span>
+    </div>
+    <div class="cv-card__body" style="display:flex;gap:12px;flex-wrap:wrap;">
+      <div style="flex:1 1 240px;min-width:230px;border:1px dashed var(--cv-border);border-radius:8px;padding:10px;">
+        <div style="font-size:13px;font-weight:700;color:var(--cv-del);">− Before · 제외 목록(denylist)</div>
+        <div class="cv-strikethrough" style="font-size:12px;margin-top:6px;color:var(--cv-text-secondary);"><code>!= 'cancelled'</code></div>
+        <div class="cv-muted" style="font-size:11px;margin-top:4px;">
+          새 결과값이 생기면 검토 없이 통과
+        </div>
+      </div>
+      <div style="flex:1 1 240px;min-width:230px;border:1px solid var(--cv-add);border-radius:8px;background:var(--cv-add-surface);padding:10px;">
+        <div style="font-size:13px;font-weight:700;color:var(--cv-add);">+ After · 허용 목록(allowlist)</div>
+        <div style="font-size:12px;margin-top:6px;color:var(--cv-text);"><code>contains(fromJSON('["success","failure"]'), …)</code></div>
+        <div class="cv-muted" style="font-size:11px;margin-top:4px;">
+          <span class="cv-strong">failure 포함이 요점</span> — 실패 리포트가 가장 필요한 결과다
+        </div>
+      </div>
+    </div>
+  </div>
+
+<!-- 적용 규칙: COM-02, COM-03, COM-05, COM-06, COM-07, COM-09, COM-10, COM-11, COM-13, COM-14, COM-21, COM-25, COM-26, COM-28, COM-29, COM-33, COM-34, COM-35, COM-36, COM-38, COM-42 -->
+</section>
+
+<section class="cv-section" style="--accent:var(--cv-add)">
+<!-- 전략: 게이트 파이프라인 + 2 시나리오 애니메이션 훅(ph3-*) / 설계 판단 3종 미니 다이어그램 / 순차=세로·병렬=가로 레이아웃 메타포(COM-24) / 효과는 미측정임을 명시 -->
+
+  <h2 class="sec-title">
+    <span class="cv-badge cv-badge--add" style="font-size:11px;">PHASE 3</span>
+    <span>필요할 때만 돌리고, 돌릴 때는 나눠서 돌린다</span>
+  </h2>
+  <p class="sec-lede">
+    <span class="cv-strong">3-A</span> 는 돌릴지 묻고, <span class="cv-strong">3-B</span> 는 나눠 돌린다.
+  </p>
+
+  <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-bottom:8px;">
+    <div style="flex:0 0 auto;">
+      <div style="font-size:44px;font-weight:700;line-height:1;color:var(--cv-mod);">70<span style="font-size:24px;">%</span></div>
+      <div class="cv-muted" style="font-size:12px;margin-top:4px;max-width:250px;">
+        테스트 723개 중 503개가 <span class="cv-strong">4개 모듈</span>에
+      </div>
+    </div>
+    <div style="flex:0 0 auto;">
+      <div style="font-size:44px;font-weight:700;line-height:1;color:var(--cv-add);">20<span style="font-size:24px;">+</span></div>
+      <div class="cv-muted" style="font-size:12px;margin-top:4px;max-width:250px;">
+        관문을 고정하는 파이썬 테스트
+      </div>
+    </div>
+    <div class="cv-card cv-card--why" style="flex:1 1 260px;min-width:250px;border:1px dashed var(--cv-mod);border-radius:10px;padding:10px 12px;">
+      <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--cv-mod);">측정은 아직 진행 중</div>
+      <div class="cv-muted" style="font-size:11px;margin-top:4px;">
+        효과는 실측 전 — 아래는 원리, 측정 수단은 3-C.
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 3-A 게이트 파이프라인 + 시나리오 애니메이션 ── -->
+  <h3 class="cv-h3" style="font-size:16px;font-weight:700;letter-spacing:-0.01em;margin:24px 0 6px;">
+    3-A · 비싼 작업 앞에 싼 관문을 세운다
+  </h3>
+  <p class="cv-body" style="margin:0 0 12px;">
+    싼 풀에서 먼저 판정 → 필요 없으면 비싼 작업이 시작되지 않는다.
+  </p>
+
+  <!-- 시나리오 indicator -->
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+    <span class="ph3-ind-a cv-badge" style="font-size:11px;border:1px solid var(--cv-del);background:var(--cv-del-surface);color:var(--cv-del);border-radius:20px;padding:4px 12px;font-weight:700;">
+      시나리오 A · 문서만 고친 PR
+    </span>
+    <span class="ph3-ind-b cv-badge" style="font-size:11px;border:1px solid var(--cv-add);background:var(--cv-add-surface);color:var(--cv-add);border-radius:20px;padding:4px 12px;font-weight:700;">
+      시나리오 B · 소스 코드를 고친 PR
+    </span>
+  </div>
+
+  <div class="ph3-scenario" style="border:1px solid var(--cv-border);border-radius:10px;padding:14px;display:flex;flex-direction:column;align-items:stretch;">
+
+    <!-- 시작점 -->
+    <div style="align-self:center;border:2px solid var(--cv-text-secondary);border-radius:20px;padding:6px 16px;font-size:13px;font-weight:700;color:var(--cv-text);">
+      ▶ 시작 · PR push
+    </div>
+    <div style="height:16px;width:2px;background:var(--cv-border);margin:0 auto;"></div>
+
+    <!-- 게이트 노드 -->
+    <div class="ph3-node-pulse cv-card" style="align-self:center;width:100%;max-width:520px;border:2px solid var(--cv-mod);border-radius:10px;background:var(--cv-mod-surface);padding:12px;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span class="cv-badge cv-badge--new" style="font-size:11px;">NEW job</span>
+        <span style="font-size:13px;font-weight:700;color:var(--cv-text);">check-changes</span>
+        <span class="cv-badge cv-badge--module" style="font-size:11px;">eks-etc-runner · 저렴한 범용 풀</span>
+      </div>
+      <div style="margin-top:8px;border-left:2px solid var(--cv-border);padding-left:10px;display:flex;flex-direction:column;gap:5px;">
+        <div style="font-size:13px;font-weight:600;color:var(--cv-text);">PR 이 바꾼 파일 목록을 뽑는다</div>
+        <div class="cv-muted" style="font-size:11px;">base 브랜치와 비교한 <span class="cv-strong">전체 차이</span>를 본다 (직전 push 분량이 아니라)</div>
+        <div style="font-size:13px;font-weight:600;color:var(--cv-text);margin-top:4px;">판정 스크립트에 그 목록을 흘려 넣는다</div>
+        <div class="cv-muted" style="font-size:11px;">base 사본으로 실행 · <code>detect-code-changes.sh</code></div>
+      </div>
+      <div style="margin-top:10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+        <span class="cv-badge cv-badge--module" style="font-size:11px;">입력 · 변경 파일 목록</span>
+        <span class="cv-arrow" style="font-size:13px;font-weight:700;color:var(--cv-text-secondary);">→</span>
+        <span class="cv-badge cv-badge--mod" style="font-size:11px;">출력 · should_test = true | false</span>
+      </div>
+    </div>
+
+    <div style="height:16px;width:2px;background:var(--cv-border);margin:0 auto;"></div>
+
+    <!-- 조건 분기 -->
+    <div style="display:flex;gap:14px;flex-wrap:wrap;">
+
+      <!-- 경로 A -->
+      <div class="ph3-path-a" style="flex:1 1 280px;min-width:260px;display:flex;flex-direction:column;align-items:stretch;">
+        <div style="align-self:center;border:1px solid var(--cv-del);background:var(--cv-del-surface);color:var(--cv-del);border-radius:20px;padding:4px 14px;font-size:11px;font-weight:700;">
+          코드 변경이 없으면
+        </div>
+        <div style="height:14px;width:2px;background:var(--cv-del);margin:0 auto;"></div>
+        <div class="cv-card cv-card--del" style="border:1px solid var(--cv-del);border-left:3px solid var(--cv-del);border-radius:10px;padding:10px 12px;">
+          <div style="font-size:13px;font-weight:700;color:var(--cv-del);">− 유닛테스트 job 통째로 건너뜀</div>
+          <div class="cv-muted" style="font-size:11px;margin-top:4px;">
+            <code>android-runner</code> 자리를 쓰지 않는다
+          </div>
+          <div style="margin-top:6px;font-size:11px;color:var(--cv-text-secondary);">
+            예: <code>docs/</code> 수정, <code>README.md</code> 수정, 자동화 스크립트 문서화
+          </div>
+        </div>
+      </div>
+
+      <!-- 경로 B -->
+      <div class="ph3-path-b" style="flex:1 1 280px;min-width:260px;display:flex;flex-direction:column;align-items:stretch;">
+        <div style="align-self:center;border:1px solid var(--cv-add);background:var(--cv-add-surface);color:var(--cv-add);border-radius:20px;padding:4px 14px;font-size:11px;font-weight:700;">
+          코드 변경이 있으면 · 판정 실패도 이쪽
+        </div>
+        <div style="height:14px;width:2px;background:var(--cv-add);margin:0 auto;"></div>
+        <div class="cv-card cv-card--add" style="border:1px solid var(--cv-add);border-left:3px solid var(--cv-add);border-radius:10px;padding:10px 12px;">
+          <div style="font-size:13px;font-weight:700;color:var(--cv-add);">+ 유닛테스트 job 실행</div>
+          <div class="cv-muted" style="font-size:11px;margin-top:4px;">
+            기존 흐름 그대로 <code>android-runner</code> 에서 실행 + 3-B 병렬
+          </div>
+          <div style="margin-top:6px;font-size:11px;color:var(--cv-text-secondary);">
+            예: <code>*/src/*</code> 수정, <code>build.gradle.kts</code> 수정, 판정 불가
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <details class="cites" style="margin-top:14px;">
+    <summary>파일 판정 규칙 5가지 펼쳐 보기</summary>
+    <div style="padding-top:8px;">
+    <div class="cv-table" style="margin-top:14px;border:1px solid var(--cv-border);border-radius:10px;overflow:hidden;">
+      <div class="cv-table__header" style="display:flex;gap:8px;padding:8px 12px;border-bottom:1px solid var(--cv-border);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">
+        <span style="flex:0 0 40px;">순서</span><span style="flex:1;">파일 패턴</span><span style="flex:0 0 120px;">판정</span>
+      </div>
+      <div class="cv-table__row" style="display:flex;gap:8px;padding:7px 12px;border-bottom:1px solid var(--cv-border);font-size:12px;align-items:center;">
+        <span style="flex:0 0 40px;color:var(--cv-text-secondary);">1</span>
+        <span style="flex:1;"><code>.github/*</code> · <code>.claude/*</code> · <code>docs/*</code></span>
+        <span style="flex:0 0 120px;"><span class="cv-badge cv-badge--del" style="font-size:11px;">− 코드 아님</span></span>
+      </div>
+      <div class="cv-table__row" style="display:flex;gap:8px;padding:7px 12px;border-bottom:1px solid var(--cv-border);font-size:12px;align-items:center;background:var(--cv-mod-surface);">
+        <span style="flex:0 0 40px;color:var(--cv-text-secondary);">2</span>
+        <span style="flex:1;"><code>*/src/*</code> — <span class="cv-strong">3번보다 먼저</span> 평가된다</span>
+        <span style="flex:0 0 120px;"><span class="cv-badge cv-badge--add" style="font-size:11px;">+ 코드임</span></span>
+      </div>
+      <div class="cv-table__row" style="display:flex;gap:8px;padding:7px 12px;border-bottom:1px solid var(--cv-border);font-size:12px;align-items:center;">
+        <span style="flex:0 0 40px;color:var(--cv-text-secondary);">3</span>
+        <span style="flex:1;"><code>*.md</code></span>
+        <span style="flex:0 0 120px;"><span class="cv-badge cv-badge--del" style="font-size:11px;">− 코드 아님</span></span>
+      </div>
+      <div class="cv-table__row" style="display:flex;gap:8px;padding:7px 12px;border-bottom:1px solid var(--cv-border);font-size:12px;align-items:center;">
+        <span style="flex:0 0 40px;color:var(--cv-text-secondary);">4</span>
+        <span style="flex:1;">그 외 전부 (<code>build.gradle.kts</code>, <code>settings.gradle.kts</code>, <code>Jenkinsfile</code> …)</span>
+        <span style="flex:0 0 120px;"><span class="cv-badge cv-badge--add" style="font-size:11px;">+ 코드로 간주</span></span>
+      </div>
+      <div class="cv-table__row" style="display:flex;gap:8px;padding:7px 12px;font-size:12px;align-items:center;">
+        <span style="flex:0 0 40px;color:var(--cv-text-secondary);">5</span>
+        <span style="flex:1;">변경 파일이 하나도 없음</span>
+        <span style="flex:0 0 120px;"><span class="cv-badge cv-badge--add" style="font-size:11px;">+ 실행</span></span>
+      </div>
+      <div class="cv-muted" style="padding:8px 12px;border-top:1px solid var(--cv-border);font-size:11px;">
+        순서가 규칙이다 — <code>app/src/main/assets/guide.md</code> 는 2번에서 먼저 잡혀 <span class="cv-text-add">테스트가 실행된다</span>. 모르는 파일은 4번으로 떨어져 실행된다.
+      </div>
+    </div>
+  
+    </div>
+  </details>
+
+  <!-- ── 설계 판단 3가지 ── -->
+  <h3 class="cv-h3" style="font-size:16px;font-weight:700;letter-spacing:-0.01em;margin:24px 0 6px;">
+    관문을 세울 때 결정해야 했던 3가지
+  </h3>
+  <p class="cv-body" style="margin:0 0 12px;">
+    잘못 건너뛰면 <span class="cv-strong">검증 없이 병합된다</span>.
+  </p>
+
+  <div style="display:flex;flex-direction:column;gap:12px;">
+
+    <!-- 판단 1: base 사본 -->
+    <div class="cv-card cv-card--why" style="border:1px solid var(--cv-border);border-left:3px solid var(--cv-mod);border-radius:10px;padding:12px;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+        <span class="cv-badge cv-badge--mod" style="font-size:11px;">판단 1</span>
+        <span style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--cv-text);">자기 검사를 자기가 끌 수 없게 한다</span>
+      </div>
+      <div class="cv-muted" style="font-size:11px;margin-bottom:8px;">판정 스크립트 자신이 <code>.github/*</code> — 규칙상 “코드 아님”.</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <div style="flex:1 1 260px;min-width:250px;display:flex;flex-direction:column;align-items:stretch;">
+          <div style="border:1px solid var(--cv-del);background:var(--cv-del-surface);border-radius:8px;padding:8px 10px;font-size:13px;font-weight:600;color:var(--cv-text);">
+            PR 사본 <span style="font-weight:400;">(수정 가능)</span>
+          </div>
+          <div style="height:12px;width:2px;background:var(--cv-del);margin:0 auto;"></div>
+          <div style="align-self:center;border:1px solid var(--cv-del);background:var(--cv-del-surface);color:var(--cv-del);border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;">
+            실행하지 않는다
+          </div>
+          <div style="height:12px;width:2px;background:var(--cv-del);margin:0 auto;"></div>
+          <div style="border:1px dashed var(--cv-del);border-radius:8px;padding:8px 10px;font-size:11px;color:var(--cv-del);">
+            ✗ 게이트를 끄는 변경이 게이트를 통과
+          </div>
+        </div>
+        <div style="flex:1 1 260px;min-width:250px;display:flex;flex-direction:column;align-items:stretch;">
+          <div style="border:2px solid var(--cv-add);background:var(--cv-add-surface);border-radius:8px;padding:8px 10px;font-size:13px;font-weight:600;color:var(--cv-text);">
+            base(develop) 신뢰 사본
+          </div>
+          <div style="height:12px;width:2px;background:var(--cv-add);margin:0 auto;"></div>
+          <div style="align-self:center;border:1px solid var(--cv-add);background:var(--cv-add-surface);color:var(--cv-add);border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;">
+            이 사본만 실행한다
+          </div>
+          <div style="height:12px;width:2px;background:var(--cv-add);margin:0 auto;"></div>
+          <div style="border:1px solid var(--cv-add);border-left:3px solid var(--cv-add);border-radius:8px;padding:8px 10px;font-size:11px;color:var(--cv-text);">
+            ✓ 리뷰를 거친 규칙만 판정에 쓰인다
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <details class="cites">
+      <summary>판단 2 · 3 — PR 전체 diff 를 보는 이유, 고장 났을 때 기우는 방향</summary>
+      <div style="padding-top:8px;display:flex;flex-direction:column;gap:12px;">
+<!-- 판단 2: 전체 diff -->
+    <div class="cv-card cv-card--why" style="border:1px solid var(--cv-border);border-left:3px solid var(--cv-mod);border-radius:10px;padding:12px;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+        <span class="cv-badge cv-badge--mod" style="font-size:11px;">판단 2</span>
+        <span style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--cv-text);">직전 push 가 아니라 PR 전체를 본다</span>
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <div style="flex:1 1 280px;min-width:260px;border:1px dashed var(--cv-del);border-radius:8px;padding:10px;">
+          <div style="font-size:13px;font-weight:700;color:var(--cv-del);">− 직전 push 델타만 본다면</div>
+          <div style="display:flex;align-items:center;gap:6px;margin:8px 0;flex-wrap:wrap;">
+            <span class="cv-badge cv-badge--del" style="font-size:11px;">소스 수정 (테스트 실패)</span>
+            <span class="cv-arrow" style="color:var(--cv-text-secondary);font-weight:700;">→</span>
+            <span class="cv-badge cv-badge--del" style="font-size:11px;">문서만 수정</span>
+            <span class="cv-arrow" style="color:var(--cv-text-secondary);font-weight:700;">→</span>
+            <span class="cv-badge cv-badge--del" style="font-size:11px;">건너뜀</span>
+          </div>
+          <div class="cv-muted" style="font-size:11px;">
+            미검증 소스가 남은 채 건너뛴다
+          </div>
+        </div>
+        <div style="flex:1 1 280px;min-width:260px;border:1px solid var(--cv-add);background:var(--cv-add-surface);border-radius:8px;padding:10px;">
+          <div style="font-size:13px;font-weight:700;color:var(--cv-add);">+ PR 전체 차이를 본다</div>
+          <div style="display:flex;align-items:center;gap:6px;margin:8px 0;flex-wrap:wrap;">
+            <span class="cv-badge cv-badge--module" style="font-size:11px;">base …… HEAD 전체</span>
+            <span class="cv-arrow" style="color:var(--cv-text-secondary);font-weight:700;">→</span>
+            <span class="cv-badge cv-badge--add" style="font-size:11px;">소스 포함 → 실행</span>
+          </div>
+          <div class="cv-muted" style="font-size:11px;">
+            push 순서에 의존하지 않는다
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 판단 3: fail-closed -->
+    <div class="cv-card cv-card--why" style="border:1px solid var(--cv-border);border-left:3px solid var(--cv-add);border-radius:10px;padding:12px;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+        <span class="cv-badge cv-badge--add" style="font-size:11px;">판단 3</span>
+        <span style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--cv-text);">관문이 고장 나면 실행 쪽으로 기운다</span>
+      </div>
+      
+      <div style="display:flex;flex-direction:column;align-items:stretch;">
+        <div style="align-self:center;border:2px solid var(--cv-mod);background:var(--cv-mod-surface);border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;color:var(--cv-text);">
+          관문 job 이 죽어 출력이 비었다
+        </div>
+        <div style="height:14px;width:2px;background:var(--cv-border);margin:0 auto;"></div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+          <div style="flex:1 1 260px;min-width:250px;display:flex;flex-direction:column;align-items:stretch;">
+            <div style="align-self:center;border:1px solid var(--cv-add);background:var(--cv-add-surface);color:var(--cv-add);border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;">
+              실제 적용 · “false 가 아니면 실행”
+            </div>
+            <div style="height:12px;width:2px;background:var(--cv-add);margin:0 auto;"></div>
+            <div style="border:1px solid var(--cv-add);border-left:3px solid var(--cv-add);border-radius:8px;padding:8px 10px;">
+              <div style="font-size:13px;font-weight:700;color:var(--cv-add);">+ 테스트가 돈다 (안전)</div>
+              <div class="cv-muted" style="font-size:11px;margin-top:3px;">시간은 더 쓰지만 검증은 빠지지 않는다</div>
+            </div>
+          </div>
+          <div style="flex:1 1 260px;min-width:250px;display:flex;flex-direction:column;align-items:stretch;">
+            <div style="align-self:center;border:1px solid var(--cv-del);background:var(--cv-del-surface);color:var(--cv-del);border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;">
+              만약 “true 일 때만 실행”이었다면
+            </div>
+            <div style="height:12px;width:2px;background:var(--cv-del);margin:0 auto;"></div>
+            <div style="border:1px dashed var(--cv-del);border-radius:8px;padding:8px 10px;">
+              <div style="font-size:13px;font-weight:700;color:var(--cv-del);">− 테스트가 건너뛰어진다 (위험)</div>
+              <div class="cv-muted" style="font-size:11px;margin-top:3px;">“테스트 미실행”이 화면에는 통과처럼 보인다</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cv-code cv-code--after" style="margin-top:12px;border:1px solid var(--cv-border);border-radius:8px;overflow:hidden;">
+        <div class="cv-code__label" style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:7px 12px;border-bottom:1px solid var(--cv-border);">
+          unit_test_on_pr.yml · 유닛테스트 job 의 실행 조건
+        </div>
+        <pre style="margin:0;padding:12px;white-space:pre;overflow-x:auto;font-size:12px;line-height:1.7;"><span class="line line--add"><span class="s-op">+</span>   <span class="s-pr">needs</span><span class="s-op">:</span> check-changes          <span class="s-cm"># 관문 job 이 끝난 뒤에 평가한다</span></span>
+<span class="line"><span class="s-pr">    if</span><span class="s-op">:</span> <span class="s-op">&gt;-</span></span>
+<span class="line line--add"><span class="s-op">+</span>     <span class="s-fn">!cancelled</span>() <span class="s-op">&amp;&amp;</span>              <span class="s-cm"># 취소된 실행이 아니고</span></span>
+<span class="line">      github.event.pull_request.<span class="s-fn">draft</span> <span class="s-op">==</span> <span class="s-ty">false</span> <span class="s-op">&amp;&amp;</span>  <span class="s-cm"># Draft 가 아니고 (Phase 2)</span></span>
+<span class="line line--add"><span class="s-op">+</span>     needs.check-changes.outputs.<span class="s-pr">should_test</span> <span class="s-op">!=</span> <span class="s-ty">'false'</span>  <span class="s-cm"># 관문이 "false" 라고 못 박았을 때만 건너뛴다</span></span></pre>
+      </div>
+
+      <div class="cv-muted" style="font-size:11px;margin-top:10px;border-top:1px dashed var(--cv-border);padding-top:8px;">
+        같은 이유로 <code>paths-ignore</code>는 쓰지 않았다 — 자동화를 안 깨우면 리뷰 관문이 <span class="cv-text-del">영원히 “대기 중”</span>으로 남는다. 깨우되 job 단계에서 건너뛴다.
+      </div>
+    </div>
+      </div>
+    </details>
+  </div>
+
+  <!-- ── 3-B 순차 vs 병렬 (COM-24) ── -->
+  <h3 class="cv-h3" style="font-size:16px;font-weight:700;letter-spacing:-0.01em;margin:24px 0 6px;">
+    3-B · 무거운 4개 모듈만 나눠서 돌린다
+  </h3>
+  <p class="cv-body" style="margin:0 0 12px;">
+    <span class="cv-text-del">세로 = 순차</span>, <span class="cv-text-add">가로 = 병렬</span>.
+  </p>
+
+  <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:stretch;">
+
+    <!-- 순차 : 세로 스택 -->
+    <div style="flex:1 1 220px;min-width:210px;">
+      <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--cv-del);margin-bottom:8px;">− Before · 순차</div>
+      <div style="border:1px solid var(--cv-del);background:var(--cv-del-surface);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:6px;">
+        <div style="border:1px solid var(--cv-border);border-radius:6px;padding:7px 9px;font-size:12px;color:var(--cv-text);">테스트 묶음 1</div>
+        <div style="border:1px solid var(--cv-border);border-radius:6px;padding:7px 9px;font-size:12px;color:var(--cv-text);">테스트 묶음 2</div>
+        <div style="border:1px solid var(--cv-border);border-radius:6px;padding:7px 9px;font-size:12px;color:var(--cv-text);">테스트 묶음 3</div>
+        <div style="border:1px solid var(--cv-border);border-radius:6px;padding:7px 9px;font-size:12px;color:var(--cv-text);">테스트 묶음 4</div>
+        <div class="pp-bar pp-seq" style="margin-top:4px;"><div class="pp-fill"></div></div>
+        <div class="cv-muted" style="font-size:11px;">하나가 끝나야 다음이 시작</div>
+      </div>
+    </div>
+
+    <!-- 병렬 : 가로 배치 -->
+    <div style="flex:2 1 340px;min-width:300px;">
+      <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--cv-add);margin-bottom:8px;">+ After · 병렬 fork (최대 4)</div>
+      <div style="border:1px solid var(--cv-add);background:var(--cv-add-surface);border-radius:10px;padding:10px;">
+        <div style="display:flex;flex-direction:row;gap:6px;flex-wrap:wrap;">
+          <div style="flex:1 1 60px;border:1px solid var(--cv-add);border-radius:6px;padding:7px 6px;font-size:12px;text-align:center;color:var(--cv-text);">묶음 1</div>
+          <div style="flex:1 1 60px;border:1px solid var(--cv-add);border-radius:6px;padding:7px 6px;font-size:12px;text-align:center;color:var(--cv-text);">묶음 2</div>
+          <div style="flex:1 1 60px;border:1px solid var(--cv-add);border-radius:6px;padding:7px 6px;font-size:12px;text-align:center;color:var(--cv-text);">묶음 3</div>
+          <div style="flex:1 1 60px;border:1px solid var(--cv-add);border-radius:6px;padding:7px 6px;font-size:12px;text-align:center;color:var(--cv-text);">묶음 4</div>
+        </div>
+        <div class="pp-bar pp-par" style="margin-top:8px;"><div class="pp-fill"></div></div>
+        <div class="cv-muted" style="font-size:11px;margin-top:6px;">
+          같은 묶음이 동시에 돈다 — 코어 수의 절반, <span class="cv-strong">최소 1 최대 4</span>로 제한
+        </div>
+        <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
+          <span class="cv-badge cv-badge--module" style="font-size:11px;">:app</span>
+          <span class="cv-badge cv-badge--module" style="font-size:11px;">:features</span>
+          <span class="cv-badge cv-badge--module" style="font-size:11px;">:domain</span>
+          <span class="cv-badge cv-badge--module" style="font-size:11px;">:data</span>
+          <span class="cv-badge cv-badge--add" style="font-size:11px;">= 전체 테스트의 70%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cv-card cv-card--why" style="margin-top:12px;border:1px dashed var(--cv-mod);border-radius:10px;padding:10px 12px;">
+    <div class="cv-body" style="font-size:12px;margin-bottom:4px;">전체 모듈에 쓰지 않은 이유 — 작은 모듈은 <span class="cv-strong">Robolectric</span> 준비가 fork 마다 반복돼 <span class="cv-text-del">오히려 느려진다</span>.</div>
+    <div class="cv-body" style="font-size:12px;">총 프로세스 수가 <span class="cv-strong">느는 건 아니다</span> — <span class="cv-strong">자리가 남는 구간</span>에서만 이득.</div>
+  </div>
+
+  <details class="cites" style="margin-top:12px;">
+    <summary>build.gradle.kts 실제 변경 보기</summary>
+    <div style="padding-top:8px;">
+<div class="cv-code cv-code--after" style="margin-top:12px;border:1px solid var(--cv-border);border-radius:8px;overflow:hidden;">
+    <div class="cv-code__label" style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:7px 12px;border-bottom:1px solid var(--cv-border);">
+      build.gradle.kts
+    </div>
+    <pre style="margin:0;padding:12px;white-space:pre;overflow-x:auto;font-size:12px;line-height:1.7;"><span class="line line--add"><span class="s-op">+</span> <span class="s-kw">val</span> <span class="s-pr">TEST_HEAVY_MODULES</span> <span class="s-op">=</span> <span class="s-fn">setOf</span>(<span class="s-ty">":app"</span>, <span class="s-ty">":features"</span>, <span class="s-ty">":domain"</span>, <span class="s-ty">":data"</span>)  <span class="s-cm">// 테스트가 몰린 4개만</span></span>
+<span class="line line--add"><span class="s-op">+</span> <span class="s-kw">if</span> (project.<span class="s-pr">path</span> <span class="s-kw">in</span> <span class="s-pr">TEST_HEAVY_MODULES</span>) {                          <span class="s-cm">// 나머지 모듈은 손대지 않는다</span></span>
+<span class="line line--add"><span class="s-op">+</span>     <span class="s-pr">maxParallelForks</span> <span class="s-op">=</span> (<span class="s-fn">availableProcessors</span>() <span class="s-op">/</span> <span class="s-ty">2</span>).<span class="s-fn">coerceIn</span>(<span class="s-ty">1</span>, <span class="s-ty">4</span>) <span class="s-cm">// 코어 절반, 1~4 사이</span></span>
+<span class="line line--add"><span class="s-op">+</span> }</span></pre>
+  </div>
+    </div>
+  </details>
+
+  <details class="cites" style="margin-top:20px;">
+    <summary>검증 수단 · 계약 테스트와 지표 수집</summary>
+    <div style="padding-top:8px;">
+    <!-- ── 계약 테스트 + 지표 수집 ── -->
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:20px;">
+  
+      <div class="cv-card cv-card--add" style="flex:1 1 300px;min-width:280px;border:1px solid var(--cv-add);border-left:3px solid var(--cv-add);border-radius:10px;padding:12px;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+          <span class="cv-badge cv-badge--new" style="font-size:11px;">NEW</span>
+          <span style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--cv-text);">CI 설정 변경에 테스트가 붙어 있다</span>
+        </div>
+        <p class="cv-body" style="margin:0 0 8px;font-size:12px;">
+          <code>test_unit_test_on_pr_workflow.py</code> 151줄이 관문 동작을 계약으로 고정한다.
+        </p>
+        <div style="display:flex;flex-direction:column;gap:5px;">
+          <div style="border-left:2px solid var(--cv-border);padding-left:10px;font-size:12px;color:var(--cv-text);">
+            <span class="cv-strong">판정 규칙</span> <span class="cv-muted">— 문서만 / 소스 트리 안의 md / 빌드 스크립트 / 혼합 / 빈 입력</span>
+          </div>
+          <div style="border-left:2px solid var(--cv-border);padding-left:10px;font-size:12px;color:var(--cv-text);">
+            <span class="cv-strong">워크플로 계약</span> <span class="cv-muted">— 관문 존재 / base 사본 실행 / fail-closed / 전체 diff</span>
+          </div>
+          <div class="cv-muted" style="border-left:2px solid var(--cv-border);padding-left:10px;font-size:11px;">
+            … +12 more
+          </div>
+        </div>
+      </div>
+  
+      <div class="cv-card cv-card--mod" style="flex:1 1 300px;min-width:280px;border:1px solid var(--cv-mod);border-left:3px solid var(--cv-mod);border-radius:10px;padding:12px;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+          <span class="cv-badge cv-badge--new" style="font-size:11px;">NEW</span>
+          <span style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--cv-text);">3-C · 측정 수단을 같은 PR 에 넣었다</span>
+        </div>
+        <p class="cv-body" style="margin:0 0 8px;font-size:12px;">
+          실패 시에도 항상 실행돼 아래를 남긴다 — before/after 비교 근거.
+        </p>
+        <div style="display:flex;flex-direction:column;gap:5px;">
+          <div style="border-left:2px solid var(--cv-border);padding-left:10px;font-size:12px;color:var(--cv-text);">빌드 작업별 소요 요약</div>
+          <div style="border-left:2px solid var(--cv-border);padding-left:10px;font-size:12px;color:var(--cv-text);">이전 결과 재사용(캐시) 적중 여부</div>
+          <div style="border-left:2px solid var(--cv-border);padding-left:10px;font-size:12px;color:var(--cv-text);">실행 서버의 코어 수</div>
+        </div>
+        <div class="cv-muted" style="font-size:11px;margin-top:8px;border-top:1px dashed var(--cv-border);padding-top:8px;">
+          단축 폭은 <span class="cv-strong">아직 미확정</span> — 지표가 쌓인 뒤 비교.
+        </div>
+      </div>
+    </div>
+  
+    </div>
+  </details>
+
+<!-- 적용 규칙: COM-01, COM-02, COM-03, COM-05, COM-06, COM-07, COM-09, COM-10, COM-11, COM-13, COM-14, COM-21, COM-22, COM-23, COM-24, COM-25, COM-26, COM-27, COM-28, COM-29, COM-30, COM-33, COM-34, COM-35, COM-36, COM-38, COM-41, COM-42, COM-43 -->
+</section>
+
+
+<!-- ══════════ 종합: 세 개의 관문 ══════════ -->
+<section class="cv-section" style="--accent:var(--cv-mov)">
+  <h2 class="sec-title">세 관문을 지나면 줄이 짧아진다</h2>
+  <p class="sec-lede">
+    들어온 작업이 어디서 빠지는지 — 세 변경이 서로를 대체하지 않고 <strong style="color:var(--cv-text)">누적</strong>되는 이유.
+  </p>
+
+  <div class="fn">
+    <div class="fn-track" role="img" aria-label="작업 흐름이 세 관문을 지나며 걸러지는 도식. 결과 발행 작업은 1번 관문에서 다른 서버로 빠지고, Draft 작업은 2번 관문에서 차단되며, 문서만 고친 작업은 3번 관문에서 건너뛰고, 코드 변경만 유닛테스트에 도달한다.">
+      <div class="fn-lane"></div>
+      <div class="fn-sidelane"></div>
+      <span class="fn-entry">PR push</span>
+      <div class="fn-sink">sre-runner<br>로 이설</div>
+      <div class="fn-out">유닛테스트<br>실행</div>
+
+      <div class="fn-gate" style="left:28%;background:var(--cv-mov)"></div>
+      <div class="fn-gate" style="left:45%;background:var(--cv-del)"></div>
+      <div class="fn-gate" style="left:62%;background:var(--cv-mod)"></div>
+
+      <div class="fn-gate-lbl" style="left:28%;color:var(--cv-mov)">1 · 옮긴다<em>PR #8530</em></div>
+      <div class="fn-gate-lbl" style="left:45%;color:var(--cv-del)">2 · 안 한다<em>PR #8535</em></div>
+      <div class="fn-gate-lbl" style="left:62%;color:var(--cv-mod)">3 · 필요할 때만<em>PR #8546</em></div>
+
+      <span class="fn-chip fn-c-pub" style="animation:fn-pub 11s linear infinite;animation-delay:0s">→ 결과 발행</span>
+      <span class="fn-chip fn-c-drf" style="animation:fn-drf 11s linear infinite;animation-delay:2.2s">− Draft PR</span>
+      <span class="fn-chip fn-c-doc" style="animation:fn-doc 11s linear infinite;animation-delay:4.4s">~ 문서만 수정</span>
+      <span class="fn-chip fn-c-cod" style="animation:fn-cod 11s linear infinite;animation-delay:6.6s">+ 코드 변경</span>
+    </div>
+  </div>
+
+  <div class="sum-grid" style="margin-top:20px">
+    <div class="sum-card" style="border-color:rgba(56,189,248,0.24);background:rgba(56,189,248,0.05)">
+      <span class="phase-tag" style="--accent:var(--cv-mov);--tint:rgba(56,189,248,0.10);--edge:rgba(56,189,248,0.30)">Phase 1 · #8530</span>
+      <div class="sum-verb">자리를 비켜준다</div>
+      <p class="sum-body">
+        안드로이드 도구를 안 쓰는 작업이 전용 줄에 서 있었다.
+        <strong style="color:var(--cv-text)">한가한 서버로 옮기니</strong> 대기가 116분 → 초 단위.
+      </p>
+    </div>
+    <div class="sum-card" style="border-color:rgba(251,146,60,0.24);background:rgba(251,146,60,0.05)">
+      <span class="phase-tag" style="--accent:var(--cv-del);--tint:rgba(251,146,60,0.10);--edge:rgba(251,146,60,0.30)">Phase 2 · #8535</span>
+      <div class="sum-verb">아직 묻지 않은 건 답하지 않는다</div>
+      <p class="sum-body">
+        아무도 안 기다리는 Draft 빌드를 돌리고 있었다.
+        <strong style="color:var(--cv-text)">리뷰 준비가 끝난 순간부터</strong> 돌린다.
+      </p>
+    </div>
+    <div class="sum-card" style="border-color:rgba(96,165,250,0.24);background:rgba(96,165,250,0.05)">
+      <span class="phase-tag">Phase 3 · #8546</span>
+      <div class="sum-verb">할 필요가 있는지 먼저 묻는다</div>
+      <p class="sum-body">
+        싼 서버가 "코드가 바뀌었나"를 먼저 판정하고, 아니면 통째로 건너뛴다.
+        돌릴 때는 <strong style="color:var(--cv-text)">무거운 모듈만 병렬로</strong>.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ 현재 상태 ══════════ -->
+<section class="cv-section" style="--accent:var(--cv-mod)">
+  <h2 class="sec-title">지금까지 확인된 것과, 아직 확인 못 한 것</h2>
+  <p class="sec-lede">
+    셋 다 머지됐다. 다만 근거 수준이 서로 다르다.
+  </p>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px">
+    <div class="cv-card cv-card--add" style="margin:0">
+      <div class="cv-card__header" style="color:var(--cv-add)">측정으로 뒷받침됨</div>
+      <div class="cv-card__body">
+        <div style="margin-bottom:8px">· 발행 대기 <strong>116.1분 → 7초</strong></div>
+        <div style="margin-bottom:8px">· 대상 서버 여력 <strong>안드로이드의 1/15</strong></div>
+        <div style="margin-bottom:8px">· 취소 런은 <strong>구조상 발행할 결과 없음</strong></div>
+        <div>· Docker 데몬 부재 — <strong>probe 로 확인</strong></div>
+      </div>
+    </div>
+    <div class="cv-card cv-card--mod" style="margin:0">
+      <div class="cv-card__header" style="color:var(--cv-mod)">아직 측정 전</div>
+      <div class="cv-card__body">
+        <div style="margin-bottom:8px">· Draft 차단이 줄인 작업 수</div>
+        <div style="margin-bottom:8px">· 게이트가 건너뛴 비율</div>
+        <div style="margin-bottom:8px">· 병렬 fork 단축폭 <span class="cv-muted">(환경 의존적)</span></div>
+        <div>· 측정 수단은 <code class="inline">Record run metrics</code> 로 같은 PR 에</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>과장하지 않기.</b> Phase 1 의 회수분은 <b>2.3%</b>.
+    지배적 원인(테스트 길이 50.5%, 취소 40.4%)은 Phase 3 이 겨냥한다.
+    아직 "대기가 사라졌다"고 말할 단계는 아니다.
+  </div>
+</section>
+
+<details class="cv-citations cites">
+  <summary>적용한 설계 근거 보기</summary>
+  <div style="padding-top:10px">
+    <table class="cv-table">
+      <thead><tr>
+        <th class="cv-table__header">근거</th>
+        <th class="cv-table__header">적용 위치</th>
+      </tr></thead>
+      <tbody>
+        <tr class="cv-table__row"><td>Cowan 4±1 작업 기억 — 한 다이어그램 독립 요소 4개 제한</td><td>관문 도식 4종 칩, 원인 분해 3행</td></tr>
+        <tr class="cv-table__row"><td>Okabe &amp; Ito 색맹 안전 팔레트 — 적녹 조합 회피</td><td>추가/삭제/수정/이동 4색 + 보조 기호 <code class="inline">+ − ~ →</code></td></tr>
+        <tr class="cv-table__row"><td>Mayer 멀티미디어 원칙 (d=1.39) — 텍스트+시각 병행</td><td>모든 다이어그램에 한글 설명 인접 배치</td></tr>
+        <tr class="cv-table__row"><td>Mayer 공간 인접 원칙 (d=1.10)</td><td>설명을 도식 아래 별도 섹션으로 분리하지 않음</td></tr>
+        <tr class="cv-table__row"><td>Temporal Contiguity (d=1.31) — 관련 정보 동시 제시</td><td>시나리오 표시등과 경로 강조를 단일 CSS 타임라인으로 동기화</td></tr>
+        <tr class="cv-table__row"><td>Cleveland &amp; McGill — 위치·길이가 가장 정확한 인코딩</td><td>대기 시간 비교 막대, 순차=세로 / 병렬=가로 레이아웃</td></tr>
+        <tr class="cv-table__row"><td>Tufte data-ink ratio</td><td>장식 요소 배제, 모든 모션이 사실을 인코딩</td></tr>
+        <tr class="cv-table__row"><td>WCAG 1.4.1 / 1.4.3</td><td>색상 단독 의미 전달 금지, 대비 4.5:1, <code class="inline">prefers-reduced-motion</code> 대응</td></tr>
+      </tbody>
+    </table>
+  </div>
+</details>
+
+<div class="cv-footer">
+  KMA-10156 CI 큐 적체 및 Job 배정 지연 원인 분석 · PR #8530 · #8535 · #8546 · thefarmersfront/kurly-android<br>
+  수치는 각 PR 본문과 코드 주석에 기재된 실측값이다. 측정되지 않은 효과는 측정 전으로 표기했다.
+</div>
+
+
+<script>
+// Citation 토글은 <details> 네이티브 동작을 사용한다 (JS 불필요).
+// 모션은 전부 CSS @keyframes 단일 타임라인 — JS 타이머와 time origin 이 어긋날 여지를 두지 않는다 (COM-32).
+</script>
+</body>
+</html>
