@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LAYER_TYPE_NONE인데 레이어가 생겼다</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════
+   Toss Tech Light Theme — Blog Template
+   Reference: toss.tech/article/will-ai-replace-developers
+   ═══════════════════════════════════════════════ */
+:root {
+    /* Adaptive Grays (Toss Design System) */
+    --grey-50: #f9fafb;
+    --grey-100: #f2f4f6;
+    --grey-200: #e5e8eb;
+    --grey-300: #d1d6db;
+    --grey-400: #b0b8c1;
+    --grey-500: #8b95a1;
+    --grey-600: #6b7684;
+    --grey-700: #4e5968;
+    --grey-800: #333d4b;
+    --grey-900: #191f28;
+
+    /* Brand */
+    --toss-blue: #0064FF;
+    --toss-blue-light: rgba(0, 100, 255, 0.08);
+    --toss-blue-border: rgba(0, 100, 255, 0.2);
+
+    /* Semantic */
+    --bg: #ffffff;
+    --bg-elevated: var(--grey-50);
+    --bg-highlight: #ffc34236;
+    --bg-code: var(--grey-100);
+    --bg-blockquote: transparent;
+    --text-primary: var(--grey-900);
+    --text-secondary: var(--grey-700);
+    --text-tertiary: var(--grey-500);
+    --border-light: var(--grey-200);
+    --border-blockquote: var(--grey-800);
+
+    /* Layout */
+    --content-width: 680px;
+    --wide-width: 780px;
+    --radius: 16px;
+    --radius-sm: 10px;
+
+    /* Typography */
+    --font-body: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --font-code: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+}
+
+/* Reset */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text-primary);
+    line-height: 1.8;
+    font-size: 16.5px;
+    -webkit-font-smoothing: antialiased;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+}
+
+::selection {
+    background: rgba(0, 100, 255, 0.15);
+    color: var(--grey-900);
+}
+
+a { color: var(--toss-blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ═══════════════════════════════════════════════
+   Layout
+   ═══════════════════════════════════════════════ */
+.article {
+    max-width: var(--content-width);
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+.article-wide {
+    max-width: var(--wide-width);
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+/* ═══════════════════════════════════════════════
+   Hero Header
+   ═══════════════════════════════════════════════ */
+.hero {
+    padding: 80px 24px 48px;
+    max-width: var(--content-width);
+    margin: 0 auto;
+}
+
+.hero-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 24px;
+    font-size: 0.875rem;
+    color: var(--text-tertiary);
+}
+
+.hero-meta .author {
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.hero-meta .dot {
+    color: var(--grey-300);
+}
+
+.hero-title {
+    font-size: 2.2rem;
+    font-weight: 800;
+    line-height: 1.3;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+    letter-spacing: -0.02em;
+}
+
+.hero-subtitle {
+    font-size: 1.1rem;
+    line-height: 1.7;
+    color: var(--text-secondary);
+    max-width: 580px;
+}
+
+.hero-tags {
+    display: flex;
+    gap: 8px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+}
+
+.hero-tag {
+    padding: 4px 12px;
+    border-radius: var(--radius-sm);
+    background: var(--toss-blue-light);
+    border: 1px solid var(--toss-blue-border);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--toss-blue);
+}
+
+/* ═══════════════════════════════════════════════
+   Table of Contents
+   ═══════════════════════════════════════════════ */
+.toc {
+    margin: 0 0 48px 0;
+    padding: 24px 28px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+}
+
+.toc-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+}
+
+.toc-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.toc-list a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    font-size: 0.92rem;
+    color: var(--text-secondary);
+    transition: color 0.2s;
+}
+
+.toc-list a:hover {
+    color: var(--toss-blue);
+    text-decoration: none;
+}
+
+.toc-num {
+    width: 24px;
+    height: 24px;
+    border-radius: 7px;
+    background: var(--grey-200);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════
+   Typography
+   ═══════════════════════════════════════════════ */
+.article h2 {
+    font-size: 1.55rem;
+    font-weight: 800;
+    line-height: 1.35;
+    color: var(--text-primary);
+    margin: 56px 0 20px 0;
+    letter-spacing: -0.01em;
+}
+
+.article h2:first-child {
+    margin-top: 0;
+}
+
+.article h3 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    line-height: 1.4;
+    color: var(--text-primary);
+    margin: 40px 0 14px 0;
+}
+
+.article p {
+    margin: 0 0 20px 0;
+    color: var(--text-primary);
+}
+
+.article strong {
+    font-weight: 700;
+    color: var(--grey-900);
+}
+
+/* ═══════════════════════════════════════════════
+   Blockquote (Left border style — Toss)
+   ═══════════════════════════════════════════════ */
+.article blockquote {
+    margin: 28px 0;
+    padding: 0 0 0 20px;
+    border-left: 2.5px solid var(--border-blockquote);
+    font-size: 1.05rem;
+    font-weight: 600;
+    line-height: 1.7;
+    color: var(--text-primary);
+}
+
+.article blockquote p {
+    margin: 0;
+}
+
+/* ═══════════════════════════════════════════════
+   Highlight Box (Yellow — Toss)
+   ═══════════════════════════════════════════════ */
+.highlight-box {
+    margin: 28px 0;
+    padding: 20px 24px;
+    background: var(--bg-highlight);
+    border-radius: var(--radius);
+    font-weight: 600;
+    line-height: 1.7;
+    color: var(--text-primary);
+}
+
+/* ═══════════════════════════════════════════════
+   Content Box (Gray rounded — Toss)
+   ═══════════════════════════════════════════════ */
+.content-box {
+    margin: 28px 0;
+    padding: 24px 28px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+}
+
+.content-box-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+}
+
+/* ═══════════════════════════════════════════════
+   Code Blocks
+   ═══════════════════════════════════════════════ */
+.article code {
+    font-family: var(--font-code);
+    font-size: 0.88em;
+    padding: 2px 6px;
+    background: var(--bg-code);
+    border-radius: 5px;
+    color: var(--grey-800);
+}
+
+.article pre {
+    margin: 24px 0;
+    padding: 24px;
+    background: var(--grey-900);
+    border-radius: var(--radius);
+    overflow-x: auto;
+    line-height: 1.6;
+}
+
+.article pre code {
+    font-family: var(--font-code);
+    font-size: 0.85rem;
+    background: none;
+    padding: 0;
+    color: #abb2bf;
+    border-radius: 0;
+}
+
+/* Syntax highlighting (One Dark) */
+.kw { color: #c678dd; }       /* keyword */
+.str { color: #98c379; }      /* string */
+.cmt { color: #5c6370; font-style: italic; } /* comment */
+.typ { color: #e5c07b; }      /* type/class */
+.fn { color: #61afef; }       /* function */
+.ann { color: #d19a66; }      /* annotation/number */
+.op { color: #56b6c2; }       /* operator */
+
+/* ═══════════════════════════════════════════════
+   Lists
+   ═══════════════════════════════════════════════ */
+.article ul, .article ol {
+    margin: 0 0 20px 0;
+    padding-left: 24px;
+}
+
+.article li {
+    margin-bottom: 10px;
+    line-height: 1.7;
+}
+
+.article li::marker {
+    color: var(--text-tertiary);
+}
+
+/* Checklist style */
+.checklist {
+    list-style: none;
+    padding: 0;
+    counter-reset: check;
+}
+
+.checklist li {
+    counter-increment: check;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.checklist li:last-child {
+    border-bottom: none;
+}
+
+.checklist-num {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: var(--toss-blue);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: white;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+/* ═══════════════════════════════════════════════
+   Images
+   ═══════════════════════════════════════════════ */
+.article img, .article-wide img {
+    max-width: 100%;
+    border-radius: var(--radius);
+    margin: 28px 0;
+    display: block;
+}
+
+.img-caption {
+    text-align: center;
+    font-size: 0.82rem;
+    color: var(--text-tertiary);
+    margin-top: -16px;
+    margin-bottom: 28px;
+}
+
+/* ═══════════════════════════════════════════════
+   Metrics Table
+   ═══════════════════════════════════════════════ */
+.metrics-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0;
+    font-size: 0.9rem;
+}
+
+.metrics-table th {
+    text-align: left;
+    padding: 12px 16px;
+    background: var(--bg-elevated);
+    border-bottom: 2px solid var(--border-light);
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.metrics-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-light);
+    color: var(--text-secondary);
+}
+
+.metrics-table .metric-label {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.metrics-table .metric-good {
+    color: #16a34a;
+    font-weight: 700;
+}
+
+.metrics-table .metric-bad {
+    color: #dc2626;
+    font-weight: 600;
+}
+
+.metrics-table .metric-neutral {
+    color: var(--text-tertiary);
+}
+
+/* Delta badges */
+.delta {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.delta-good {
+    background: rgba(22, 163, 74, 0.1);
+    color: #16a34a;
+}
+
+.delta-bad {
+    background: rgba(220, 38, 38, 0.1);
+    color: #dc2626;
+}
+
+.delta-neutral {
+    background: var(--grey-100);
+    color: var(--text-tertiary);
+}
+
+/* ═══════════════════════════════════════════════
+   Summary / Key Takeaway Box
+   ═══════════════════════════════════════════════ */
+.summary-box {
+    margin: 36px 0;
+    padding: 24px 28px;
+    background: var(--toss-blue-light);
+    border: 1px solid var(--toss-blue-border);
+    border-radius: var(--radius);
+}
+
+.summary-box-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--toss-blue);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.summary-box p, .summary-box li {
+    color: var(--text-primary);
+    font-size: 0.95rem;
+}
+
+/* ═══════════════════════════════════════════════
+   Comparison Cards (Inline)
+   — 이중 박스 구조 제거: 카드 배경/보더 없음, 라벨 + 코드 블록만으로 비교 단위
+   — Grid 1fr 의 자식 폭 초과 방지: minmax(0, 1fr) + child min-width: 0
+   ═══════════════════════════════════════════════ */
+.compare-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 16px;
+    margin: 28px 0;
+}
+
+.compare-card {
+    padding: 0;
+    background: transparent;
+    border: none;
+    min-width: 0;  /* Grid 자식의 폭 초과 방지 */
+}
+
+.compare-card-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 10px;
+}
+.compare-card-label::before {
+    content: "";
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+.compare-before .compare-card-label { color: var(--text-tertiary); }
+.compare-before .compare-card-label::before { background: var(--grey-400); }
+.compare-after .compare-card-label { color: var(--toss-blue); }
+.compare-after .compare-card-label::before { background: var(--toss-blue); }
+
+.compare-card pre {
+    margin: 0;
+    padding: 14px;
+    font-size: 0.72rem;
+    border-radius: 12px;
+    overflow-x: auto;
+}
+.compare-card pre code { font-size: 0.72rem; }
+
+/* ═══════════════════════════════════════════════
+   User Quote (사용자 피드백 인용 — accessibility_face)
+   ═══════════════════════════════════════════════ */
+.user-quote {
+    margin: 28px 0;
+    padding: 20px 24px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+    border-left: 3px solid var(--toss-blue);
+}
+
+.user-quote-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--toss-blue);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 8px;
+}
+
+.user-quote p {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.7;
+    color: var(--text-primary);
+    font-style: italic;
+}
+
+/* ═══════════════════════════════════════════════
+   Media (비디오/오디오 — accessibility_face)
+   ═══════════════════════════════════════════════ */
+.media-wrap {
+    margin: 28px 0;
+}
+
+.media-wrap video, .media-wrap audio {
+    width: 100%;
+    border-radius: var(--radius);
+    display: block;
+}
+
+.media-wrap audio {
+    margin-top: 8px;
+}
+
+/* ═══════════════════════════════════════════════
+   Author Credits (복수 저자 — accessibility_face)
+   ═══════════════════════════════════════════════ */
+.credits {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-light);
+    font-size: 0.85rem;
+    color: var(--text-tertiary);
+}
+
+.credits-role {
+    font-weight: 700;
+    color: var(--text-secondary);
+    margin-right: 4px;
+}
+
+.credits-sep {
+    margin: 0 12px;
+    color: var(--grey-300);
+}
+
+/* ═══════════════════════════════════════════════
+   Separator
+   ═══════════════════════════════════════════════ */
+.article hr {
+    border: none;
+    height: 1px;
+    background: var(--border-light);
+    margin: 48px 0;
+}
+
+/* ═══════════════════════════════════════════════
+   Footnotes
+   ═══════════════════════════════════════════════ */
+.footnotes {
+    margin-top: 56px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border-light);
+    font-size: 0.82rem;
+    color: var(--text-tertiary);
+    line-height: 1.8;
+}
+
+.footnotes a {
+    color: var(--text-tertiary);
+    text-decoration: underline;
+}
+
+.footnotes ol { padding-left: 20px; }
+.footnotes li { margin-bottom: 6px; scroll-margin-top: 24px; }
+
+.footnote-ref {
+    font-size: 0.75em;
+    vertical-align: super;
+    font-weight: 600;
+}
+
+.footnote-ref a {
+    color: var(--toss-blue);
+    text-decoration: none;
+}
+
+.footnote-ref a:hover { text-decoration: underline; }
+
+.fn-back {
+    color: var(--text-tertiary);
+    text-decoration: none;
+    margin-left: 6px;
+    font-size: 0.9em;
+}
+
+.fn-back:hover { color: var(--toss-blue); }
+
+/* ═══════════════════════════════════════════════
+   Footer
+   ═══════════════════════════════════════════════ */
+.article-footer {
+    margin-top: 56px;
+    padding: 32px 0;
+    text-align: center;
+    color: var(--text-tertiary);
+    font-size: 0.82rem;
+}
+
+.share-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.share-btn {
+    padding: 8px 20px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-light);
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.share-btn:hover {
+    background: var(--grey-200);
+    color: var(--text-primary);
+}
+
+/* ═══════════════════════════════════════════════
+   Responsive
+   ═══════════════════════════════════════════════ */
+@media (max-width: 768px) {
+    .hero { padding: 48px 20px 32px; }
+    .hero-title { font-size: 1.7rem; }
+    .article, .article-wide { padding: 0 20px; }
+    .article h2 { font-size: 1.35rem; margin-top: 40px; }
+    .article h3 { font-size: 1.1rem; }
+    .compare-grid { grid-template-columns: 1fr; }
+    .article pre { padding: 16px; margin-left: -8px; margin-right: -8px; border-radius: 12px; }
+}
+
+/* ═══════════════════════════════════════════════
+   Print
+   ═══════════════════════════════════════════════ */
+@media print {
+    body { font-size: 11pt; }
+    .hero { padding: 24px 0; }
+    .article pre { white-space: pre-wrap; }
+    .toc, .share-buttons, .article-footer { display: none; }
+}
+</style>
+</head>
+<body>
+
+<header class="hero">
+    <div class="hero-meta">
+        <span class="author">홍기찬</span>
+        <span class="dot">&middot;</span>
+        <span>Android Developer</span>
+        <span class="dot">&middot;</span>
+        <time>2026. 10</time>
+    </div>
+    <h1 class="hero-title">LAYER_TYPE_NONE인데 레이어가 생겼다</h1>
+    <p class="hero-subtitle">1px 크래시 2편, stretch overscroll이 깨운 hwui 레이어 자동 승격</p>
+    <div class="hero-tags">
+        <span class="hero-tag">Android</span>
+        <span class="hero-tag">WebView</span>
+        <span class="hero-tag">hwui</span>
+        <span class="hero-tag">Overscroll</span>
+    </div>
+</header>
+
+<nav class="article">
+    <div class="toc">
+        <div class="toc-label">목차</div>
+        <ol class="toc-list">
+            <li><a href="#section-1"><span class="toc-num">1</span> NONE으로 막았던 크래시가 돌아왔다</a></li>
+            <li><a href="#section-2"><span class="toc-num">2</span> 단서: 메시지가 가리킨 노드</a></li>
+            <li><a href="#section-3"><span class="toc-num">3</span> 레이어는 요청하지 않아도 생긴다</a></li>
+            <li><a href="#section-4"><span class="toc-num">4</span> 검사는 16383, 할당은 16384</a></li>
+            <li><a href="#section-5"><span class="toc-num">5</span> 한 줄 수정: WebView의 stretch를 끈다</a></li>
+            <li><a href="#section-6"><span class="toc-num">6</span> 실기기로 확인한 세 가지 초록</a></li>
+            <li><a href="#section-7"><span class="toc-num">7</span> 교훈</a></li>
+        </ol>
+    </div>
+</nav>
+
+<article class="article">
+
+<!-- ═══════════════════ Section 1 ═══════════════════ -->
+<h2 id="section-1">NONE으로 막았던 크래시가 돌아왔다</h2>
+
+<p>1편에서 우리는 상품설명 WebView의 레이어 타입을 <code>LAYER_TYPE_NONE</code>으로 바꿔 크래시를 막았다고 썼다. 하드웨어 레이어를 쓰지 않으면 WebView 크기만 한 텍스처를 만들 일도 없다는 논리였다. 그리고 몇 달 뒤, 같은 메시지가 다시 쌓이기 시작했다.</p>
+
+<pre><code>Caused by: java.lang.IllegalStateException:
+  Unable to create layer for WebView, size <span class="ann">1088x16384</span> max size <span class="ann">16383</span> color type 4 has context 1</code></pre>
+
+<p>숫자까지 1편과 똑같았다. 높이 16384, 한도 16383, 차이는 1px이다. 그런데 이번에는 코드 어디에도 <code>LAYER_TYPE_HARDWARE</code>가 없었다. 크래시는 최신 릴리즈 전반에서 하루 몇 건씩 꾸준히 쌓였고, 전부 삼성 단말, 전부 Android 12 이상이었다.</p>
+
+<p>결론부터 말하면 <code>LAYER_TYPE_NONE</code>은 "레이어를 쓰지 않는다"는 뜻이 아니었다. 이 글은 다음 네 가지를 차례로 다룬다.</p>
+
+<ul class="checklist">
+    <li><span class="checklist-num">1</span><span>레이어를 요청하지 않아도 렌더러(hwui)가 View를 레이어로 올리는 <strong>자동 승격</strong></span></li>
+    <li><span class="checklist-num">2</span><span>Android 12 stretch overscroll이 WebView 자신을 승격시키는 경로</span></li>
+    <li><span class="checklist-num">3</span><span>크기 검사(16383)와 할당(16384)이 어긋나는 hwui의 경계</span></li>
+    <li><span class="checklist-num">4</span><span>한 줄 수정과 실기기 검증</span></li>
+</ul>
+
+<div class="summary-box">
+    <div class="summary-box-title">1편 다시 보기</div>
+    <p>GPU 최대 텍스처 크기(maxTextureSize)가 64의 배수가 아닌 단말(16383)에서, 레이어 높이가 64의 배수로 올림되며 16384가 되어 할당에 실패했다. 당시 대응은 레이어 타입을 <code>LAYER_TYPE_HARDWARE</code>에서 <code>LAYER_TYPE_NONE</code>으로 바꾸는 것이었다.<br>
+    <a href="blog-webview-texture-crash.html">→ 1px이 앱을 죽였다</a></p>
+</div>
+
+<!-- ═══════════════════ Section 2 ═══════════════════ -->
+<h2 id="section-2">단서: 메시지가 가리킨 노드</h2>
+
+<p>스택은 Chromium 쪽 문제처럼 보였다. 최상단 프레임이 <code>org.chromium.base.JniAndroid.handleException</code>이고, 그 아래로 WebView APK의 네이티브 주소가 이어지다 <code>libhwui.so</code>에서 끝난다. 하지만 메시지 문구는 Chromium이 아니라 Android 렌더러인 hwui 소스에 있다.</p>
+
+<pre><code><span class="cmt">// libs/hwui/pipeline/skia/SkiaGpuPipeline.cpp, createOrUpdateLayer()</span>
+err &lt;&lt; <span class="str">"Unable to create layer for "</span> &lt;&lt; node-&gt;<span class="fn">getName</span>();
+err &lt;&lt; <span class="str">", size "</span> &lt;&lt; info.<span class="fn">width</span>() &lt;&lt; <span class="str">"x"</span> &lt;&lt; info.<span class="fn">height</span>() &lt;&lt; <span class="str">" max size "</span>
+    &lt;&lt; maxTextureSize &lt;&lt; <span class="cmt">/* ... */</span>;</code></pre>
+
+<p>메시지 속 <code>WebView</code>는 레이어를 할당하려던 RenderNode의 이름이다. hwui는 View 클래스 이름에서 패키지 접두사를 떼어 노드 이름으로 쓴다<sup class="footnote-ref" id="ref-1"><a href="#fn1">[1]</a></sup>. 레이어가 필요했던 주체는 WebView의 조상이 아니라 WebView 자신이었다.</p>
+
+<p>Chromium 개발자도 이슈트래커에 같은 해석을 남겼다. 오프스크린으로 그려야 하는 뷰의 레이어 할당에 HWUI가 실패해 예외를 세우고, 이어서 WebView가 JNI로 Java를 호출하는 순간 그 예외가 Chromium 쪽에서 드러난다는 설명이다<sup class="footnote-ref" id="ref-2"><a href="#fn2">[2]</a></sup>. 스택이 WebView를 가리키는 것은 예외가 드러난 위치일 뿐이다.</p>
+
+<p>크래시 데이터에서는 세 가지 단서가 더 나왔다.</p>
+
+<table class="metrics-table">
+    <thead>
+        <tr><th>단서</th><th>관찰</th><th>의미</th></tr>
+    </thead>
+    <tbody>
+        <tr><td class="metric-label">발생 OS</td><td>Android 12 이상만, 11 이하 0건</td><td>Android 12에서 도입된 무언가가 관여한다</td></tr>
+        <tr><td class="metric-label">단말</td><td>삼성 단말 (maxTextureSize 16383)</td><td>1편과 같은 64 배수 경계</td></tr>
+        <tr><td class="metric-label">증가 시점</td><td>상품설명 핀치줌을 패션 외 상품까지 넓힌 릴리즈 이후</td><td>확대 상태가 관여한다</td></tr>
+        <tr><td class="metric-label">노드 이름</td><td><code>WebView</code></td><td>WebView 자신의 RenderNode가 레이어 대상이다</td></tr>
+    </tbody>
+</table>
+
+<h3>막다른 가설 세 개</h3>
+
+<p>원인에 닿기 전에 세 가설을 지웠다.</p>
+
+<ul>
+    <li><strong>메시지가 사라졌다.</strong> 수집 파이프라인으로 집계한 데이터에는 해당 문구가 거의 없어서, 원인이 다른 것으로 바뀐 것처럼 보였다. 원본 이벤트를 직접 열자 최근 이벤트 전부에 같은 문구가 있었다. Caused by가 긴 네이티브 스택 뒤에 붙어 있어 텍스트 필드에서 잘린 것으로 판단했다.</li>
+    <li><strong>조상 뷰가 레이어를 만든다.</strong> 둥근 모서리 클립이나 회전 같은 조상의 속성도 하위 WebView를 레이어로 올릴 수 있다(다음 절에서 다룬다). ViewPager부터 Compose LazyColumn item까지 조상 경로를 전부 확인했지만 사각형 클립과 이동 변환뿐이었다. 노드 이름이 WebView라는 단서와도 맞지 않았다.</li>
+    <li><strong>라이브러리 업데이트 탓이다.</strong> 이슈트래커의 최초 보고자는 androidx.webkit 업데이트 후 빈도가 늘었다고 적었다. 우리 앱은 해당 기간 내내 같은 버전이었다.</li>
+</ul>
+
+<p>정리하면, 레이어를 원한 것은 WebView 자신이고 Android 12 이상과 확대 상태가 조건이다.</p>
+
+<!-- ═══════════════════ Section 3 ═══════════════════ -->
+<h2 id="section-3">레이어는 요청하지 않아도 생긴다</h2>
+
+<p>공식 문서는 <code>LAYER_TYPE_NONE</code>을 이렇게 정의한다.</p>
+
+<blockquote><p>"The view is rendered normally and is not backed by an off-screen buffer. This is the default behavior."<sup class="footnote-ref" id="ref-3"><a href="#fn3">[3]</a></sup></p></blockquote>
+
+<p>이 문장은 개발자가 지정하는 레이어 타입에 관한 설명이다. hwui는 그와 별개로, 특정 조건을 만족하는 RenderNode를 스스로 레이어로 올린다. Android 15 소스의 <code>promotedToLayer()</code>가 그 조건이다<sup class="footnote-ref" id="ref-4"><a href="#fn4">[4]</a></sup>.</p>
+
+<pre><code><span class="cmt">// libs/hwui/RenderProperties.h (android15-release)</span>
+<span class="kw">bool</span> <span class="fn">promotedToLayer</span>() <span class="kw">const</span> {
+    <span class="kw">return</span> mLayerProperties.mType == <span class="typ">LayerType</span>::None &amp;&amp; <span class="fn">fitsOnLayer</span>() &amp;&amp;
+           (mComputedFields.mNeedLayerForFunctors ||
+            mLayerProperties.mImageFilter != <span class="kw">nullptr</span> ||
+            mLayerProperties.<span class="fn">getStretchEffect</span>().<span class="fn">requiresLayer</span>() ||
+            (!<span class="typ">MathUtils</span>::<span class="fn">isZero</span>(mPrimitiveFields.mAlpha) &amp;&amp; mPrimitiveFields.mAlpha &lt; <span class="ann">1</span> &amp;&amp;
+             mPrimitiveFields.mHasOverlappingRendering));
+}</code></pre>
+
+<p>첫 조건이 <code>mType == LayerType::None</code>이다. 개발자가 NONE을 지정한 노드에만 적용되는 규칙이라는 뜻이다. NONE은 "레이어 없음"보다 "레이어 여부를 hwui에 맡긴다"에 가깝다. 나머지 네 조건은 다음과 같다.</p>
+
+<table class="metrics-table">
+    <thead>
+        <tr><th>조건</th><th>켜지는 때</th><th>흔한 예</th></tr>
+    </thead>
+    <tbody>
+        <tr><td class="metric-label">functor용 레이어</td><td>WebView 같은 functor 노드가 복잡한 클립이나 변환 아래 그려질 때</td><td>조상의 둥근 모서리 클립, 회전</td></tr>
+        <tr><td class="metric-label">ImageFilter</td><td>RenderEffect를 설정했을 때</td><td>blur</td></tr>
+        <tr><td class="metric-label">StretchEffect</td><td>Android 12 stretch overscroll이 걸렸을 때</td><td>스크롤 끝에서 당기기</td></tr>
+        <tr><td class="metric-label">alpha &lt; 1</td><td>겹쳐 그리는 노드가 반투명일 때</td><td>페이드 애니메이션</td></tr>
+    </tbody>
+</table>
+
+<p>1편의 실험에서 WebView에 투명도를 줬을 때 레이어가 생긴 것은 네 번째 조건이다. 이번 크래시는 세 번째 조건이었다.</p>
+
+<h3>stretch가 WebView 자신에게 걸리는 경로</h3>
+
+<p>Android 12부터는 스크롤 끝에서 당기면 화면 내용이 늘어났다가 돌아온다<sup class="footnote-ref" id="ref-5"><a href="#fn5">[5]</a></sup>. 늘어나는 연출은 이미 그린 내용을 변형해야 하므로, hwui는 대상 노드를 먼저 오프스크린 레이어에 그린 뒤 그 레이어를 늘려 합성한다. 어느 노드를 늘릴지는 <code>EdgeEffect.draw()</code>가 정한다<sup class="footnote-ref" id="ref-6"><a href="#fn6">[6]</a></sup>.</p>
+
+<pre><code><span class="cmt">// core/java/android/widget/EdgeEffect.java (android15-release)</span>
+} <span class="kw">else if</span> (edgeEffectBehavior == TYPE_STRETCH &amp;&amp; canvas <span class="kw">instanceof</span> <span class="typ">RecordingCanvas</span>) {
+    <span class="cmt">// ...</span>
+    <span class="typ">RecordingCanvas</span> recordingCanvas = (<span class="typ">RecordingCanvas</span>) canvas;
+    <span class="cmt">// ...</span>
+    <span class="typ">RenderNode</span> renderNode = recordingCanvas.mNode;
+    <span class="cmt">// ...</span>
+    renderNode.<span class="fn">stretch</span>(<span class="cmt">/* ... */</span>);</code></pre>
+
+<p><code>mNode</code>는 지금 녹화 중인 캔버스의 주인, 즉 <code>onDraw()</code>를 실행 중인 View의 RenderNode다. WebView는 자기 <code>onDraw()</code> 안에서 Chromium의 <code>AwOverScrollHelper</code>로 EdgeEffect를 그린다<sup class="footnote-ref" id="ref-7"><a href="#fn7">[7]</a></sup>. 그래서 stretch는 WebView 자신의 노드에 걸리고, 그 노드는 <code>promotedToLayer()</code>의 세 번째 조건을 만족한다.</p>
+
+<div class="content-box">
+    <div class="content-box-title">크래시까지의 호출 경로</div>
+    <p style="margin:0;">확대 상태에서 가장자리 드래그 → <code>AwOverScrollHelper.onDraw()</code> → <code>EdgeEffect.draw()</code> → WebView의 <code>RenderNode.stretch()</code> → <code>promotedToLayer()</code> 참 → WebView 크기의 레이어 할당 → 실패</p>
+</div>
+
+<p>평소에는 이 경로를 타지 않는다. 상품설명 WebView는 높이가 콘텐츠를 따라 늘어나는 <code>WRAP_CONTENT</code>라서 자체 스크롤 범위가 없기 때문이다. 문제는 핀치줌이었다.</p>
+
+<pre><code><span class="cmt">// 핀치줌 터치 리스너 (발췌): 확대 상태에서는 부모의 가로채기를 막고 높이를 실측값으로 고정</span>
+<span class="kw">if</span> (isZoomed || event.pointerCount &gt;= <span class="ann">2</span>) {
+    view.parent?.<span class="fn">requestDisallowInterceptTouchEvent</span>(<span class="kw">true</span>)
+    <span class="kw">if</span> (webView.layoutParams?.height == <span class="typ">ViewGroup</span>.<span class="typ">LayoutParams</span>.WRAP_CONTENT &amp;&amp; webView.height &gt; <span class="ann">0</span>) {
+        webView.<span class="fn">updateLayoutParams</span> { height = webView.height }
+    }
+}</code></pre>
+
+<p>확대하면 WebView는 높이를 고정한 채 내부 스크롤을 시작한다. 이 상태로 좌우 끝까지 끌면 WebView 자신의 stretch가 동작한다. 핀치줌 적용 범위를 넓힌 시점과 크래시가 늘어난 시점이 겹친 이유다.</p>
+
+<p>정리하면, NONE 노드도 stretch가 걸리면 레이어가 되고, 확대한 WebView는 스스로 stretch를 건다.</p>
+
+<!-- ═══════════════════ Section 4 ═══════════════════ -->
+<h2 id="section-4">검사는 16383, 할당은 16384</h2>
+
+<p>승격 조건에는 <code>fitsOnLayer()</code>가 함께 걸려 있다. 노드가 텍스처 한도를 넘으면 승격하지 않는 안전장치다. 문제는 이 검사와 실제 할당이 서로 다른 높이를 본다는 점이다.</p>
+
+<pre><code><span class="cmt">// RenderProperties.h: 승격 전 검사는 실제 높이로</span>
+<span class="kw">bool</span> <span class="fn">fitsOnLayer</span>() <span class="kw">const</span> {
+    <span class="kw">return</span> mPrimitiveFields.mWidth &lt;= deviceInfo-&gt;<span class="fn">maxTextureSize</span>() &amp;&amp;
+           mPrimitiveFields.mHeight &lt;= deviceInfo-&gt;<span class="fn">maxTextureSize</span>();
+}
+
+<span class="cmt">// SkiaGpuPipeline.cpp createOrUpdateLayer(): 할당은 64(LAYER_SIZE)의 배수로 올려서</span>
+<span class="kw">const int</span> surfaceWidth  = <span class="fn">ceilf</span>(node-&gt;<span class="fn">getWidth</span>()  / <span class="kw">float</span>(LAYER_SIZE)) * LAYER_SIZE;
+<span class="kw">const int</span> surfaceHeight = <span class="fn">ceilf</span>(node-&gt;<span class="fn">getHeight</span>() / <span class="kw">float</span>(LAYER_SIZE)) * LAYER_SIZE;</code></pre>
+
+<p>한도가 64의 배수인 단말(16384, 32768)에서는 두 값이 같은 결론을 낸다. 한도가 16383인 단말에서는 그 사이에 63px짜리 틈이 생긴다. 메시지의 너비 1088도 같은 규칙으로 나온 값이다(1080을 64의 배수로 올림).</p>
+
+<p>그렇다면 16384px보다 큰 WebView는 더 위험할까? 표를 보기 전에 한 번 예측해 보자.</p>
+
+<table class="metrics-table">
+    <thead>
+        <tr><th>WebView 높이 (한도 16383)</th><th>fitsOnLayer()</th><th>할당 높이</th><th>결과</th></tr>
+    </thead>
+    <tbody>
+        <tr><td class="metric-label">~16320px</td><td>통과</td><td>16320 이하</td><td><span class="delta delta-good">레이어 생성, 정상</span></td></tr>
+        <tr><td class="metric-label">16321~16383px</td><td>통과</td><td>16384</td><td><span class="delta delta-bad">할당 실패, 크래시</span></td></tr>
+        <tr><td class="metric-label">16384px 이상</td><td>실패</td><td>할당 안 함</td><td><span class="delta delta-neutral">레이어 없이 그림, 정상</span></td></tr>
+    </tbody>
+</table>
+
+<p>답은 반대다. 한도를 넘는 WebView는 검사에서 걸러져 레이어를 만들지 않으므로 터지지 않는다. 위험한 것은 한도 바로 아래의 좁은 띠뿐이다. 하루 몇 건 수준으로 드물게, 그러나 꾸준히 발생한 이유도 여기에 있다.</p>
+
+<h3>한도를 넘는 WebView는 어떻게 그려지나</h3>
+
+<p>1만6천 px가 넘는 콘텐츠는 텍스처 한 장에 담기지 않는데, 어떻게 화면에 나올까. 평소의 WebView는 View 크기의 텍스처를 만들지 않는다. hwui는 WebView 차례가 오면 창의 프레임버퍼와 화면에 보이는 클립 영역을 Chromium에 넘기고(draw functor), Chromium은 콘텐츠를 작은 타일로 잘라 보이는 영역 근처만 래스터화해 합성한다. 그려지는 양은 콘텐츠 높이가 아니라 화면 크기다.</p>
+
+<p>텍스처 한 장이 필요한 것은 레이어로 그릴 때뿐이다. 노드가 한도를 넘으면 hwui는 레이어를 포기하고 그대로 그린다<sup class="footnote-ref" id="ref-8"><a href="#fn8">[8]</a></sup>. 대신 레이어를 전제로 하는 효과는 빠진다. 기본 stretch 모드는 레이어 스냅샷에 셰이더를 입히는 방식이라, 한도를 넘는 WebView에서는 늘어나는 연출이 그려지지 않는다.</p>
+
+<div class="content-box">
+    <div class="content-box-title">1편 다시 읽기</div>
+    <p><strong>보충.</strong> 1편에서 본 "한도 이하는 한 번에, 초과하면 타일로" 그려지는 현상은 맞다. 다만 이 전환을 정하는 쪽은 Chromium이 아니라 hwui다. 1편 실험처럼 투명도 때문에 레이어가 필요해지면, hwui의 판단에 따라 WebView가 그려지는 곳이 달라진다.</p>
+    <table class="metrics-table">
+        <thead>
+            <tr><th>WebView 높이</th><th>hwui 판단</th><th>WebView가 그려지는 곳</th><th>Chromium이 래스터화하는 범위</th></tr>
+        </thead>
+        <tbody>
+            <tr><td class="metric-label">한도 이하</td><td>레이어 생성</td><td>WebView 크기의 레이어</td><td>콘텐츠 전체 (한 번에)</td></tr>
+            <tr><td class="metric-label">한도 초과</td><td>레이어 포기</td><td>화면</td><td>보이는 영역 근처 (타일)</td></tr>
+        </tbody>
+    </table>
+    <p>Chromium은 hwui가 넘겨준 그리기 영역의 크기를 그대로 따를 뿐이다<sup class="footnote-ref" id="ref-9"><a href="#fn9">[9]</a></sup>.</p>
+    <p style="margin:0;"><strong>정정.</strong> 1편은 <code>LAYER_TYPE_NONE</code>으로 레이어 경로를 우회했다고 결론 냈다. 실제로 끈 것은 하드웨어 레이어뿐이었고, 자동 승격 경로는 그대로 남아 있었다.</p>
+</div>
+
+<p>정리하면, 크래시 조건은 "승격 조건 하나 + 높이 16321~16383px + 한도 16383 단말"의 조합이다.</p>
+
+<!-- ═══════════════════ Section 5 ═══════════════════ -->
+<h2 id="section-5">한 줄 수정: WebView의 stretch를 끈다</h2>
+
+<p>조합의 세 요소 중 앱이 고를 수 있는 것은 승격 조건뿐이다. 높이는 콘텐츠가 정하고, 한도는 단말이 정한다. 그래서 WebView가 stretch를 걸지 않게 했다.</p>
+
+<pre><code><span class="typ">WebView</span>(context).<span class="fn">apply</span> {
+    layoutParams = <span class="typ">FrameLayout</span>.<span class="typ">LayoutParams</span>(MATCH_PARENT, WRAP_CONTENT)
+    isFocusableInTouchMode = <span class="kw">false</span>
+<span class="str">+   overScrollMode = View.OVER_SCROLL_NEVER</span>
+    webViewFacade.<span class="fn">initWebView</span>(<span class="kw">this</span>, <span class="typ">View</span>.LAYER_TYPE_NONE)
+    <span class="cmt">// ...</span>
+}</code></pre>
+
+<p>Chromium은 이 값을 받으면 stretch를 그리는 객체 자체를 만들지 않는다<sup class="footnote-ref" id="ref-10"><a href="#fn10">[10]</a></sup>.</p>
+
+<pre><code><span class="cmt">// android_webview/java/src/org/chromium/android_webview/AwOverScrollHelper.java</span>
+<span class="kw">public void</span> <span class="fn">setOverScrollMode</span>(<span class="kw">int</span> mode, <span class="typ">Context</span> context) {
+    <span class="kw">if</span> (mode == <span class="typ">View</span>.OVER_SCROLL_NEVER) {
+        mOverScrollGlow = <span class="kw">null</span>;
+    } <span class="kw">else</span> {
+        mOverScrollGlow = <span class="kw">new</span> <span class="typ">OverScrollGlow</span>(context, mContainerView);
+    }
+}</code></pre>
+
+<p><code>mOverScrollGlow</code>가 null이면 그리기와 당김, fling 흡수 처리가 모두 건너뛰어진다. 스크롤 경계 계산은 달라지지 않는다. WebView는 <code>View.overScrollBy()</code>에 최대 오버스크롤 거리를 항상 0으로 넘기고, 프레임워크에서 overScrollMode가 바꾸는 값이 바로 그 최대 거리이기 때문이다. 사용자에게 보이는 차이는 다음과 같다.</p>
+
+<table class="metrics-table">
+    <thead>
+        <tr><th>상황</th><th>수정 전</th><th>수정 후</th></tr>
+    </thead>
+    <tbody>
+        <tr><td class="metric-label">확대 후 가장자리 드래그</td><td>WebView 내용이 늘어남</td><td>가장자리에서 멈춤</td></tr>
+        <tr><td class="metric-label">1배 상태 세로 스크롤 끝</td><td>바깥 LazyColumn이 늘어남</td><td>동일</td></tr>
+        <tr><td class="metric-label">웹 페이지 내부 스크롤 영역</td><td>Chromium 내부 처리</td><td>동일</td></tr>
+    </tbody>
+</table>
+
+<p>잃는 것은 확대 상태의 가장자리 연출 하나다. 한도를 넘는 긴 콘텐츠에서는 그 연출마저 원래 그려지지 않았다.</p>
+
+<h3>다른 선택지</h3>
+
+<p>한 줄 수정이 근본 해결은 아니다. 승격 조건 하나를 끈 것이고, 큰 WebView라는 구조는 그대로다. 검토한 선택지를 함께 적는다.</p>
+
+<table class="metrics-table">
+    <thead>
+        <tr><th>선택지</th><th>효과</th><th>판단</th></tr>
+    </thead>
+    <tbody>
+        <tr><td class="metric-label">높이를 MATCH_PARENT로</td><td>없음. LazyColumn item 안은 세로 제약이 무한대라 AndroidView가 UNSPECIFIED로 측정하고, WebView는 여전히 콘텐츠 높이로 커진다<sup class="footnote-ref" id="ref-11"><a href="#fn11">[11]</a></sup></td><td>채택 안 함</td></tr>
+        <tr><td class="metric-label">높이를 뷰포트로 고정</td><td>노드가 화면 크기로 줄어 승격 조건과 무관하게 이 결함 계열이 사라진다</td><td>근본 해결. LazyColumn과 WebView 사이 스크롤 연결과 콘텐츠 높이에 의존하는 로직을 다시 만들어야 해 별도 과제로 남김</td></tr>
+        <tr><td class="metric-label">위험 구간 회피 보정</td><td>높이를 16321~16383px 밖으로 조정</td><td>단말별 한도 조회가 필요하고 다른 승격 조건은 막지 못함</td></tr>
+        <tr><td class="metric-label">upstream 수정 대기</td><td>이슈트래커에 보고돼 있으나 수정 계획 없음</td><td>결함이 시스템의 libhwui에 있어 고쳐져도 OS 업데이트로만 배포됨</td></tr>
+    </tbody>
+</table>
+
+<p>1편은 한계 절에서 "match_parent 또는 고정 높이 정책"을 바람직한 방향으로 적었다. 확인해 보니 스크롤 컨테이너 안에서 match_parent는 효과가 없고, 근본 해결은 고정 높이 쪽이다.</p>
+
+<!-- ═══════════════════ Section 6 ═══════════════════ -->
+<h2 id="section-6">실기기로 확인한 세 가지 초록</h2>
+
+<p>소스만으로는 hwui가 실제로 WebView를 승격하는지 확정할 수 없다. maxTextureSize가 16383인 Galaxy S21에서 개발자 옵션의 "하드웨어 레이어 업데이트 표시"를 켰다. 레이어가 갱신되는 영역을 초록색으로 깜빡여 보여 주는 옵션이다. 수정 전과 후 빌드를 번갈아 설치해 같은 동작을 반복했다.</p>
+
+<table class="metrics-table">
+    <thead>
+        <tr><th>조건</th><th>관찰</th><th>해석</th></tr>
+    </thead>
+    <tbody>
+        <tr><td class="metric-label">수정 전, 확대 후 좌우 끝</td><td>WebView 영역만 초록</td><td>WebView 노드가 stretch로 승격된다</td></tr>
+        <tr><td class="metric-label">수정 후, 같은 동작</td><td>초록 없음</td><td>승격 경로가 끊겼다</td></tr>
+        <tr><td class="metric-label">세로 스크롤 맨 위와 맨 아래</td><td>리스트 영역 초록</td><td>LazyColumn의 stretch 레이어. 뷰포트 크기라 한도와 무관하다</td></tr>
+        <tr><td class="metric-label">수정 전, 한도를 넘는 긴 콘텐츠</td><td>초록도 stretch도 없음</td><td><code>fitsOnLayer()</code> 실패로 레이어를 포기했다</td></tr>
+    </tbody>
+</table>
+
+<p>마지막 행은 미리 세운 예측을 시험한 결과다. 소스대로라면 한도를 넘는 WebView는 승격되지 않아 초록이 없어야 하고, 기본 stretch 모드는 레이어가 필요하니 늘어나는 연출도 사라져야 한다. 두 가지 모두 그대로 관찰됐다.</p>
+
+<p>세로 끝의 초록은 Compose가 stretch를 위해 따로 만드는 RenderNode다. foundation의 <code>StretchOverscrollNode</code>는 리스트 내용을 뷰포트 크기의 노드에 녹화한 뒤 그 노드에 stretch를 건다<sup class="footnote-ref" id="ref-12"><a href="#fn12">[12]</a></sup>. 레이어는 생기지만 화면 크기라서 64의 배수로 올려도 한도에 닿지 않는다.</p>
+
+<div class="content-box">
+    <div class="content-box-title">아직 확인하지 않은 것</div>
+    <ul style="margin:0;">
+        <li>콘텐츠 높이를 재지 않았다. 표의 "한도를 넘는 긴 콘텐츠"는 콘텐츠 길이로 추정한 분류다.</li>
+        <li>16321~16383px 구간에서 크래시를 직접 재현하지는 않았다. 수정은 높이와 무관하게 승격 자체를 막으므로, 인과 근거로는 위 관찰이면 충분하다고 판단했다.</li>
+        <li style="margin-bottom:0;">이 글을 쓰는 시점에 수정은 배포 전이다. 실사용 크래시 지표는 배포 후에 확인한다.</li>
+    </ul>
+</div>
+
+<!-- ═══════════════════ Section 7 ═══════════════════ -->
+<h2 id="section-7">교훈</h2>
+
+<ul class="checklist">
+    <li><span class="checklist-num">1</span><span><strong><code>LAYER_TYPE_NONE</code>은 "레이어 없음"이 아니다.</strong> hwui는 stretch, alpha, RenderEffect, 복잡한 클립 아래의 functor 조건에서 NONE 노드를 스스로 레이어로 올린다.</span></li>
+    <li><span class="checklist-num">2</span><span><strong>콘텐츠 높이만큼 큰 View에는 레이어를 부르는 효과를 두지 않는다.</strong> 스크롤 컨테이너 안의 <code>WRAP_CONTENT</code> WebView가 대표적이다.</span></li>
+    <li><span class="checklist-num">3</span><span><strong>크래시 메시지의 노드 이름을 읽는다.</strong> "Unable to create layer for X"의 X가 레이어의 주인이다.</span></li>
+    <li><span class="checklist-num">4</span><span><strong>집계 데이터가 원인이 바뀌었다고 말하면 원본 이벤트부터 연다.</strong> 긴 네이티브 스택 뒤에 붙는 Caused by는 잘리기 쉽다.</span></li>
+</ul>
+
+<p>스크롤 컨테이너 안에 WebView를 넣고 있다면 두 가지를 확인해 보자. 높이가 콘텐츠를 따라 커지는지, 그리고 그 WebView에 overscroll, alpha, RenderEffect나 둥근 클립이 걸릴 여지가 있는지다. 둘 다 해당하면 개발자 옵션 하나로 바로 확인할 수 있다. 초록색으로 깜빡이는 영역이 WebView 전체라면, 그 WebView는 한도 근처의 높이를 만나는 순간 같은 크래시를 낸다.</p>
+
+<div class="summary-box">
+    <div class="summary-box-title">함께 읽기</div>
+    <p><a href="blog-webview-texture-crash.html">→ 1px이 앱을 죽였다 (1편)</a><br>
+    <a href="blog-webview-hardware-layer-lazycolumn.html">→ RecyclerView에선 멀쩡하던 WebView가 LazyColumn에서 버벅인 이유</a></p>
+</div>
+
+</article>
+
+<div class="article">
+    <div class="footnotes">
+        <ol>
+            <li id="fn1">hwui <code>RenderNode::setName()</code>은 마지막 마침표 뒤의 문자열만 이름으로 저장한다. <a href="https://android.googlesource.com/platform/frameworks/base/+/refs/heads/android15-release/libs/hwui/RenderNode.h">frameworks/base/libs/hwui/RenderNode.h (android15-release)</a> <a href="#ref-1" class="fn-back">↩</a></li>
+            <li id="fn2">Android Issue Tracker 446831341, "Unable to create layer for WebView, size 1088x16384 max size 16383". Chromium 개발자 댓글(#8)과 소수 앱에서만 발생한다는 Google 측 댓글(#6) 참고. <a href="https://issuetracker.google.com/issues/446831341">issuetracker.google.com/issues/446831341</a> <a href="#ref-2" class="fn-back">↩</a></li>
+            <li id="fn3">Android Developers, Hardware acceleration, View layers. <a href="https://developer.android.com/develop/ui/views/graphics/hardware-accel">developer.android.com/develop/ui/views/graphics/hardware-accel</a> <a href="#ref-3" class="fn-back">↩</a></li>
+            <li id="fn4"><code>promotedToLayer()</code>, <code>fitsOnLayer()</code>. stretch가 레이어를 요구하는 조건은 <code>StretchEffect::requiresLayer()</code>. <a href="https://android.googlesource.com/platform/frameworks/base/+/refs/heads/android15-release/libs/hwui/RenderProperties.h">libs/hwui/RenderProperties.h (android15-release)</a> <a href="#ref-4" class="fn-back">↩</a></li>
+            <li id="fn5">Android Developers, Android 12 stretch overscroll. "Starting in Android 12 (API level 31), the visual elements stretch and bounce back on a drag event". <a href="https://developer.android.com/about/versions/12/overscroll">developer.android.com/about/versions/12/overscroll</a> <a href="#ref-5" class="fn-back">↩</a></li>
+            <li id="fn6"><a href="https://android.googlesource.com/platform/frameworks/base/+/refs/heads/android15-release/core/java/android/widget/EdgeEffect.java">core/java/android/widget/EdgeEffect.java (android15-release)</a>. 녹화 캔버스의 노드 지정은 <code>View.updateDisplayListIfDirty()</code>의 <code>renderNode.beginRecording()</code>에서 이뤄진다. <a href="#ref-6" class="fn-back">↩</a></li>
+            <li id="fn7">Chromium <code>AwContents.onDraw()</code>가 <code>mOverScrollHelper.onDraw(canvas)</code>를 호출한다. <a href="https://chromium.googlesource.com/chromium/src/+/refs/heads/main/android_webview/java/src/org/chromium/android_webview/AwContents.java">android_webview/.../AwContents.java</a> <a href="#ref-7" class="fn-back">↩</a></li>
+            <li id="fn8">레이어가 없는 노드는 <code>displayList-&gt;draw(canvas)</code>로 바로 그려지고, stretch 셰이더 경로는 레이어가 있을 때만 실행된다. 저사양 단말(UniformScale 모드)은 행렬 확대로 stretch를 근사한다. <a href="https://android.googlesource.com/platform/frameworks/base/+/refs/heads/android15-release/libs/hwui/pipeline/skia/RenderNodeDrawable.cpp">libs/hwui/pipeline/skia/RenderNodeDrawable.cpp (android15-release)</a> <a href="#ref-8" class="fn-back">↩</a></li>
+            <li id="fn9">hwui는 그리기 대상 크기를 <code>info.width/height</code>로 넘긴다(레이어 안이면 레이어 크기, 아니면 창 크기). Chromium은 이를 viewport로 받아(<code>HardwareRenderer</code>의 <code>gfx::Size viewport(params.width, params.height)</code>) 타일 우선순위 영역과 메모리 예산을 계산한다. <a href="https://android.googlesource.com/platform/frameworks/base/+/refs/heads/android15-release/libs/hwui/pipeline/skia/GLFunctorDrawable.cpp">GLFunctorDrawable.cpp</a>, <a href="https://chromium.googlesource.com/chromium/src/+/refs/heads/main/android_webview/browser/gfx/hardware_renderer.cc">hardware_renderer.cc</a>, <a href="https://chromium.googlesource.com/chromium/src/+/refs/heads/main/android_webview/browser/gfx/browser_view_renderer.cc">browser_view_renderer.cc</a> <a href="#ref-9" class="fn-back">↩</a></li>
+            <li id="fn10"><a href="https://chromium.googlesource.com/chromium/src/+/refs/heads/main/android_webview/java/src/org/chromium/android_webview/AwOverScrollHelper.java">android_webview/.../AwOverScrollHelper.java</a> <a href="#ref-10" class="fn-back">↩</a></li>
+            <li id="fn11">Compose <code>AndroidViewHolder.obtainMeasureSpec()</code>는 최대 제약이 무한대이면 layout param과 무관하게 <code>UNSPECIFIED</code>를 쓴다. Chromium <code>AwLayoutSizer.onMeasure()</code>는 이때 콘텐츠 높이를 측정값으로 쓴다. <a href="https://chromium.googlesource.com/chromium/src/+/refs/heads/main/android_webview/java/src/org/chromium/android_webview/AwLayoutSizer.java">AwLayoutSizer.java</a> <a href="#ref-11" class="fn-back">↩</a></li>
+            <li id="fn12">Compose foundation <code>StretchOverscrollNode</code>는 <code>RenderNode("AndroidEdgeEffectOverscrollEffect")</code>에 내용을 녹화한다. <a href="https://cs.android.com/androidx/platform/frameworks/support/+/androidx-main:compose/foundation/foundation/src/androidMain/kotlin/androidx/compose/foundation/AndroidOverscroll.android.kt">AndroidOverscroll.android.kt</a> <a href="#ref-12" class="fn-back">↩</a></li>
+        </ol>
+    </div>
+</div>
+
+<footer class="article-footer">
+    <div class="share-buttons">
+        <button class="share-btn" onclick="navigator.clipboard.writeText(location.href)">링크 복사</button>
+    </div>
+</footer>
+
+</body>
+</html>
