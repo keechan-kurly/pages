@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>1px이 앱을 죽였다 — 저사양 단말 WebView 크래시 1만 건의 원인과 대응</title>
+<title>1px이 앱을 죽였다, 저사양 단말 WebView 크래시 1만 건의 원인과 대응</title>
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
 <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -256,7 +256,7 @@ a:hover { text-decoration: underline; }
         <time>2026. 01</time>
     </div>
     <h1 class="hero-title">1px이 앱을 죽였다</h1>
-    <p class="hero-subtitle">저사양 단말 WebView 크래시 1만 건의 원인과 대응 — GPU 텍스처 크기 정렬이 만든 경계 문제를 추적하고 우회한 기록</p>
+    <p class="hero-subtitle">저사양 단말 WebView 크래시 1만 건의 원인과 대응. GPU 텍스처 크기 정렬이 만든 경계 문제를 추적하고 우회한 기록</p>
     <div class="hero-tags">
         <span class="hero-tag">Android</span>
         <span class="hero-tag">WebView</span>
@@ -608,14 +608,14 @@ a:hover { text-decoration: underline; }
 <p>이번 대응에는 명확한 한계가 있다.</p>
 
 <ul>
-    <li><strong>근본 해결이 아닌 우회</strong> — 프레임워크/Chromium 레벨의 문제를 앱에서 회피한 것이다. WebView 업데이트로 근본 이슈가 해소되는 시점에는 우회 로직을 완화하거나 제거해야 한다.</li>
-    <li><strong>LAYER_TYPE_NONE의 부작용 가능성</strong> — <code>LAYER_TYPE_HARDWARE</code>는 하드웨어 가속 렌더링 레이어를 강제하여 특정 상황에서 성능 이점을 제공한다. <code>NONE</code>으로 전환하면 이 이점을 포기하게 된다. 다만, 문제가 되는 디바이스는 대부분 저사양 단말이므로 하드웨어 레이어 합성의 이점보다 안정성이 더 중요하다고 판단했다.</li>
-    <li><strong>wrap_content의 구조적 문제</strong> — 상품상세 WebView가 <code>wrap_content</code>를 사용하고 있어, 컨텐츠 길이에 따라 런타임에 높이가 크게 변동된다. 위험 구간(16321~16383)으로 진입할 확률은 낮지만 0이 아니다. <code>match_parent</code> 또는 고정 높이 정책으로 전환하는 것이 바람직하다.</li>
+    <li><strong>근본 해결이 아닌 우회</strong>: 프레임워크/Chromium 레벨의 문제를 앱에서 회피한 것이다. WebView 업데이트로 근본 이슈가 해소되는 시점에는 우회 로직을 완화하거나 제거해야 한다.</li>
+    <li><strong>LAYER_TYPE_NONE의 부작용 가능성</strong>: <code>LAYER_TYPE_HARDWARE</code>는 하드웨어 가속 렌더링 레이어를 강제하여 특정 상황에서 성능 이점을 제공한다. <code>NONE</code>으로 전환하면 이 이점을 포기하게 된다. 다만, 문제가 되는 디바이스는 대부분 저사양 단말이므로 하드웨어 레이어 합성의 이점보다 안정성이 더 중요하다고 판단했다.</li>
+    <li><strong>wrap_content의 구조적 문제</strong>: 상품상세 WebView가 <code>wrap_content</code>를 사용하고 있어, 컨텐츠 길이에 따라 런타임에 높이가 크게 변동된다. 위험 구간(16321~16383)으로 진입할 확률은 낮지만 0이 아니다. <code>match_parent</code> 또는 고정 높이 정책으로 전환하는 것이 바람직하다.</li>
 </ul>
 
 <div class="summary-box">
-    <div class="summary-box-title">후속편 — 이 우회 로직은 결국 어떻게 됐나</div>
-    <p>여기서 만든 <code>LayerTypeInspector</code>(디바이스별 HARDWARE/NONE 분기)는 이후 상품설명 탭이 RecyclerView에서 LazyColumn으로 마이그레이션되며 전혀 다른 문제 — 크래시가 아닌 <strong>스크롤 jank</strong> — 로 다시 도마에 올랐다. 결론은 모든 단말을 <code>LAYER_TYPE_NONE</code>으로 보내고 이 분기 장치를 삭제하는 것이었다.<br>
+    <div class="summary-box-title">후속편: 이 우회 로직은 결국 어떻게 됐나</div>
+    <p>여기서 만든 <code>LayerTypeInspector</code>(디바이스별 HARDWARE/NONE 분기)는 이후 상품설명 탭이 RecyclerView에서 LazyColumn으로 마이그레이션되며 전혀 다른 문제(크래시가 아닌 <strong>스크롤 jank</strong>)로 다시 도마에 올랐다. 결론은 모든 단말을 <code>LAYER_TYPE_NONE</code>으로 보내고 이 분기 장치를 삭제하는 것이었다.<br>
     <a href="blog-webview-hardware-layer-lazycolumn.html">→ RecyclerView에선 멀쩡하던 WebView가 LazyColumn에서 버벅인 이유</a></p>
 </div>
 
@@ -633,7 +633,7 @@ a:hover { text-decoration: underline; }
     </li>
     <li>
         <span class="checklist-num">3</span>
-        <span><strong>정렬(alignment)은 "보이지 않는 +1"을 만든다.</strong> 메모리 정렬, 텍스처 정렬, 페이지 정렬 — 정렬 연산은 입력 값이 경계에 가까울 때 예상치 못한 초과를 유발한다. 경계 근처에서 동작하는 시스템은 정렬 단위까지 고려해야 한다.</span>
+        <span><strong>정렬(alignment)은 "보이지 않는 +1"을 만든다.</strong> 메모리 정렬, 텍스처 정렬, 페이지 정렬. 정렬 연산은 입력 값이 경계에 가까울 때 예상치 못한 초과를 유발한다. 경계 근처에서 동작하는 시스템은 정렬 단위까지 고려해야 한다.</span>
     </li>
     <li>
         <span class="checklist-num">4</span>
@@ -646,7 +646,7 @@ a:hover { text-decoration: underline; }
 <div class="summary-box">
     <div class="summary-box-title">시각화 자료</div>
     <p>이 글의 핵심 다이어그램을 한 페이지로 정리한 시각화 문서를 제공합니다.<br>
-    <a href="webview-texture-crash.html" style="font-weight: 700;">→ WebView Texture Crash — 시각화 페이지 보기</a></p>
+    <a href="webview-texture-crash.html" style="font-weight: 700;">→ WebView Texture Crash, 시각화 페이지 보기</a></p>
 </div>
 
 <hr>
@@ -654,7 +654,7 @@ a:hover { text-decoration: underline; }
 <div class="footnotes">
     <p>[1] <a href="https://kurly0521.atlassian.net/browse/KMA-6272">KMA-6272 저사양 단말 웹뷰 안정성 개선</a></p>
     <p>[2] <a href="https://issues.chromium.org/issues/446831341">Chromium Issue #446831341</a></p>
-    <p>[3] <a href="https://cs.android.com/android/platform/superproject/+/main:frameworks/base/libs/hwui/pipeline/skia/SkiaGpuPipeline.cpp">SkiaGpuPipeline.cpp — Android AOSP</a></p>
+    <p>[3] <a href="https://cs.android.com/android/platform/superproject/+/main:frameworks/base/libs/hwui/pipeline/skia/SkiaGpuPipeline.cpp">SkiaGpuPipeline.cpp, Android AOSP</a></p>
 </div>
 
 </article>
