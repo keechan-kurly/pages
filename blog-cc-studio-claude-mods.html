@@ -1,0 +1,1270 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IDE를 열지 않는 하루: Claude Code 안에 Android Studio를 옮겨 놓은 cc-studio</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════
+   Toss Tech Light Theme — Blog Template
+   Reference: toss.tech/article/will-ai-replace-developers
+   ═══════════════════════════════════════════════ */
+:root {
+    /* Adaptive Grays (Toss Design System) */
+    --grey-50: #f9fafb;
+    --grey-100: #f2f4f6;
+    --grey-200: #e5e8eb;
+    --grey-300: #d1d6db;
+    --grey-400: #b0b8c1;
+    --grey-500: #8b95a1;
+    --grey-600: #6b7684;
+    --grey-700: #4e5968;
+    --grey-800: #333d4b;
+    --grey-900: #191f28;
+
+    /* Brand */
+    --toss-blue: #0064FF;
+    --toss-blue-light: rgba(0, 100, 255, 0.08);
+    --toss-blue-border: rgba(0, 100, 255, 0.2);
+
+    /* Semantic */
+    --bg: #ffffff;
+    --bg-elevated: var(--grey-50);
+    --bg-highlight: #ffc34236;
+    --bg-code: var(--grey-100);
+    --bg-blockquote: transparent;
+    --text-primary: var(--grey-900);
+    --text-secondary: var(--grey-700);
+    --text-tertiary: var(--grey-500);
+    --border-light: var(--grey-200);
+    --border-blockquote: var(--grey-800);
+
+    /* Layout */
+    --content-width: 680px;
+    --wide-width: 780px;
+    --radius: 16px;
+    --radius-sm: 10px;
+
+    /* Typography */
+    --font-body: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --font-code: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+}
+
+/* Reset */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text-primary);
+    line-height: 1.8;
+    font-size: 16.5px;
+    -webkit-font-smoothing: antialiased;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+}
+
+::selection {
+    background: rgba(0, 100, 255, 0.15);
+    color: var(--grey-900);
+}
+
+a { color: var(--toss-blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ═══════════════════════════════════════════════
+   Layout
+   ═══════════════════════════════════════════════ */
+.article {
+    max-width: var(--content-width);
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+.article-wide {
+    max-width: var(--wide-width);
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+/* ═══════════════════════════════════════════════
+   Hero Header
+   ═══════════════════════════════════════════════ */
+.hero {
+    padding: 80px 24px 48px;
+    max-width: var(--content-width);
+    margin: 0 auto;
+}
+
+.hero-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 24px;
+    font-size: 0.875rem;
+    color: var(--text-tertiary);
+}
+
+.hero-meta .author {
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.hero-meta .dot {
+    color: var(--grey-300);
+}
+
+.hero-title {
+    font-size: 2.2rem;
+    font-weight: 800;
+    line-height: 1.3;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+    letter-spacing: -0.02em;
+}
+
+.hero-subtitle {
+    font-size: 1.1rem;
+    line-height: 1.7;
+    color: var(--text-secondary);
+    max-width: 580px;
+}
+
+.hero-tags {
+    display: flex;
+    gap: 8px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+}
+
+.hero-tag {
+    padding: 4px 12px;
+    border-radius: var(--radius-sm);
+    background: var(--toss-blue-light);
+    border: 1px solid var(--toss-blue-border);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--toss-blue);
+}
+
+/* ═══════════════════════════════════════════════
+   Table of Contents
+   ═══════════════════════════════════════════════ */
+.toc {
+    margin: 0 0 48px 0;
+    padding: 24px 28px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+}
+
+.toc-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+}
+
+.toc-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.toc-list a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    font-size: 0.92rem;
+    color: var(--text-secondary);
+    transition: color 0.2s;
+}
+
+.toc-list a:hover {
+    color: var(--toss-blue);
+    text-decoration: none;
+}
+
+.toc-num {
+    width: 24px;
+    height: 24px;
+    border-radius: 7px;
+    background: var(--grey-200);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════
+   Typography
+   ═══════════════════════════════════════════════ */
+.article h2 {
+    font-size: 1.55rem;
+    font-weight: 800;
+    line-height: 1.35;
+    color: var(--text-primary);
+    margin: 56px 0 20px 0;
+    letter-spacing: -0.01em;
+}
+
+.article h2:first-child {
+    margin-top: 0;
+}
+
+.article h3 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    line-height: 1.4;
+    color: var(--text-primary);
+    margin: 40px 0 14px 0;
+}
+
+.article p {
+    margin: 0 0 20px 0;
+    color: var(--text-primary);
+}
+
+.article strong {
+    font-weight: 700;
+    color: var(--grey-900);
+}
+
+/* ═══════════════════════════════════════════════
+   Blockquote (Left border style — Toss)
+   ═══════════════════════════════════════════════ */
+.article blockquote {
+    margin: 28px 0;
+    padding: 0 0 0 20px;
+    border-left: 2.5px solid var(--border-blockquote);
+    font-size: 1.05rem;
+    font-weight: 600;
+    line-height: 1.7;
+    color: var(--text-primary);
+}
+
+.article blockquote p {
+    margin: 0;
+}
+
+/* ═══════════════════════════════════════════════
+   Highlight Box (Yellow — Toss)
+   ═══════════════════════════════════════════════ */
+.highlight-box {
+    margin: 28px 0;
+    padding: 20px 24px;
+    background: var(--bg-highlight);
+    border-radius: var(--radius);
+    font-weight: 600;
+    line-height: 1.7;
+    color: var(--text-primary);
+}
+
+/* ═══════════════════════════════════════════════
+   Content Box (Gray rounded — Toss)
+   ═══════════════════════════════════════════════ */
+.content-box {
+    margin: 28px 0;
+    padding: 24px 28px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+}
+
+.content-box-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+}
+
+/* ═══════════════════════════════════════════════
+   Code Blocks
+   ═══════════════════════════════════════════════ */
+.article code {
+    font-family: var(--font-code);
+    font-size: 0.88em;
+    padding: 2px 6px;
+    background: var(--bg-code);
+    border-radius: 5px;
+    color: var(--grey-800);
+}
+
+.article pre {
+    margin: 24px 0;
+    padding: 24px;
+    background: var(--grey-900);
+    border-radius: var(--radius);
+    overflow-x: auto;
+    line-height: 1.6;
+}
+
+.article pre code {
+    font-family: var(--font-code);
+    font-size: 0.85rem;
+    background: none;
+    padding: 0;
+    color: #abb2bf;
+    border-radius: 0;
+}
+
+/* Syntax highlighting (One Dark) */
+.kw { color: #c678dd; }       /* keyword */
+.str { color: #98c379; }      /* string */
+.cmt { color: #5c6370; font-style: italic; } /* comment */
+.typ { color: #e5c07b; }      /* type/class */
+.fn { color: #61afef; }       /* function */
+.ann { color: #d19a66; }      /* annotation/number */
+.op { color: #56b6c2; }       /* operator */
+
+/* ═══════════════════════════════════════════════
+   Lists
+   ═══════════════════════════════════════════════ */
+.article ul, .article ol {
+    margin: 0 0 20px 0;
+    padding-left: 24px;
+}
+
+.article li {
+    margin-bottom: 10px;
+    line-height: 1.7;
+}
+
+.article li::marker {
+    color: var(--text-tertiary);
+}
+
+/* Checklist style */
+.checklist {
+    list-style: none;
+    padding: 0;
+    counter-reset: check;
+}
+
+.checklist li {
+    counter-increment: check;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.checklist li:last-child {
+    border-bottom: none;
+}
+
+.checklist-num {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: var(--toss-blue);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: white;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+/* ═══════════════════════════════════════════════
+   Images
+   ═══════════════════════════════════════════════ */
+.article img, .article-wide img {
+    max-width: 100%;
+    border-radius: var(--radius);
+    margin: 28px 0;
+    display: block;
+}
+
+.img-caption {
+    text-align: center;
+    font-size: 0.82rem;
+    color: var(--text-tertiary);
+    margin-top: -16px;
+    margin-bottom: 28px;
+}
+
+/* ═══════════════════════════════════════════════
+   Metrics Table
+   ═══════════════════════════════════════════════ */
+.metrics-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0;
+    font-size: 0.9rem;
+}
+
+.metrics-table th {
+    text-align: left;
+    padding: 12px 16px;
+    background: var(--bg-elevated);
+    border-bottom: 2px solid var(--border-light);
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.metrics-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-light);
+    color: var(--text-secondary);
+}
+
+.metrics-table .metric-label {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.metrics-table .metric-good {
+    color: #16a34a;
+    font-weight: 700;
+}
+
+.metrics-table .metric-bad {
+    color: #dc2626;
+    font-weight: 600;
+}
+
+.metrics-table .metric-neutral {
+    color: var(--text-tertiary);
+}
+
+/* Delta badges */
+.delta {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.delta-good {
+    background: rgba(22, 163, 74, 0.1);
+    color: #16a34a;
+}
+
+.delta-bad {
+    background: rgba(220, 38, 38, 0.1);
+    color: #dc2626;
+}
+
+.delta-neutral {
+    background: var(--grey-100);
+    color: var(--text-tertiary);
+}
+
+/* ═══════════════════════════════════════════════
+   Summary / Key Takeaway Box
+   ═══════════════════════════════════════════════ */
+.summary-box {
+    margin: 36px 0;
+    padding: 24px 28px;
+    background: var(--toss-blue-light);
+    border: 1px solid var(--toss-blue-border);
+    border-radius: var(--radius);
+}
+
+.summary-box-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--toss-blue);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.summary-box p, .summary-box li {
+    color: var(--text-primary);
+    font-size: 0.95rem;
+}
+
+/* ═══════════════════════════════════════════════
+   Comparison Cards (Inline)
+   — 이중 박스 구조 제거: 카드 배경/보더 없음, 라벨 + 코드 블록만으로 비교 단위
+   — Grid 1fr 의 자식 폭 초과 방지: minmax(0, 1fr) + child min-width: 0
+   ═══════════════════════════════════════════════ */
+.compare-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 16px;
+    margin: 28px 0;
+}
+
+.compare-card {
+    padding: 0;
+    background: transparent;
+    border: none;
+    min-width: 0;  /* Grid 자식의 폭 초과 방지 */
+}
+
+.compare-card-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 10px;
+}
+.compare-card-label::before {
+    content: "";
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+.compare-before .compare-card-label { color: var(--text-tertiary); }
+.compare-before .compare-card-label::before { background: var(--grey-400); }
+.compare-after .compare-card-label { color: var(--toss-blue); }
+.compare-after .compare-card-label::before { background: var(--toss-blue); }
+
+.compare-card pre {
+    margin: 0;
+    padding: 14px;
+    font-size: 0.72rem;
+    border-radius: 12px;
+    overflow-x: auto;
+}
+.compare-card pre code { font-size: 0.72rem; }
+
+/* ═══════════════════════════════════════════════
+   User Quote (사용자 피드백 인용 — accessibility_face)
+   ═══════════════════════════════════════════════ */
+.user-quote {
+    margin: 28px 0;
+    padding: 20px 24px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+    border-left: 3px solid var(--toss-blue);
+}
+
+.user-quote-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--toss-blue);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 8px;
+}
+
+.user-quote p {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.7;
+    color: var(--text-primary);
+    font-style: italic;
+}
+
+/* ═══════════════════════════════════════════════
+   Media (비디오/오디오 — accessibility_face)
+   ═══════════════════════════════════════════════ */
+.media-wrap {
+    margin: 28px 0;
+}
+
+.media-wrap video, .media-wrap audio {
+    width: 100%;
+    border-radius: var(--radius);
+    display: block;
+}
+
+.media-wrap audio {
+    margin-top: 8px;
+}
+
+/* ═══════════════════════════════════════════════
+   Author Credits (복수 저자 — accessibility_face)
+   ═══════════════════════════════════════════════ */
+.credits {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-light);
+    font-size: 0.85rem;
+    color: var(--text-tertiary);
+}
+
+.credits-role {
+    font-weight: 700;
+    color: var(--text-secondary);
+    margin-right: 4px;
+}
+
+.credits-sep {
+    margin: 0 12px;
+    color: var(--grey-300);
+}
+
+/* ═══════════════════════════════════════════════
+   Separator
+   ═══════════════════════════════════════════════ */
+.article hr {
+    border: none;
+    height: 1px;
+    background: var(--border-light);
+    margin: 48px 0;
+}
+
+/* ═══════════════════════════════════════════════
+   Footnotes
+   ═══════════════════════════════════════════════ */
+.footnotes {
+    margin-top: 56px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border-light);
+    font-size: 0.82rem;
+    color: var(--text-tertiary);
+    line-height: 1.8;
+}
+
+.footnotes a {
+    color: var(--text-tertiary);
+    text-decoration: underline;
+}
+
+.footnotes ol { padding-left: 20px; }
+.footnotes li { margin-bottom: 6px; scroll-margin-top: 24px; }
+
+.footnote-ref {
+    font-size: 0.75em;
+    vertical-align: super;
+    font-weight: 600;
+}
+
+.footnote-ref a {
+    color: var(--toss-blue);
+    text-decoration: none;
+}
+
+.footnote-ref a:hover { text-decoration: underline; }
+
+.fn-back {
+    color: var(--text-tertiary);
+    text-decoration: none;
+    margin-left: 6px;
+    font-size: 0.9em;
+}
+
+.fn-back:hover { color: var(--toss-blue); }
+
+/* ═══════════════════════════════════════════════
+   Footer
+   ═══════════════════════════════════════════════ */
+.article-footer {
+    margin-top: 56px;
+    padding: 32px 0;
+    text-align: center;
+    color: var(--text-tertiary);
+    font-size: 0.82rem;
+}
+
+.share-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.share-btn {
+    padding: 8px 20px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-light);
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.share-btn:hover {
+    background: var(--grey-200);
+    color: var(--text-primary);
+}
+
+
+/* ── cc-studio: 화면 지도 ── */
+.screen-map { margin: 28px 0 24px; display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); grid-template-areas: "t p" "b b" "q q" "s s"; gap: 6px; padding: 14px; background: #1e2228; border-radius: var(--radius); font-family: var(--font-code); font-size: 0.72rem; line-height: 1.6; color: #abb2bf; }
+.screen-map .sm-transcript { grid-area: t; position: relative; padding: 10px 12px; border: 1px dashed #3e4451; border-radius: 10px; min-height: 140px; }
+.screen-map .sm-pane { grid-area: p; padding: 10px 12px; border: 1px solid #61afef; border-radius: 10px; }
+.screen-map .sm-band { grid-area: b; padding: 6px 12px; border: 1px solid #98c379; border-radius: 8px; color: #98c379; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.screen-map .sm-prompt { grid-area: q; padding: 6px 12px; border: 1px solid #5c6370; border-radius: 8px; color: #e6e6e6; }
+.screen-map .sm-status { grid-area: s; padding: 2px 12px; color: #e5c07b; }
+.screen-map .sm-label { font-family: var(--font-body); font-size: 0.68rem; color: #5c6370; margin-bottom: 4px; }
+.screen-map .sm-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.screen-map .sm-line.dim { color: #7f848e; }
+.screen-map .sm-toast { position: absolute; top: 8px; right: 8px; padding: 3px 8px; background: #3b2226; border: 1px solid #e06c75; border-radius: 6px; color: #e06c75; font-size: 0.66rem; }
+.screen-map .sm-tabs { display: flex; gap: 6px; margin-bottom: 8px; }
+.screen-map .sm-tabs span { padding: 1px 7px; border-radius: 5px; background: #2c313a; color: #7f848e; }
+.screen-map .sm-tabs span.on { background: #61afef; color: #1e2228; font-weight: 700; }
+/* ── cc-studio: 깨우기 흐름 ── */
+.wake-flow { margin: 28px 0 24px; padding: 20px; background: var(--bg-elevated); border: 1px solid var(--border-light); border-radius: var(--radius); text-align: center; }
+.wake-flow .wf-source { display: inline-flex; flex-direction: column; gap: 2px; padding: 10px 18px; background: var(--grey-900); border-radius: 10px; }
+.wake-flow .wf-source code { background: none; color: #e6e6e6; padding: 0; }
+.wake-flow .wf-source span { font-size: 0.75rem; color: var(--grey-400); }
+.wake-flow .wf-arrow { margin: 10px 0; font-size: 0.82rem; color: var(--text-tertiary); }
+.wake-flow .wf-chain { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+.wake-flow .wf-node { padding: 10px 6px; background: var(--bg); border: 1px solid var(--border-light); border-radius: 10px; font-size: 0.8rem; font-weight: 700; color: var(--text-primary); }
+.wake-flow .wf-node span { display: block; margin-top: 6px; font-size: 0.68rem; font-weight: 500; line-height: 1.45; color: var(--text-tertiary); }
+.wake-flow .wf-node.hub { border-color: var(--toss-blue-border); background: var(--toss-blue-light); }
+.wake-flow .wf-node.on { border-color: #16a34a; }
+.wake-flow .wf-node.on span { color: #16a34a; }
+@media (max-width: 768px) {
+  .screen-map { grid-template-columns: 1fr; grid-template-areas: "t" "p" "b" "q" "s"; }
+  .wake-flow .wf-chain { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ═══════════════════════════════════════════════
+   Responsive
+   ═══════════════════════════════════════════════ */
+@media (max-width: 768px) {
+    .hero { padding: 48px 20px 32px; }
+    .hero-title { font-size: 1.7rem; }
+    .article, .article-wide { padding: 0 20px; }
+    .article h2 { font-size: 1.35rem; margin-top: 40px; }
+    .article h3 { font-size: 1.1rem; }
+    .compare-grid { grid-template-columns: 1fr; }
+    .article pre { padding: 16px; margin-left: -8px; margin-right: -8px; border-radius: 12px; }
+}
+
+/* ═══════════════════════════════════════════════
+   Print
+   ═══════════════════════════════════════════════ */
+@media print {
+    body { font-size: 11pt; }
+    .hero { padding: 24px 0; }
+    .article pre { white-space: pre-wrap; }
+    .toc, .share-buttons, .article-footer { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     Hero Header
+     ═══════════════════════════════════════════ -->
+<header class="hero">
+    <div class="hero-meta">
+        <span class="author">keechan</span>
+        <span class="dot">&middot;</span>
+        <span>Android</span>
+        <span class="dot">&middot;</span>
+        <time>2026-10-14</time>
+    </div>
+    <h1 class="hero-title">IDE를 열지 않는 하루: Claude Code 안에 Android Studio를 옮겨 놓은 cc-studio</h1>
+    <p class="hero-subtitle">Claude Code mod로 만든 다섯 기능. Finder, Logcat, Build, Git 관문과 브랜치 밴드를 터미널 안으로 옮기며 배운 것</p>
+    <div class="hero-tags">
+        <span class="hero-tag">Claude Code</span><span class="hero-tag">Mods</span><span class="hero-tag">Developer Tooling</span><span class="hero-tag">Android</span><span class="hero-tag">TypeScript</span>
+    </div>
+</header>
+
+<!-- ═══════════════════════════════════════════
+     Table of Contents
+     ═══════════════════════════════════════════ -->
+<nav class="article">
+    <div class="toc">
+        <div class="toc-label">목차</div>
+        <ol class="toc-list">
+            <li><a href="#section-1"><span class="toc-num">1</span> mod는 Claude Code 프로세스 안에서 실행되는 함수다</a></li>
+            <li><a href="#section-2"><span class="toc-num">2</span> 설치와 사용: 명시적으로 활성화할 때만 동작한다</a></li>
+            <li><a href="#section-3"><span class="toc-num">3</span> 다섯 mod가 바꾸는 것</a></li>
+            <li><a href="#section-4"><span class="toc-num">4</span> 다섯 mod를 하나의 명령으로: 공유 상태 없이 활성화하기</a></li>
+            <li><a href="#section-5"><span class="toc-num">5</span> 만들면서 틀린 가설 다섯 개</a></li>
+            <li><a href="#section-6"><span class="toc-num">6</span> 대안과 한계</a></li>
+            <li><a href="#section-7"><span class="toc-num">7</span> 정리</a></li>
+        </ol>
+    </div>
+</nav>
+
+<!-- ═══════════════════════════════════════════
+     Article Body
+     ═══════════════════════════════════════════ -->
+<article class="article">
+
+        <p>Claude Code에 "<code>ProductListViewModel.kt</code> 120번째 줄을 고쳐줘"라고 쓰려면 먼저 그 줄을 봐야 한다. 그래서 Android Studio로 넘어가 Double Shift를 누른다. 고친 코드를 기기에 올렸는데 크래시가 나면 다시 IDE로 가서 Logcat을 연다.</p>
+
+    <p>컴파일 확인을 맡기면 문제가 하나 더 생긴다. Gradle 빌드 한 번이 많게는 1,800줄을 출력하고, 그 출력이 대화 컨텍스트에 그대로 쌓인다. 판단에 필요한 줄은 열 줄 남짓이다. 우리 저장소는 push 전 컴파일 검증을 의무로 두고 있어서 이 호출이 자주 반복된다.</p>
+
+    <p>여기까지는 불편이다. 불편이 사고로 이어지는 지점은 Git이다. 나는 Claude Code 개인 지침(<code>~/.claude/CLAUDE.md</code>)에 "커밋은 사용자가 명시적으로 요청할 때만 한다", "브랜치명은 작업 시작 때 한 번 읽어 고정한다" 같은 규칙을 적어 두었다. 세션이 짧을 때는 지켜진다. 세션이 길어지면 문장은 컨텍스트 뒤로 밀린다. 실제로 세션 도중 바뀐 브랜치를 모른 채 PR을 연 일이 있었고, <code>set -e</code>를 믿고 이어 쓴 commit과 push가 중간 실패를 지나쳐 부분 커밋을 올린 일도 있었다.</p>
+
+    <div class="highlight-box">cc-studio는 IDE 전환과 Git 사고를 Claude Code 안에서 해결하기 위해 만든 mod 세트다. 전체를 제어하는 허브 하나와 기능 mod 다섯으로 구성되며, 파일 검색, 기기 로그, 빌드 출력, Git 관문과 브랜치 밴드를 <code>/cc-studio</code> 명령 하나로 활성화한다.</div>
+
+    <div class="screen-map" aria-label="cc-studio 가 사용하는 UI 영역">
+        <div class="sm-transcript">
+            <div class="sm-label">트랜스크립트</div>
+            <div class="sm-line">❯ ./gradlew :features:compileDebugKotlin</div>
+            <div class="sm-line dim">e: product/ProductListViewModel.kt:118 Unresolved reference</div>
+            <div class="sm-line dim">BUILD FAILED in 41s</div>
+            <div class="sm-line dim">full log → …/gradle.log</div>
+            <div class="sm-toast">cs-logcat: FATAL EXCEPTION main</div>
+        </div>
+        <div class="sm-pane">
+            <div class="sm-tabs"><span class="on">Finder</span><span>Logcat</span><span>Build</span></div>
+            <div class="sm-line">ProductListViewModel.kt</div>
+            <div class="sm-line dim">392–415/500줄</div>
+        </div>
+        <div class="sm-band">⎇ .../ABC-1/task/x &nbsp;↑2 ↓3 origin &nbsp;● +2 ~1 ?3 &nbsp;워크트리 pr-1234</div>
+        <div class="sm-prompt">❯ 이 파일 고쳐줘</div>
+        <div class="sm-status">git-gate armed · 차단 1 · 승인 2</div><!-- kor-exempt -->
+    </div>
+    <div class="img-caption">다섯 mod가 사용하는 UI 영역을 나타낸 모형(실제 화면 캡처가 아니다). 오른쪽 pane(탭), 프롬프트 위 band, 프롬프트 아래 상태줄, 우측 상단 toast</div>
+
+    <p>이 글은 다섯 단계로 진행한다. 먼저 mod가 무엇인지 설명하고 설치와 사용법을 소개한다. 이어서 다섯 mod가 각각 무엇을 바꾸는지, 다섯 mod를 하나의 명령으로 제어하는 방법을 설명한다. 마지막으로 만들면서 틀린 가설 다섯 개와 이 도구의 한계를 정리한다.</p>
+
+    <h2 id="section-1">1. mod는 Claude Code 프로세스 안에서 실행되는 함수다</h2>
+
+    <p>Claude Code에는 기존에도 훅(hook)이 있었다. settings 파일에 셸 명령, HTTP 요청, MCP 도구 호출, 프롬프트나 서브에이전트를 적어 두면 <code>PreToolUse</code> 같은 시점에 실행된다<sup class="footnote-ref" id="ref-1"><a href="#fn1">[1]</a></sup>. 이 훅은 Claude Code <strong>외부</strong>에서 실행된다. 명령을 막거나 인자를 바꿀 수는 있지만 화면에 무언가를 그릴 수는 없다.</p>
+
+    <p>mod는 이와 다른 방식으로 동작한다. 공식 문서는 mod를 이렇게 정의한다.</p>
+
+    <blockquote><p>"A mod is a plugin that changes how Claude Code looks and behaves. It's made of JavaScript or TypeScript event handlers: …"<sup class="footnote-ref" id="ref-2"><a href="#fn2">[2]</a></sup></p></blockquote>
+
+    <p>mod의 훅은 Claude Code 프로세스 <strong>안에서</strong> 호출되는 함수다. early access 기간에는 활성화 플래그 이름(<code>CLAUDE_CODE_ENABLE_FUNCTION_HOOKS</code>)대로 function hooks라고 불렸다. 이 글은 mod로 통일하고, mod가 등록한 이벤트 핸들러를 훅이라 부른다.</p>
+
+    <h3>next(e)는 OkHttp의 chain.proceed다</h3>
+
+    <p>Android 개발자에게 가장 가까운 비유는 OkHttp <code>Interceptor</code>다. 인터셉터는 <code>chain.proceed(request)</code>를 부르기 전에 요청을 바꾸고, 부른 뒤에 응답을 바꾸고, 아예 부르지 않고 응답을 직접 만들 수도 있다. mod 훅도 같은 세 가지를 한다. 이벤트를 관찰하고(observe), 고쳐서 넘기고(rewrite), 직접 답한다(answer)<sup class="footnote-ref" id="ref-3"><a href="#fn3">[3]</a></sup>.</p>
+
+    <pre><code><span class="kw">export const</span> <span class="fn">register</span>: <span class="typ">Register</span> = on => {
+  on(<span class="str">'tool.call'</span>, { tool: <span class="str">'Bash'</span> }, <span class="kw">async</span> ($, e, next) => {
+    <span class="kw">if</span> (<span class="op">/</span><span class="str">\bgit\s+stash\s+store\b</span><span class="op">/</span>.<span class="fn">test</span>(e.command)) {
+      <span class="cmt">// answer: next 를 부르지 않으면 명령은 실행되지 않는다</span>
+      <span class="kw">return</span> { deny: <span class="str">'refs/stash 를 덮어써 기존 stash 를 잃는다'</span> }
+    }
+    <span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">next</span>(e)      <span class="cmt">// 실제 실행</span>
+    $.ui.<span class="fn">log</span>(<span class="str">'git 명령 실행됨'</span>)        <span class="cmt">// observe: 실행 뒤 기록</span>
+    <span class="kw">return</span> result
+  })
+}</code></pre>
+
+    <p>이 코드는 설명용 예시다. 실제 cs-gate도 차단, 실행, 실행 뒤 검사의 세 단계로 구성되어 있다. <code>$</code>는 mods API이고, 화면에 그리기, 프로세스 실행, 도구 등록은 모두 이 객체를 거친다. 그래서 <code>claude plugin validate</code>가 실행하지 않고도 mod가 무엇을 호출하는지 나열할 수 있다.</p>
+
+    <h3>mod가 그릴 수 있는 UI 영역</h3>
+
+    <p>셸 명령 훅과 가장 큰 차이는 UI를 그릴 수 있다는 점이다. cc-studio가 사용하는 UI 영역과 API는 다음과 같다.</p>
+
+    <table class="metrics-table">
+        <thead><tr><th>UI 영역</th><th>API</th><th>특성</th><th>cc-studio에서</th></tr></thead>
+        <tbody>
+            <tr><td class="metric-label">pane</td><td><code>$.ui.open</code> + <code>ui.render</code></td><td>사용자가 필요할 때 열어 확인하는 영역. 여러 개면 탭으로 배치되고 한 번에 하나만 표시된다</td><td>Finder, Logcat, Build</td></tr>
+            <tr><td class="metric-label">band</td><td><code>ui.render</code> (<code>AbovePrompt</code>)</td><td>프롬프트 바로 위 한 줄. 항상 표시된다</td><td>브랜치 밴드</td></tr>
+            <tr><td class="metric-label">상태줄</td><td><code>$.ui.status</code></td><td>프롬프트 아래 한 줄. 값을 바꿀 때까지 유지된다</td><td>관문 집계, 빌드 결과</td></tr>
+            <tr><td class="metric-label">toast</td><td><code>$.ui.toast</code></td><td>몇 초 뒤 사라지는 알림</td><td>크래시 알림</td></tr>
+            <tr><td class="metric-label">질문 다이얼로그</td><td><code>$.ui.ask</code></td><td>사용자가 응답할 때까지 도구 호출을 보류한다</td><td>커밋, push 승인</td></tr>
+            <tr><td class="metric-label">도구</td><td><code>$.tool.register</code></td><td>Claude가 호출하는 도구. <code>mcp__플러그인__이름</code>으로 등록된다</td><td><code>open_tabs</code>, <code>read_logcat</code>, <code>where_am_i</code></td></tr>
+            <tr><td class="metric-label">커맨드</td><td><code>$.command.register</code></td><td>사용자가 실행하는 <code>/커맨드</code></td><td><code>/cc-studio</code></td></tr>
+        </tbody>
+    </table>
+
+    <div class="content-box">
+        <div class="content-box-title">버전에 관한 주의</div>
+        <p>cc-studio는 Claude Code 2.1.278부터 2.1.286까지, early access 기간에 개발했다. 당시에는 <code>CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1</code>을 설정해야 mod가 로드됐다. 공식 문서에 따르면 2.1.287부터 mod는 기본으로 켜지고 이 변수는 값과 무관하게 무시된다<sup class="footnote-ref" id="ref-4"><a href="#fn4">[4]</a></sup>. 이 글의 실측은 2.1.278부터 2.1.287 사이 빌드에서 얻은 것이다.</p>
+    </div>
+
+    <div class="summary-box">
+        <div class="summary-box-title">요약</div>
+        <p>mod는 Claude Code 안에서 호출되는 이벤트 핸들러다. <code>next(e)</code>를 부르는 방식에 따라 관찰, 재작성, 직접 응답을 고르고, <code>$</code>를 통해 pane, band, toast와 도구를 만든다.</p>
+    </div>
+
+    <h2 id="section-2">2. 설치와 사용: 명시적으로 활성화할 때만 동작한다</h2>
+
+    <p>허브 하나와 기능 mod 다섯, 모두 여섯 개의 플러그인은 저장소의 <code>.claude/skills/</code> 아래에 같은 수준으로 위치한다. Claude Code는 이 디렉터리 <strong>바로 아래의 하위 디렉터리</strong>를 자동으로 탐색해 로드하므로 marketplace 등록이 필요 없다. 팀원은 <code>git pull</code> 뒤 <code>/reload-plugins</code>만 하면 된다.</p>
+
+    <pre><code>/cc-studio                  <span class="cmt"># 다섯 mod를 모두 활성화한다</span>
+/cc-studio off              <span class="cmt"># 다섯 mod를 모두 비활성화한다</span>
+/cc-studio gradle logcat    <span class="cmt"># 지정한 mod만 활성화한다 (나머지는 유지)</span>
+/cc-studio off logcat       <span class="cmt"># 지정한 mod만 비활성화한다</span>
+/cc-studio status           <span class="cmt"># 상태만 조회한다</span></code></pre>
+
+    <p>활성화하면 허브가 변경된 동작을 한 문장씩 요약해 출력한다. 예를 들어 "Gradle 빌드 출력은 핵심 내용만 몇 줄로 요약해서 보여드리고, 전체 로그는 Build 탭에서 확인하실 수 있도록 제공합니다." 같은 문장이다. 출력에서 플러그인 이름과 ON/OFF 표시는 의도적으로 제외했다. <code>cs-gradle</code>이라는 이름만으로는 그것이 무엇을 하는지 알 수 없기 때문이다.</p>
+
+    <h3>왜 기본값이 비활성 상태인가</h3>
+
+    <p>플러그인은 세션이 시작할 때 로드된다. 로드 자체는 막을 수 없으므로 <strong>로드는 하되 동작은 비활성화해 둔다</strong>. 새 세션에서 다섯 mod는 항상 비활성 상태로 시작한다. cs-logcat README는 그 이유를 "로그 창을 묻지도 않고 띄우는 건 주제넘다"고 적는다.</p>
+
+    <h3>활성화 여부 확인</h3>
+
+    <p>early access 빌드에서 가장 혼란스러웠던 점은 플래그가 꺼져 있을 때 아무 안내도 없다는 것이었다. 다섯 mod가 커맨드 목록에서 모두 사라졌지만 오류나 경고는 없었다. 그런데 <code>claude plugin list</code>는 같은 상태에서 <code>✔ loaded</code>를 표시했다. 이 표시는 플러그인 디렉터리를 인식했다는 의미일 뿐, 훅이 실행 중이라는 의미가 아니었다. 지금 빌드에서는 <code>/plugin</code> 화면의 <code>N mod active</code> 줄로 실제 로드된 mod를 확인할 수 있다<sup class="footnote-ref" id="ref-5"><a href="#fn5">[5]</a></sup>.</p>
+
+    <h2 id="section-3">3. 다섯 mod가 바꾸는 것</h2>
+
+    <p>다섯은 모두 Android Studio에 대응하는 기능이 있다. 이 대응이 설계의 출발점이었다. 같은 작업의 동작이 두 도구에서 다르면 사용자가 매번 다시 익혀야 한다.</p>
+
+    <table class="metrics-table">
+        <thead><tr><th>mod</th><th>Android Studio</th><th>핵심 훅</th><th>Claude에게 제공하는 도구</th></tr></thead>
+        <tbody>
+            <tr><td class="metric-label">cs-finder</td><td>Go to File (Double Shift)</td><td><code>ui.render</code> pane, <code>ui.scroll</code></td><td><code>open_tabs</code></td></tr>
+            <tr><td class="metric-label">cs-logcat</td><td>Logcat</td><td><code>$.process.spawn</code>, <code>$.clock.every</code></td><td><code>read_logcat</code></td></tr>
+            <tr><td class="metric-label">cs-gradle</td><td>Build 툴윈도우, Problems 뷰</td><td><code>tool.call</code> (명령 재작성)</td><td>없음</td></tr>
+            <tr><td class="metric-label">cs-gate</td><td>(없음, VCS 커밋 다이얼로그에 가깝다)</td><td><code>tool.call</code> (차단, 승인, 교정)</td><td>없음</td></tr>
+            <tr><td class="metric-label">cs-band</td><td>상태바 VCS 위젯</td><td><code>ui.render</code> band</td><td><code>where_am_i</code></td></tr>
+        </tbody>
+    </table>
+
+    <p>네 번째 열이 중요하다. 다섯 중 세 개는 <strong>사용자가 보는 것과 같은 값을 Claude에게도 도구로 제공한다</strong>. 사용자가 pane에서 보고 있는 내용을 Claude가 모르면 결국 사용자가 그 내용을 다시 입력해야 하기 때문이다.</p>
+
+    <h3>cs-finder: 파일 검색 pane과 <code>open_tabs</code> 도구</h3>
+
+    <p>타이핑하면 파일 이름을 fuzzy 검색한다. <code>prodlistvm</code>을 치면 <code>ProductListViewModel.kt</code>가 1위로 올라와야 Double Shift와 같은 결과를 얻을 수 있다. 이를 위해 채점에서 <strong>파일명 일치를 가산점이 아니라 별도 등급</strong>으로 둔다. 경로는 <code>/</code>와 <code>_</code>로 가득해 단어 경계 보너스가 끝없이 누적되므로, 가산점 방식이면 경로 일치가 파일명 일치보다 앞선다.</p>
+
+    <p>고른 파일은 탭으로 열리고, 탭 안에서 단어를 찾아 이동한다. 찾은 줄은 화면 맨 위가 아니라 <strong>위에서 1/3 지점</strong>에 표시된다. 그 줄이 속한 함수 시그니처가 함께 보여야 맥락을 파악할 수 있다.</p>
+
+    <p>가장 유용한 기능은 Claude와 pane이 같은 위치 표기를 공유하는 것이다. Claude는 코드를 <code>Foo.kt:120</code>으로 가리킨다. 그 표기를 검색란에 붙여넣으면 그 줄로 열린다. 반대로 <code>v</code>를 누르면 지금 보는 범위가 <code>path:120-160</code> 형태로 프롬프트에 들어간다. pane이 출력한 표기를 pane이 다시 입력으로 받을 수 있다.</p>
+
+    <p>경로를 입력하지 않아도 된다. cs-finder는 <code>open_tabs</code> 도구를 등록하고, 사용자가 "이 파일", "여기"라고 하면 Claude가 이 도구를 호출한다.</p>
+
+    <pre><code>사용자가 finder pane 에 열어 둔 파일:
+- features/product/ProductListViewModel.kt — 120~160줄을 보고 있다  ← 지금 보는 파일
+- app/src/main/java/com/example/HomeActivity.kt
+사용자가 "이 파일" · "여기" · "이 코드" 라고 하면 지금 보는 파일을 가리킨다.</code></pre>
+
+    <p>경로와 줄 번호만 제공하고 파일 내용은 제공하지 않는다. 내용은 Claude가 이어서 직접 읽는다.</p>
+
+    <h3>cs-logcat: 기기 하나에 스트림 하나</h3>
+
+    <p><code>adb logcat</code>은 끝나지 않는 스트림이라 Bash 도구로는 실행할 수 없다. 타임아웃이 발생하거나 세션을 점유한다. <code>$.process.spawn</code>이 이런 장시간 스트림을 위한 API다.</p>
+
+    <pre><code><span class="kw">const</span> child = $.process.<span class="fn">spawn</span>({
+  <span class="cmt">// -T 1 로 과거를 걷어낸다. -s 없이는 기기 두 대가 붙은 순간 전부 실패한다</span>
+  argv: [<span class="str">'adb'</span>, <span class="str">'-s'</span>, device, <span class="str">'logcat'</span>, <span class="str">'-v'</span>, <span class="str">'threadtime'</span>, <span class="str">'-T'</span>, <span class="str">'1'</span>],
+})
+<span class="kw">for await</span> (<span class="kw">const</span> chunk <span class="kw">of</span> child) {
+  <span class="kw">for</span> (<span class="kw">const</span> raw <span class="kw">of</span> splitter.<span class="fn">push</span>(chunk.text)) {   <span class="cmt">// 줄 중간에서 끊긴 조각을 잇는다</span>
+    <span class="kw">const</span> entry = <span class="fn">parseLine</span>(raw)
+    <span class="kw">const</span> app = pids.<span class="fn">get</span>(entry.pid)               <span class="cmt">// 추적 대상이 아닌 줄은 버린다</span>
+    <span class="cmt">// ...</span>
+  }
+}</code></pre>
+
+    <p>처음에는 앱마다 <code>adb logcat --pid</code>로 스트림을 연결하고 해제하는 구조였다. 이 구조에는 세 가지 문제가 동시에 있었다. <code>--pid</code> 스트림은 프로세스가 종료돼도 스스로 끝나지 않았고, 앱을 재시작하면 pid가 바뀌어 다시 연결해야 했으며, 연결과 해제 사이에 상태가 이전 루프의 <code>finally</code>와 경쟁했다. 세 번 수정했지만 매번 다른 지점에서 문제가 재발했다.</p>
+
+    <p>그래서 <strong>기기 하나에 스트림 하나</strong>를 연결해 두고, 어느 앱의 로그인지는 각 줄에 포함된 pid로 구분하도록 바꿨다. pid와 패키지의 대응표는 5초마다 <code>ps</code>로 갱신한다. 연결과 해제가 없어지자 세 문제가 함께 해결됐다. store와 beta 플레이버를 번갈아 실행해도 다음 <code>ps</code> 한 번으로 로그 수집이 이어진다.</p>
+
+    <p>크래시는 pane이 아니라 toast로 알린다. 이유는 5절에서 다룬다. Claude는 <code>read_logcat({ grep, lines })</code>으로 버퍼를 조회해 재현 없이 크래시 스택을 읽는다.</p>
+
+    <h3>cs-gradle: 실행 결과 대신 명령을 재작성한다</h3>
+
+    <p>Gradle 출력을 줄이는 가장 쉬운 방법은 <code>await next(e)</code>로 실행한 뒤 결과를 다듬는 것이다. cs-gradle은 이 방식을 쓰지 않았다. 만들 당시 빌드의 타입 선언에서는 Bash 도구의 결과 타입이 <code>unknown</code>이라 결과를 안전하게 갈아끼울 수 없었다. 반면 바꾼 명령을 <code>next({...e, command})</code>로 넘기는 경로는 타입이 온전히 잡혔다. 그래서 명령 자체를 바꿔 넘긴다.</p>
+
+    <pre><code><span class="cmt"># 원래 명령</span>
+./gradlew :features:compileDebugKotlin
+
+<span class="cmt"># cs-gradle 이 next 에 넘기는 명령</span>
+{ ./gradlew :features:compileDebugKotlin
+} > <span class="str">"$LOG"</span> 2>&1; __rc=$?; awk -f <span class="str">"$LENS"</span> <span class="str">"$LOG"</span>;
+echo <span class="str">"full log → $LOG (N lines)"</span>; exit $__rc</code></pre>
+
+    <p>로그는 파일로 저장하고 awk가 추출한 줄만 대화에 전달한다. Kotlin 진단(<code>e:</code>, <code>w:</code>), <code>* What went wrong:</code> 블록, <code>BUILD FAILED in …</code> 요약만 남긴다. 경고는 5건까지만 포함한다. 26줄짜리 샘플 출력에서 잰 결과는 10줄이었다. 큰 빌드라도 남는 것은 진단과 요약뿐이라, 에러가 몇 개 안 되면 출력 길이가 비슷하게 유지된다. <code>exit $__rc</code>로 종료 코드를 보존하는 것이 핵심이다. 이것을 놓치면 실패한 빌드가 성공으로 보고된다.</p>
+
+    <p>Gradle 명령이 감지되면 Build 탭을 전면에 표시하도록 요청하며, 전체 로그는 이 탭에서 확인한다.</p>
+
+    <h3>cs-gate: 문장 규칙을 관문으로</h3>
+
+    <p>cs-gate는 <code>CLAUDE.md</code>의 Git 안전 규칙을 문장이 아니라 관문으로 강제한다. 응답은 세 가지뿐이다.</p>
+
+    <table class="metrics-table">
+        <thead><tr><th>응답</th><th>언제</th><th>예</th></tr></thead>
+        <tbody>
+            <tr><td class="metric-label">차단 <code>{ deny }</code></td><td>항상 틀린 명령</td><td><code>git stash store</code>, 쓰기 명령 안의 <code>$(git branch --show-current)</code></td></tr>
+            <tr><td class="metric-label">승인 <code>$.ui.ask</code></td><td>판단이 필요한 명령</td><td>commit, push, <code>checkout -b</code>, <code>reset --hard</code>, rebase</td></tr>
+            <tr><td class="metric-label">교정 <code>next({...e, command})</code></td><td>정답이 명확한 실수</td><td><code>;</code>로 이은 Git 명령 체인을 <code>&amp;&amp;</code>로 연결, 고정 <code>/tmp</code> 경로를 세션 디렉터리로</td></tr>
+        </tbody>
+    </table>
+
+    <p>승인에는 조건이 하나 붙는다. 턴의 첫 Git 호출이라면, 사용자가 그 동사를 직접 요청했을 때 묻지 않는다. "커밋해줘"라고 했는데 다이얼로그를 또 띄우면 관문이 불필요한 확인 절차가 된다. 같은 턴에서 이어지는 호출에도 이 판정이 그대로 맞는지는 아직 확인하지 못했다. 다이얼로그를 띄울 때는 브랜치, upstream, staged와 unstaged 수를 함께 보여준다. unstaged가 있으면 "커밋에서 빠집니다"라고 적는다.</p>
+
+    <p>permission 규칙 <code>Bash(git push:*)</code>와의 차이는 <strong>조사할 수 있다</strong>는 점이다. 규칙은 명령 문자열만 본다. 훅은 push 전에 <code>git fetch</code>를 돌려 원격이 앞서 있는지 확인하고, 커밋 뒤에는 unstaged 잔여를 세어 Claude에게 알린다. 우리 PR 브랜치에는 의존성 갱신 봇 같은 자동화가 커밋을 추가하는 일이 잦다. 이 확인은 그 상황에 대비한 것이다.</p>
+
+    <p>관문에는 한 가지가 더 필요하다. 공식 문서에 따르면 <code>.catch</code> 없는 훅이 예외를 던지면 Claude Code는 그 훅을 건너뛰고 다음 핸들러를 실행한다<sup class="footnote-ref" id="ref-6"><a href="#fn6">[6]</a></sup>. 관문에 오류가 나면 명령이 그대로 실행된다는 뜻이다. 그래서 fail-closed로 처리한다.</p>
+
+    <pre><code>on(<span class="str">'tool.call'</span>, { tool: <span class="str">'Bash'</span> }, guard).<span class="fn">catch</span>(($, e, next) => {
+  <span class="kw">if</span> (!awake) <span class="kw">return</span> <span class="fn">next</span>(e)
+  <span class="cmt">// 사후 검사에서 터졌다면 명령은 이미 실행됐다. deny 하면 "막았다" 는 거짓 보고가 된다</span>
+  <span class="kw">if</span> (next.called) <span class="kw">return</span> <span class="fn">next</span>(e)
+  <span class="kw">return</span> { deny: <span class="str">'git-gate: 게이트 오류. 안전을 위해 차단했습니다.'</span> }
+})</code></pre>
+
+    <h3>cs-band: 사용자와 Claude에게 같은 Git 상태를 제공한다</h3>
+
+    <p>cs-band는 프롬프트 바로 위에 한 줄을 그린다.</p>
+
+    <pre><code>⎇ .../ABC-1/task/x   ↑2 ↓3 origin   ● +2 ~1 ?3   워크트리 pr-1234
+⎇ master   ⚠ 시작 시 develop   ↑0 ↓3 upstream   ○ clean
+⎇ .../ABC-1/task/x   ⚠ upstream=origin/develop   ● ~2   워크트리 main</code></pre>
+
+    <p>이 밴드의 주 목적은 경고다. 세션 시작 때 기록한 브랜치와 현재 브랜치가 다르면 <code>⚠ 시작 시 develop</code>이 빨간색으로 표시된다. 기능 브랜치의 upstream이 베이스 브랜치로 잘못 설정되어 있어도 표시된다. 도입에서 말한 브랜치 사고와 워크트리 upstream 오설정은 이 경고로 미리 드러났어야 했다. 부분 커밋 사고는 밴드가 아니라 cs-gate의 체인 교정이 막는다.</p>
+
+    <p>같은 값을 <code>where_am_i</code> 도구로 Claude에게도 제공한다. 도구 설명에는 "커밋, push, PR 생성 직전에 반드시 호출한다"고 명시했다. 대화 앞부분에 포함된 Git 정보는 세션 도중 브랜치가 바뀌면 실제 상태와 달라진다. <code>where_am_i</code>는 응답 직전에 Git 상태를 다시 읽으므로 항상 최신 값을 반환한다.</p>
+
+    <p>한 줄짜리 UI라서 폭 계산이 의외로 까다로웠다. 한글은 터미널에서 두 칸인데 <code>String.length</code>로 세면 한 칸으로 계산되어 밴드가 화면 폭을 넘는다. 긴 브랜치 이름을 upstream이 한 번 더 쓰는 문제도 있었다. 브랜치는 티켓 키가 보이는 데까지만 뒤쪽 조각을 남기고, upstream이 같은 이름을 가리키면 remote 이름만 쓰도록 바꿔 195칸을 98칸으로 줄였다. 단 밴드에서만 줄인다. <code>where_am_i</code>는 커밋 직전에 Claude가 읽는 값이라 항상 전체 이름을 반환한다.</p>
+
+    <table class="metrics-table">
+        <thead><tr><th>지표</th><th>Before</th><th>After</th><th>변화</th></tr></thead>
+        <tbody>
+            <tr><td class="metric-label">Gradle 출력이 대화에 남기는 줄 (샘플 출력)</td><td>26줄</td><td>10줄</td><td><span class="delta delta-good">−62%</span></td></tr>
+            <tr><td class="metric-label">긴 브랜치에서 밴드 폭</td><td>195칸</td><td>98칸</td><td><span class="delta delta-good">−50%</span></td></tr>
+            <tr><td class="metric-label">파일 목록 갱신 (<code>git ls-files</code>)</td><td colspan="2">파일 8,601개 기준 46ms. pane을 열 때마다 다시 읽어도 되므로 캐시 무효화 로직이 필요 없다</td><td><span class="delta delta-neutral">측정값</span></td></tr>
+            <tr><td class="metric-label">밴드 갱신 (<code>git status</code>)</td><td colspan="2">0.47~0.65초. 편집이 연속되면 1.5초 단위로 묶어 한 번만 실행한다</td><td><span class="delta delta-neutral">측정값</span></td></tr>
+        </tbody>
+    </table>
+    <div class="img-caption">수치는 모두 우리 저장소에서 잰 값이다<sup class="footnote-ref" id="ref-7"><a href="#fn7">[7]</a></sup>. 저장소 크기가 다르면 달라진다</div>
+
+    <div class="summary-box">
+        <div class="summary-box-title">요약</div>
+        <p>다섯 mod는 각각 Android Studio의 한 기능을 옮긴다. 그중 cs-finder, cs-logcat과 cs-band는 사용자가 보는 값을 Claude에게도 도구로 제공한다. cs-gradle과 cs-gate는 <code>tool.call</code>에서 명령을 재작성하거나 차단한다.</p>
+    </div>
+
+    <h2 id="section-4">4. 다섯 mod를 하나의 명령으로: 공유 상태 없이 활성화하기</h2>
+
+    <p>다섯 mod는 서로 독립된 플러그인이다. 서로의 코드를 import할 수 없고, 서로를 조회할 API도 없다. 그런데 <code>/cc-studio</code> 명령 하나로 다섯 mod가 함께 활성화되어야 한다.</p>
+
+    <p>답은 이벤트가 전역이라는 데 있었다. 허브가 다섯에게 명령을 전달하지 않는다. <strong>다섯 mod가 같은 <code>command.run</code> 이벤트를 각자 처리하고 같은 인자를 해석한다.</strong></p>
+
+    <div class="wake-flow">
+        <div class="wf-source"><code>/cc-studio gradle logcat</code><span>command.run 이벤트 1회</span></div>
+        <div class="wf-arrow">↓ 같은 이벤트가 middleware chain을 따라 전달된다</div>
+        <div class="wf-chain">
+            <div class="wf-node hub">cc-studio<span>먼저 next(e)<br>요약만 출력</span></div>
+            <div class="wf-node">cs-gate<span>decide(args, 별칭)<br>→ 지목 안 됨, 유지</span></div>
+            <div class="wf-node on">cs-gradle<span>decide(args, 별칭)<br>→ 활성화</span></div>
+            <div class="wf-node on">cs-logcat<span>decide(args, 별칭)<br>→ 활성화</span></div>
+            <div class="wf-node">cs-band<span>decide(args, 별칭)<br>→ 지목 안 됨, 유지</span></div>
+            <div class="wf-node">cs-finder<span>decide(args, 별칭)<br>→ 지목 안 됨, 유지</span></div>
+        </div>
+    </div>
+    <div class="img-caption">허브는 명령을 전달하지 않는다. 다섯 mod가 같은 이벤트를 각자 처리한다</div>
+
+    <p>이 구조에는 두 가지 이점이 있다. 로드 순서에 의존하지 않고, 하나가 로드에 실패해도 나머지는 정상적으로 활성화된다. 대신 인자를 해석하는 규칙(<code>wake.ts</code>)을 다섯 플러그인이 각자 복제해 포함해야 한다. 규칙을 고치면 다섯 곳을 함께 고쳐야 하므로 규칙을 작게 유지했다.</p>
+
+    <pre><code><span class="kw">export function</span> <span class="fn">decide</span>(args: <span class="typ">string</span>, aliases: <span class="kw">readonly</span> <span class="typ">string</span>[]): <span class="typ">Decision</span> {
+  <span class="kw">const</span> words = args.<span class="fn">trim</span>().<span class="fn">toLowerCase</span>().<span class="fn">split</span>(<span class="op">/</span><span class="str">\s+</span><span class="op">/</span>).<span class="fn">filter</span>(w => w !== <span class="str">''</span>)
+  <span class="kw">if</span> (words[<span class="ann">0</span>] === <span class="str">'status'</span>) <span class="kw">return</span> { statusOnly: <span class="kw">true</span>, names: [] }
+
+  <span class="cmt">// on, off 는 어느 자리에 있어도 읽는다</span>
+  <span class="kw">const</span> off = words.<span class="fn">includes</span>(<span class="str">'off'</span>)
+  <span class="kw">const</span> names = words.<span class="fn">filter</span>(w => w !== <span class="str">'on'</span> &amp;&amp; w !== <span class="str">'off'</span>)
+  <span class="kw">if</span> (names.length === <span class="ann">0</span>) <span class="kw">return</span> { awake: !off, statusOnly: <span class="kw">false</span>, names }
+
+  <span class="kw">const</span> named = names.<span class="fn">some</span>(w => aliases.<span class="fn">includes</span>(w))
+  <span class="kw">return</span> named ? { awake: !off, statusOnly: <span class="kw">false</span>, names } : { statusOnly: <span class="kw">false</span>, names }
+}</code></pre>
+
+    <p>이 주석에는 버그 하나의 수정 이력이 담겨 있다. 처음에는 <code>off</code>를 첫 단어에서만 찾았다. 그러자 <code>/cc-studio gradle off</code>에서 <code>off</code>가 mod 이름으로 처리되었고, 비활성화 명령이 오히려 cs-gradle을 활성화했다.</p>
+
+    <p>허브의 응답 문장도 이 구조를 따른다. 허브는 다섯의 실제 상태를 알 수 없고 자기가 보낸 명령만 안다. 그래서 "켜졌습니다"가 아니라 "2/5에 켜라고 전달했습니다"라고 답한다. 설치되지 않은 mod도 똑같이 표시되므로, 활성화되었다고 단정하면 존재하지 않는 안전장치를 있다고 안내하게 된다.</p>
+
+    <h3>활성 상태를 어디에 저장할까</h3>
+
+    <p>처음에는 모듈 변수 <code>let awake = false</code>에 뒀다. 개발 중 파일을 저장하면 모듈이 다시 적재되면서 변수가 초기화됐다. cs-gate라면 파일 저장 한 번에 안전장치가 경고 없이 해제된다. 그래서 값을 플러그인 저장소 <code>$.store</code>로 옮겼다.</p>
+
+    <p>이 방식도 문제가 있었다. 옆 세션에서 허브 커맨드(당시 이름 <code>/claude-studio</code>)를 실행하자 그 기록이 이 세션의 기록을 덮어썼고, 이 세션의 mod가 리로드 뒤 비활성 상태로 남았다. Logcat 탭에는 "연결된 Device 없음"만 표시되었다. 공식 문서는 원인을 분명히 적고 있다. <code>$.store</code>는 세션 사이에 남는 저장소이고, 같은 머신의 모든 세션이 하나를 함께 쓴다<sup class="footnote-ref" id="ref-8"><a href="#fn8">[8]</a></sup>.</p>
+
+    <table class="metrics-table">
+        <thead><tr><th>저장 위치</th><th>유지 기간</th><th>활성 상태 저장에 적합한가</th></tr></thead>
+        <tbody>
+            <tr><td class="metric-label">모듈 변수</td><td>모듈이 다시 적재될 때까지</td><td class="metric-bad">부적합. 파일 저장만으로 초기화된다</td></tr>
+            <tr><td class="metric-label"><code>$.store</code></td><td>세션을 넘어 남고, 모든 세션이 공유한다</td><td class="metric-bad">부적합. 다른 세션이 값을 덮어쓴다</td></tr>
+            <tr><td class="metric-label"><code>$.state</code></td><td>세션이 끝나거나 <code>/clear</code>, <code>/resume</code>, <code>/branch</code>를 실행할 때까지. 리로드는 넘긴다</td><td class="metric-good">가장 적합. 새 세션은 항상 비활성 상태로 시작한다. 단 <code>/clear</code> 뒤 리로드가 일어나면 비활성 상태로 돌아간다</td></tr>
+        </tbody>
+    </table>
+
+    <p>최종적으로 허브와 다섯 mod 모두 <code>$.state</code>로 옮겼다. 앞서 인용한 공식 문서의 같은 절도 세션 동안만 유지되고 리로드를 넘기는 값의 저장 위치로 <code>$.state</code>를 안내한다. cs-band가 세션 시작 때 기록하는 시작 브랜치도 같은 이유로 <code>$.state</code>에 저장한다.</p>
+
+    <h3>이름과 구조도 바뀌었다</h3>
+
+    <p>허브의 원래 이름은 <code>claude-studio</code>였다. CLI 2.1.287부터 <code>claude-</code>로 시작하는 플러그인 이름이 예약어가 되어 <code>claude plugin validate</code>가 거부했다. Anthropic 것처럼 보이는 이름을 막는 규칙이다. 커맨드도 <code>/cc-studio</code>로 함께 옮겼다. 커맨드 이름과 플러그인 이름이 다르면 사용자가 어느 쪽이 맞는지 매번 확인해야 한다.</p>
+
+    <p>디렉터리 구조도 바뀌었다. 한때 다섯 mod를 <code>cc-studio/cs-*</code>처럼 허브 하위에 두었는데, 자동 로드는 바로 아래의 하위 디렉터리만 탐색하기 때문에 다섯 mod가 로드되지 않았다. marketplace를 따로 등록하자 그 경로가 절대경로로 기록돼 다른 팀원의 머신에서는 경로가 맞지 않았다. 그래서 허브와 다섯 mod를 같은 수준에 나란히 두고, 그룹 구분은 디렉터리 대신 <code>cs-</code> 접두사로 표현한다.</p>
+
+    <h2 id="section-5">5. 만들면서 틀린 가설 다섯 개</h2>
+
+    <p>만들 당시 mods는 정식 출시 전이었고, 참고 자료는 엔진 타입 선언과 내장 mod 소스가 중심이었다. 그래서 가설을 세우고 실측하는 일을 여러 번 반복했다. 다음 개발자가 같은 문제에 시간을 쓰지 않도록 그중 다섯 가지를 정리한다.</p>
+
+    <h3>가설 1. "focus: true로 열면 그 탭이 전면에 표시된다"</h3>
+
+    <p>cs-finder는 처음에 파일마다 pane을 열어 엔진의 탭 기능에 맡겼다. 탭은 생겼지만 전면에 표시되지 않았다. 검색 pane이 키보드 포커스를 가진 상태에서 새 pane을 <code>focus: true</code>로 열었기 때문이다. 공식 문서는 focus를 이렇게 설명한다.</p>
+
+    <blockquote><p>"Claude Code grants focus: true only while the prompt is empty and nothing else has keyboard focus."<sup class="footnote-ref" id="ref-9"><a href="#fn9">[9]</a></sup></p></blockquote>
+
+    <p>focus는 요청이지 보장이 아니다. 그리고 <code>$.ui</code>에는 다른 pane을 전면으로 전환하는 API가 없다. 해결 방법은 두 가지였다. cs-finder는 pane 하나에 탭 바를 직접 그려 탭 전환을 직접 제어했다. cs-logcat은 크래시 같은 즉시성 있는 신호를 pane에 맡기지 않고 toast와 상태줄에 넘겼다. <strong>pane은 사용자가 필요할 때 열어 확인하는 영역이므로, 즉시 알려야 하는 신호는 toast와 상태줄로 전달한다.</strong></p>
+
+    <h3>가설 2. "큰 파일 스크롤이 느린 건 그리는 양 때문이다"</h3>
+
+    <p>수천 줄 파일에서 스크롤이 끊겼다. 네 가지 가설을 차례로 실측했고 모두 틀렸다.</p>
+
+    <table class="metrics-table">
+        <thead><tr><th>가설</th><th>검증</th><th>결과</th></tr></thead>
+        <tbody>
+            <tr><td class="metric-label">구문 강조 span 수</td><td>강조 끄기 토글로 A/B</td><td class="metric-bad">무효</td></tr>
+            <tr><td class="metric-label">줄 길이, 빈 줄</td><td>파일 통계 비교</td><td class="metric-bad">무효</td></tr>
+            <tr><td class="metric-label">스크롤 중 재렌더</td><td>멈춘 뒤로 미룸</td><td class="metric-bad">무효</td></tr>
+            <tr><td class="metric-label">창 단위 렌더 + 스페이서</td><td>내용만 화면 크기로, 높이는 스페이서로 유지</td><td class="metric-bad">무효</td></tr>
+        </tbody>
+    </table>
+
+    <p>마지막 실험이 결정적이었다. 그리는 내용을 1/4로 줄여도 전체 높이를 유지하는 한 비용이 그대로였다. 비용은 그리는 양이 아니라 <strong>엔진이 큰 트리 위에서 표시 영역을 이동하는 작업</strong> 자체였다.</p>
+
+    <p>답은 Claude Code에 내장된 <code>/diff</code> mod의 공개 소스에 있었다<sup class="footnote-ref" id="ref-10"><a href="#fn10">[10]</a></sup>. <code>diff</code>는 사용자가 dock pane에서 스크롤한 이벤트를 엔진에 넘기지 않는다. <code>ui.scroll</code> 이벤트를 받으면 <code>next</code>를 호출하지 않고 직접 처리하며, 자체 스크롤 위치만 갱신해 화면에 보이는 부분만 그린다. 그 밖의 스크롤은 엔진에 넘긴다.</p>
+
+    <pre><code>on(<span class="str">'ui.scroll'</span>, { requestId: Names.PANE_ID }, ($, e, next) => {
+  <span class="kw">const</span> isOwnBody = e.origin.kind === <span class="str">'person'</span> &amp;&amp; model.placement === <span class="str">'dock'</span>
+  <span class="kw">if</span> (!isOwnBody || !host) {
+    <span class="kw">return</span> <span class="fn">next</span>(e)
+  }
+  <span class="kw">const</span> isOverList = Views.<span class="fn">isWheelOverList</span>(model, e)
+  model = {
+    ...model,
+    place: isOverList
+      ? Views.<span class="fn">listScrolledBy</span>(model, e.by)
+      : Views.<span class="fn">bodyScrolledBy</span>(model, e),
+  }
+  host.<span class="fn">invalidate</span>()
+  <span class="kw">return</span> {}
+})</code></pre>
+    <div class="img-caption">anthropics/claude-code <code>mods/diff/hooks/register.ts</code> 908행. 빈 줄만 줄였다</div>
+
+    <p>마지막 <code>return {}</code>가 핵심이다. <code>next</code>를 부르지 않으니 엔진 창은 움직이지 않는다. 트리가 늘 화면 높이만 하니 큰 트리를 훑을 일이 없다. 이 방식으로 바꾸자 스크롤이 매끄러워졌고, 부수 효과로 스크롤 앵커, 스페이서, 디바운스와 재시도 코드가 모두 제거됐다. cs-logcat의 과거 로그 스크롤도 같은 방식이다. 머리글과 RESUME, CLEAR 버튼이 고정되는 것도 이 덕분이다.</p>
+
+    <p>교훈은 단순하다. <strong>같은 엔진에서 정상 동작하는 참조 구현을 먼저 읽는다.</strong> 가설을 네 번 세우는 동안 답은 공개 저장소에 있었다.</p>
+
+    <h3>가설 3. "prompt.context로 열린 탭 목록을 컨텍스트에 추가할 수 있다"</h3>
+
+    <p>cs-finder의 2차 목표는 pane에서 보는 것을 Claude도 알게 하는 것이었다. 처음 시도한 방법은 <code>prompt.context</code> 이벤트에서 열린 탭 목록을 컨텍스트에 덧붙이는 것이었다. 컨텍스트에는 아무것도 추가되지 않았다. 덧붙이는 필드를 바꿔 다시 시도했지만 결과는 같았다.</p>
+
+    <p>두 번 추측한 뒤에야 <code>claude --debug</code>를 켰다. 로그에는 한 줄이 있었다.</p>
+
+    <pre><code>finder: prompt.context bypassed by sec-default (tier user); beneath runs</code></pre>
+
+    <p>훅은 등록됐지만 호출되지 않았다. 로그가 가리킨 것은 Claude Code에 내장된 guard인 <code>sec-default</code>였다. 공식 문서 기준으로 이 guard는 managed settings가 있는 머신이나 Team, Enterprise 플랜으로 로그인한 환경에서만 로드된다<sup class="footnote-ref" id="ref-11"><a href="#fn11">[11]</a></sup>. 우리 환경에서는 로드되어 있었지만, 독자의 환경에서는 로드되지 않을 수 있다. 문서는 guard의 보호 범위를 시스템 프롬프트와 조직이 관리하는 지시 파일로 적고 있고, <code>prompt.context</code>를 막는다고 명시하지는 않는다. 우리가 확인한 것은 debug 로그의 그 한 줄까지다. 사용자가 이 guard를 끌 수는 없으므로 다른 방법이 필요했다.</p>
+
+    <p>그래서 컨텍스트에 직접 추가하는 대신 Claude가 필요할 때 조회하도록 바꿨다. 그것이 <code>open_tabs</code> 도구다. 결과적으로 이 방식이 더 나았다. 필요한 턴에만 컨텍스트에 포함되고, 그 밖의 턴에는 컨텍스트를 차지하지 않는다. 대신 도구 설명이 매 세션 컨텍스트에 포함된다.</p>
+
+    <p>교훈은 이렇다. <strong>훅이 아무 동작도 하지 않으면 추측하지 말고 <code>--debug</code>부터 켠다.</strong> 로그 한 줄로 확인하는 비용이 두 번의 잘못된 추측보다 적었다.</p>
+
+    <h3>가설 4. "Git 명령은 정규식으로 충분히 판별할 수 있다"</h3>
+
+    <p>cs-gate와 cs-gradle의 첫 버전은 명령 문자열에 정규식을 걸었다. PR 리뷰에서 이 방식을 우회하는 입력이 다수 발견됐다.</p>
+
+    <table class="metrics-table">
+        <thead><tr><th>입력</th><th>정규식 판정</th><th>실제</th></tr></thead>
+        <tbody>
+            <tr><td class="metric-label"><code>git -C ../other commit</code></td><td>commit 아님 (통과)</td><td>다른 저장소의 커밋</td></tr>
+            <tr><td class="metric-label"><code>git --no-pager push</code></td><td>push 아님 (통과)</td><td>push</td></tr>
+            <tr><td class="metric-label"><code>echo 'git stash store'</code></td><td>차단</td><td>문자열 출력일 뿐</td></tr>
+            <tr><td class="metric-label"><code>sudo -u root git push</code></td><td><code>root</code>를 명령으로 읽음 (통과)</td><td>push</td></tr>
+            <tr><td class="metric-label"><code>./gradlew test -Pmask=$((1 | 2))</code></td><td>파이프로 읽고 <code>tee</code>를 끼움</td><td>산술 치환 안의 <code>|</code></td></tr>
+        </tbody>
+    </table>
+
+    <p>해법은 정규식을 늘리는 것이 아니라 판정 단위를 바꾸는 것이었다. 명령을 셸 단어로 가르고, 따옴표, <code>$(…)</code>, 백틱과 서브셸의 깊이를 스택으로 따라가 <strong>실제로 실행되는 Git 호출</strong>을 먼저 뽑는다. 규칙은 그렇게 뽑은 호출마다 건다. <code>-C</code>, <code>cd</code>, <code>--git-dir</code>로 지정한 저장소도 따라가서 그 저장소에서 fetch와 status를 실행한다.</p>
+
+    <p>사용자의 말을 읽는 쪽도 같은 문제를 겪었다. "커밋하지 마"를 커밋 승인으로 읽었고, "커밋 규칙을 설명해줘"도 승인으로 읽었다. <code>don't commit or push</code>는 push 승인이 됐다. 지금은 키워드 뒤에 조사와 접속어만 지나 요청 동사가 와야 승인으로 보고, 부정어가 붙거나 묻는 문장이면 승인이 아니다.</p>
+
+    <p>그래도 이 판정은 완벽하지 않다. 공식 문서도 명령 텍스트를 맞추는 훅은 Claude에게 주는 환기(reminder)로 다루라고 쓴다<sup class="footnote-ref" id="ref-12"><a href="#fn12">[12]</a></sup>. 보호 브랜치 같은 최종 방어선은 Git 호스트에 둔다. cs-gate는 그 앞에서 세션 안의 실수를 줄이는 장치다.</p>
+
+    <h3>가설 5. "테스트가 통과하면 동작한다"</h3>
+
+    <p>허브와 다섯 mod의 테스트는 README 기준 290건이다. 순수 함수(채점, 줄 분해, 인자 해석, 셸 파싱, 밴드 조립)는 엔진 없이 테스트하고, 훅은 <code>claude plugin test</code>의 테스트 킷으로 이벤트를 발화해 테스트한다.</p>
+
+    <p>그런데 테스트 킷은 화면을 그리지 않는다. 레이아웃된 요소를 겨냥하는 스크롤, 실제 포커스와 입력 필드의 동작은 테스트로 검증되지 않는다. 입력 필드가 제출 뒤 검색어를 지우는 동작도 실기기 터미널에서 처음 발견했다. 그래서 순회 로직은 실패 로그에 찍힌 줄 번호로 검증하고, 실제 스크롤과 포커스는 실기 확인의 몫으로 남겼다. 테스트가 검증하는 범위를 아는 것도 검증의 일부다.</p>
+
+    <div class="summary-box">
+        <div class="summary-box-title">요약</div>
+        <p>focus는 요청이고, 스크롤 비용은 트리 크기에서 오며, <code>prompt.context</code>는 guard가 막을 수 있다. 셸 명령은 셸 문법으로 호출을 가른 뒤 판정해야 하고, 테스트 킷은 화면을 그리지 않는다. 이 중 앞의 셋은 공식 문서, 공개된 내장 mod 소스나 <code>--debug</code> 로그를 먼저 봤다면 더 빨리 풀렸다.</p>
+    </div>
+
+    <h2 id="section-6">6. 대안과 한계</h2>
+
+    <h3>다른 도구로도 되는 일</h3>
+
+    <p><strong>permission 규칙</strong>은 코드가 필요 없다. <code>Bash(git push:*)</code>를 ask로 두면 push마다 묻는다. 고정된 명령을 막는 데는 이쪽이 낫다. 다만 "원격이 앞서 있으면", "사용자가 이번 턴에 말하지 않았으면" 같은 조건은 문자열로 쓸 수 없다.</p>
+
+    <p><strong>settings 훅</strong>(<code>PreToolUse</code>)도 명령을 막거나 인자를 바꿀 수 있고, 이미 가진 셸 스크립트를 그대로 쓸 수 있다. 하지만 pane이나 band를 그릴 수 없고, Logcat처럼 끝나지 않는 스트림을 세션 내내 유지할 수 없다.</p>
+
+    <p>공식 문서에는 cc-studio가 쓰지 않은 방법도 있다. 허용과 거부만 정하는 판단이라면 <code>tool.check</code> 이벤트가 그 용도다. <code>tool.check</code>는 판정(allow, ask, deny)만 돌려주므로, cs-gate가 하는 명령 재작성과 실행 뒤 잔여 검사는 <code>tool.call</code>에 둘 수밖에 없다. 또 <code>prompt.submit</code>은 Claude만 읽는 줄을 프롬프트에 덧붙일 수 있다<sup class="footnote-ref" id="ref-13"><a href="#fn13">[13]</a></sup>. 매 턴 컨텍스트에 추가되는 대신 Claude가 도구를 호출할 필요가 없다. <code>open_tabs</code> 도구와 어느 쪽이 나은지는 쓰임새에 따라 다르다.</p>
+
+    <p><strong>IDE 그대로 쓰기</strong>가 나은 일도 분명하다. 편집, 디버거, Layout Inspector, 리팩터링은 여전히 Android Studio의 몫이다. cs-finder는 의도적으로 편집 기능을 두지 않았다. cc-studio는 IDE를 대체하는 도구가 아니라, 코드와 로그를 <strong>확인하기 위해</strong> IDE로 전환하는 일을 줄이는 도구다.</p>
+
+    <h3>알려진 한계</h3>
+
+    <ul>
+        <li><strong>API가 아직 변경되고 있다.</strong> 만드는 동안에도 플러그인 이름 규칙이 바뀌었고, 활성화 방식이 플래그에서 기본값으로 바뀌었다. 릴리즈마다 실측을 다시 확인해야 한다.</li>
+        <li><strong>활성 상태가 영구적이지 않다.</strong> 새 세션은 비활성 상태로 시작하고, <code>/clear</code>나 <code>/resume</code> 뒤 모듈이 다시 로드되면 비활성 상태로 돌아간다. 관문이 꺼진 줄 모르고 작업할 수 있으니 상태줄의 <code>git-gate armed</code>를 확인해야 한다.</li>
+        <li><strong><code>wake.ts</code>가 다섯 벌 있다.</strong> 플러그인끼리 코드를 공유할 수 없어서다. 인자 문법을 바꾸려면 다섯 곳을 함께 고쳐야 한다.</li>
+        <li><strong>리로드하면 Finder 탭이 사라진다.</strong> 열린 탭 목록은 모듈 메모리에 있다. 최근 연 파일 목록은 <code>$.store</code>에 있어서 살아남는다.</li>
+        <li><strong>UI는 터미널과 Desktop 앱에서만 표시된다.</strong> VS Code 확장의 채팅 패널이나 <code>claude -p</code>에서는 훅만 실행되고 pane은 그려지지 않는다<sup class="footnote-ref" id="ref-14"><a href="#fn14">[14]</a></sup>.</li>
+        <li><strong>mod는 사용자 권한으로 실행된다.</strong> 샌드박스가 없다. 팀 저장소에 mod를 두면 <code>git pull</code> 한 번으로 모든 팀원의 세션에서 그 코드가 실행된다. 리뷰를 일반 코드보다 엄격하게 해야 한다.</li>
+    </ul>
+
+    <h2 id="section-7">7. 정리</h2>
+
+    <ul class="checklist">
+        <li><span class="checklist-num">1</span><span><strong>반복해서 지켜야 하는 규칙은 문장에서 관문으로 옮긴다.</strong> <code>CLAUDE.md</code>의 문장은 긴 세션에서 뒤로 밀린다. <code>tool.call</code> 훅은 활성화되어 있는 동안 모델의 기억과 무관하게 매번 검사한다. 단 cs-gate처럼 기본값을 비활성 상태로 두면, 활성화 여부는 사용자가 확인해야 한다.</span></li>
+        <li><span class="checklist-num">2</span><span><strong>UI 영역은 정보의 긴급도로 고른다.</strong> 필요할 때 확인하는 정보는 pane, 항상 보여야 하는 정보는 band, 즉시 알려야 하는 정보는 toast와 상태줄에 둔다. 그리고 사용자가 보는 값은 Claude에게도 도구로 제공한다.</span></li>
+        <li><span class="checklist-num">3</span><span><strong>훅이 조용하면 추측하기 전에 <code>--debug</code>와 내장 mod 소스를 본다.</strong> 이 프로젝트의 가장 비싼 시간은 이미 답이 있는 곳을 보지 않은 시간이었다.</span></li>
+    </ul>
+
+    <p>직접 시작해 보려면 공식 샘플 mod 하나를 <code>claude --plugin-dir</code>로 실행해 보길 권한다<sup class="footnote-ref" id="ref-15"><a href="#fn15">[15]</a></sup>. 그다음 자기 <code>CLAUDE.md</code>에서 가장 자주 어겨지는 규칙 하나를 골라 <code>tool.call</code> 훅으로 옮겨 본다. 규칙을 코드로 강제하는 관문 하나가 지침 문장 열 줄보다 확실하다.</p>
+
+
+    
+
+</article>
+
+
+<!-- ═══════════════════════════════════════════
+     Footnotes
+     ═══════════════════════════════════════════ -->
+<div class="article">
+    <div class="footnotes">
+        <ol>
+            <li id="fn1">Claude Code Docs, "Hooks reference". <a href="https://code.claude.com/docs/en/hooks">https://code.claude.com/docs/en/hooks</a> <a href="#ref-1" class="fn-back">↩</a></li>
+            <li id="fn2">Claude Code Docs, "Mods overview". <a href="https://code.claude.com/docs/en/plugins/mods/overview">https://code.claude.com/docs/en/plugins/mods/overview</a> <a href="#ref-2" class="fn-back">↩</a></li>
+            <li id="fn3">Claude Code Docs, "React to events with a mod", How a hook handles an event. <a href="https://code.claude.com/docs/en/plugins/mods/events#how-a-hook-handles-an-event">https://code.claude.com/docs/en/plugins/mods/events</a> <a href="#ref-3" class="fn-back">↩</a></li>
+            <li id="fn4">Claude Code Docs, "Mods overview", Turn mods on or off. <a href="https://code.claude.com/docs/en/plugins/mods/overview#turn-mods-on-or-off">https://code.claude.com/docs/en/plugins/mods/overview#turn-mods-on-or-off</a> <a href="#ref-4" class="fn-back">↩</a></li>
+            <li id="fn5">Claude Code Docs, "Mods overview", See which mods a session loaded. <a href="https://code.claude.com/docs/en/plugins/mods/overview#see-which-mods-a-session-loaded">https://code.claude.com/docs/en/plugins/mods/overview#see-which-mods-a-session-loaded</a> <a href="#ref-5" class="fn-back">↩</a></li>
+            <li id="fn6">Claude Code Docs, "React to events with a mod", Handle a hook that fails. <a href="https://code.claude.com/docs/en/plugins/mods/events#handle-a-hook-that-fails">https://code.claude.com/docs/en/plugins/mods/events#handle-a-hook-that-fails</a> <a href="#ref-6" class="fn-back">↩</a></li>
+            <li id="fn7">cc-studio 각 플러그인의 README와 cs-finder <code>docs/design.md</code>. 2026-10-12 develop 머지 시점 기준. 사내 저장소라 외부에서는 열람할 수 없고, 이 글의 실측 수치와 일화는 모두 이 자료에 기록된 것이다 <a href="#ref-7" class="fn-back">↩</a></li>
+            <li id="fn8">Claude Code Docs, "Draw in the interface with a mod", Keep state. <a href="https://code.claude.com/docs/en/plugins/mods/interface#keep-state">https://code.claude.com/docs/en/plugins/mods/interface#keep-state</a> <a href="#ref-8" class="fn-back">↩</a></li>
+            <li id="fn9">Claude Code Docs, "Draw in the interface with a mod", Keyboard focus and hotkeys. <a href="https://code.claude.com/docs/en/plugins/mods/interface#know-which-keys-your-mod-can-receive">https://code.claude.com/docs/en/plugins/mods/interface</a> <a href="#ref-9" class="fn-back">↩</a></li>
+            <li id="fn10">anthropics/claude-code, <code>mods/diff</code>. <a href="https://github.com/anthropics/claude-code/tree/main/mods/diff">https://github.com/anthropics/claude-code/tree/main/mods/diff</a> <a href="#ref-10" class="fn-back">↩</a></li>
+            <li id="fn11">Claude Code Docs, "Manage mods for your organization", Know what happens by default. <a href="https://code.claude.com/docs/en/plugins/mods/admin#know-what-happens-by-default">https://code.claude.com/docs/en/plugins/mods/admin#know-what-happens-by-default</a> <a href="#ref-11" class="fn-back">↩</a></li>
+            <li id="fn12">Claude Code Docs, "React to events with a mod", Approve or refuse a tool call before the user is asked. <a href="https://code.claude.com/docs/en/plugins/mods/events#approve-or-refuse-a-tool-call-before-the-user-is-asked">https://code.claude.com/docs/en/plugins/mods/events</a> <a href="#ref-12" class="fn-back">↩</a></li>
+            <li id="fn13">Claude Code Docs, "React to events with a mod", Rewrite or add to a prompt. <a href="https://code.claude.com/docs/en/plugins/mods/events#rewrite-or-add-to-a-prompt">https://code.claude.com/docs/en/plugins/mods/events#rewrite-or-add-to-a-prompt</a> <a href="#ref-13" class="fn-back">↩</a></li>
+            <li id="fn14">Claude Code Docs, "Mods overview", Where mods run. <a href="https://code.claude.com/docs/en/plugins/mods/overview#where-mods-run">https://code.claude.com/docs/en/plugins/mods/overview#where-mods-run</a> <a href="#ref-14" class="fn-back">↩</a></li>
+            <li id="fn15">anthropics/claude-code-playground, <code>claude-code/mods</code> 샘플. <a href="https://github.com/anthropics/claude-code-playground/tree/main/claude-code/mods">https://github.com/anthropics/claude-code-playground/tree/main/claude-code/mods</a> <a href="#ref-15" class="fn-back">↩</a></li>
+        </ol>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     Footer
+     ═══════════════════════════════════════════ -->
+<footer class="article-footer">
+    <div class="share-buttons">
+        <button class="share-btn" onclick="navigator.clipboard.writeText(location.href)">링크 복사</button>
+    </div>
+</footer>
+
+</body>
+</html>
